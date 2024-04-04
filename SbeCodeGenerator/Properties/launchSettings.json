@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SbeCodeGenerator_Roslyn": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\PcapSbePocConsole\\PcapSbePocConsole.csproj"
+    }
+  }
+}

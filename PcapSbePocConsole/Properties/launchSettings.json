@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PcapSbePocConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Users\\pedrotravi\\Downloads\\20220919_MBO_084_InstrumentDefinition\\Corvil-local-cne-export-1680545482938812011-1680555526601509765_BSA_Instrument.pcap\""
+    }
+  }
+}
