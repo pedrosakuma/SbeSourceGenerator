@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+using System.Text.Json;
 
 namespace SbeSourceGenerator
 {
@@ -30,6 +32,14 @@ namespace SbeSourceGenerator
                 result[i] = predicate(value[i], i) ? char.ToLower(value[i]) : value[i];
 
             return new string(result);
+        }
+
+        private static readonly char[] Uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+        public static string ToKebabCase(this string value)
+        {
+            //var result = JsonNamingPolicy.SnakeCaseUpper.ConvertName(value);
+            //return result;
+            return value.ToUpper();
         }
     }
 

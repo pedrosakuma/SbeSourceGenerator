@@ -2,8 +2,8 @@
 
 namespace SbeSourceGenerator
 {
-    public record NullableEnumDefinition(string Namespace, string Name, string Description, string EncodingType, string SemanticType, List<EnumFieldDefinition> Fields) 
-        : EnumDefinition(Namespace, Name, Description, EncodingType, SemanticType, AddNullValue(Fields))
+    public record NullableEnumDefinition(string Namespace, string Name, string Description, string EncodingType, string SemanticType, int Length, List<EnumFieldDefinition> Fields)
+        : EnumDefinition(Namespace, Name, Description, EncodingType, SemanticType, Length, AddNullValue(Fields))
     {
         private static List<EnumFieldDefinition> AddNullValue(List<EnumFieldDefinition> fields)
         {

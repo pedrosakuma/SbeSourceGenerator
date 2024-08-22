@@ -1,16 +1,16 @@
-﻿namespace SbeSourceGenerator
+﻿using System;
+
+namespace SbeSourceGenerator
 {
-    public record FixedSizeCharTypeDefinition(string Namespace, string Name, string Description, 
-        string Length) : IFileContentGenerator
+    public record FixedSizeCharTypeDefinition(string Namespace, string Name, string Description,
+        int Length) : IFileContentGenerator, IBlittable
     {
         public string GenerateFileContent()
         {
-            if (Length == "")
+            if (Length == 0)
                 return $$"""
                 namespace {{Namespace}};
-                /// <summary>
-                /// {{Description}}
-                /// </summary>
+                {{SummaryGenerator.Generate(Description, nameof(FixedSizeCharTypeDefinition))}}
                 public struct {{Name}}
                 {
                     public byte Value;
@@ -19,17 +19,14 @@
             else
                 return $$"""
                 namespace {{Namespace}};
-                /// <summary>
-                /// {{Description}}
-                /// </summary>
+                {{SummaryGenerator.Generate(Description, nameof(FixedSizeCharTypeDefinition))}}
                 [System.Runtime.CompilerServices.InlineArray({{Length}})]
-                public struct {{Name}}
+                public unsafe struct {{Name}}
                 {
                     private byte value;
-                    public Span<byte> Value => System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref value, {{Length}});
                     public override string ToString() 
                     {
-                        return System.Text.Encoding.ASCII.GetString(Value);
+                        return System.Text.Encoding.ASCII.GetString(this);
                     }
                 }
                 """;

@@ -1,11 +1,9 @@
 ﻿using B3.Market.Data.Messages;
 using SharpPcap.LibPcap;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
-using System.Xml;
-using System.Xml.Linq;
 
 namespace PcapSbePocConsole
 {
@@ -114,37 +112,59 @@ namespace PcapSbePocConsole
             return new decimal(value, 0, 0, negative, scale);
         }
     }
-    
+
     public partial class Program
     {
         private const int PCAPHeaderSize = 46;
         static void Main(string[] args)
         {
-            return;
             using var device = new CaptureFileReaderDevice(args[0]);
-            device.Open(new SharpPcap.DeviceConfiguration { 
+            device.Open(new SharpPcap.DeviceConfiguration {
+
             });
             device.OnPacketArrival += Device_OnPacketArrival;
             device.Capture();
         }
 
-        private static void Device_OnPacketArrival(object sender, SharpPcap.PacketCapture e)
+        private unsafe static void Device_OnPacketArrival(object sender, SharpPcap.PacketCapture e)
         {
             var data = e.Data.Slice(PCAPHeaderSize);
 
             ref readonly SBEPacketHeader packet = ref MemoryMarshal.AsRef<SBEPacketHeader>(data);
             Console.WriteLine(packet);
+            var headerSize = Unsafe.SizeOf<SBEHeader>();
             data = data.Slice(Unsafe.SizeOf<SBEPacketHeader>());
             do
             {
                 ref readonly SBEHeader header = ref MemoryMarshal.AsRef<SBEHeader>(data);
-                data = data.Slice(Unsafe.SizeOf<SBEHeader>());
-                var length = header.Framing.MessageLength - Unsafe.SizeOf<SBEHeader>();
+                data = data.Slice(headerSize);
+                var length = header.Framing.MessageLength - headerSize;
                 var body = data.Slice(0, length);
                 Console.WriteLine(header);
                 data = data.Slice(length);
+
+                switch (header.Message.TemplateId)
+                {
+                    case 4:
+                        Console.WriteLine(Encoding.ASCII.GetString(body));
+                        var bodySize = Unsafe.SizeOf<SecurityDefinition_4Data>();
+
+                        ref readonly SecurityDefinition_4Data sd = ref MemoryMarshal.AsRef<SecurityDefinition_4Data>(body);
+                        Console.WriteLine(sd);
+                        break;
+                }
             }
             while (data.Length != 0);
+        }
+    }
+    [System.Runtime.CompilerServices.InlineArray(6)]
+    [DebuggerDisplay("{ToString}")]
+    public unsafe struct Asset
+    {
+        private byte value;
+        public override string ToString()
+        {
+            return System.Text.Encoding.ASCII.GetString(this);
         }
     }
 }

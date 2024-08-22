@@ -1,6 +1,6 @@
 ﻿namespace SbeSourceGenerator
 {
-    public record ConstantTypeDefinition(string Namespace, string Name, string Description, string PrimitiveType, string SemanticType, 
+    public record ConstantTypeDefinition(string Namespace, string Name, string Description, string PrimitiveType, string SemanticType,
         string Length, string Value) : IFileContentGenerator
     {
         public string GenerateFileContent()
@@ -15,9 +15,7 @@
 
             return $$"""
                 namespace {{Namespace}};
-                /// <summary>
-                /// {{Description}}
-                /// </summary>
+                {{SummaryGenerator.Generate(Description, nameof(ConstantTypeDefinition))}}
                 public struct {{Name}}
                 {
                     public const {{primitiveType}} Value = {{value}};

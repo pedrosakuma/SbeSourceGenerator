@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace SbeSourceGenerator
@@ -11,9 +10,7 @@ namespace SbeSourceGenerator
             var sb = new StringBuilder();
             sb.AppendLine($$"""
                 namespace {{Namespace}};
-                /// <summary>
-                /// {{Description}}
-                /// </summary>
+                {{SummaryGenerator.Generate(Description, nameof(CompositeDefinition))}}
                 public partial struct {{Name}}
                 {
                 """);

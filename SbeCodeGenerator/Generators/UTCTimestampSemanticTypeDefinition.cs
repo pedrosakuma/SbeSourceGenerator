@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace SbeSourceGenerator
 {
@@ -13,9 +12,7 @@ namespace SbeSourceGenerator
                 namespace {{Namespace}};
                 public partial struct {{Name}}
                 {
-                    /// <summary>
-                    /// Date value from offset and unit
-                    /// </summary>
+                {{SummaryGenerator.Generate("Date value from offset and unit", 1, nameof(UTCTimestampSemanticTypeDefinition))}}
                     public DateTime{{(hasNullable ? "?" : "")}} Value => Time.ToDateTimeWithUnit(Unit);
                 }
                 """;

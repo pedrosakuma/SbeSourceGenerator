@@ -14,9 +14,7 @@ namespace SbeSourceGenerator
                     namespace {{Namespace}};
                     public partial struct {{Name}}
                     {
-                        /// <summary>
-                        /// Date value from offset and unit
-                        /// </summary>
+                        {{SummaryGenerator.Generate("Date value from offset and unit", 1, nameof(MonthYearSemanticTypeDefinition))}}
                         public DateTime? Value => (Year.HasValue && Month.HasValue && Day.HasValue) ? new DateTime(Year.Value, Month.Value, Day.Value) : null;
                     }
                     """;
@@ -27,9 +25,7 @@ namespace SbeSourceGenerator
                     namespace {{Namespace}};
                     public partial struct {{Name}}
                     {
-                        /// <summary>
-                        /// Date value from offset and unit
-                        /// </summary>
+                        {{SummaryGenerator.Generate("Date value from offset and unit", 1, nameof(MonthYearSemanticTypeDefinition))}}
                         public DateTime Value => new DateTime(Year, Month, Day);
                     }
                     """;

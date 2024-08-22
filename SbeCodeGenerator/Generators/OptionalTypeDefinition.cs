@@ -1,18 +1,16 @@
 ﻿namespace SbeSourceGenerator
 {
     public record OptionalTypeDefinition(string Namespace, string Name, string Description, string PrimitiveType, string SemanticType,
-        string NullValue) : IFileContentGenerator
+        string NullValue, int Length) : IFileContentGenerator, IBlittable
     {
         public string GenerateFileContent()
         {
             var nullValue = NullValue;
             if (NullValue == "")
-                nullValue = PrimitiveTypes.NullValueByType[PrimitiveType];
+                nullValue = TypesCatalog.NullValueByType[PrimitiveType];
             return $$"""
                 namespace {{Namespace}};
-                /// <summary>
-                /// {{Description}}
-                /// </summary>
+                {{SummaryGenerator.Generate(Description, nameof(OptionalTypeDefinition))}}
                 public struct {{Name}}
                 {
                     private {{PrimitiveType}} value;

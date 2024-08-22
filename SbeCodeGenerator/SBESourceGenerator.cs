@@ -1,14 +1,11 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
-using System.Runtime.CompilerServices;
 
 namespace SbeSourceGenerator
 {
@@ -53,50 +50,95 @@ namespace SbeSourceGenerator
 
         private static IEnumerable<(string name, string content)> GenerateMessages(string ns, XmlDocument d)
         {
-            // WIP
-            //var messageNodes = d.SelectNodes("//messages/message");
-            //foreach (XmlElement messageNode in messageNodes)
-            //{
-            //    var generator = new MessageDefinition(
-            //        ns,
-            //        messageNode.GetAttribute("name").FirstCharToUpper(),
-            //        messageNode.GetAttribute("id"),
-            //        messageNode.GetAttribute("description"),
-            //        messageNode.GetAttribute("semanticType"),
-            //        messageNode.GetAttribute("deprecated"),
-            //        messageNode.ChildNodes
-            //            .Cast<XmlElement>()
-            //            .Select(node => (node.Name, node.GetAttribute("presence")) switch
-            //            {
-            //                ("field", "constant") => (IFileContentGenerator)new ConstantMessageFieldDefinition(
-            //                    node.GetAttribute("name").FirstCharToUpper(),
-            //                    node.GetAttribute("id"),
-            //                    node.GetAttribute("type"),
-            //                    node.GetAttribute("valueRef"),
-            //                    node.GetAttribute("description")
-            //                ),
-            //                ("field", _) => (IFileContentGenerator)new MessageFieldDefinition(
-            //                    node.GetAttribute("name").FirstCharToUpper(),
-            //                    node.GetAttribute("id"),
-            //                    node.GetAttribute("type"),
-            //                    node.GetAttribute("valueRef"),
-            //                    node.GetAttribute("description"),
-            //                    node.GetAttribute("offset")
-            //                ),
+            XmlNamespaceManager nsmgr = new XmlNamespaceManager(d.NameTable);
+            nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
+            var messageNodes = d.SelectNodes("//sbe:message", nsmgr);
+            foreach (XmlElement messageNode in messageNodes)
+            {
+                var generator = new MessageDefinition(
+                        ns,
+                        messageNode.GetAttribute("name").FirstCharToUpper(),
+                        messageNode.GetAttribute("id"),
+                        messageNode.GetAttribute("description"),
+                        messageNode.GetAttribute("semanticType"),
+                        messageNode.GetAttribute("deprecated"),
+                        messageNode.ChildNodes
+                            .Cast<XmlElement>()
+                            .Where(x => x.Name == "field" && (x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional"))
+                            .Select(node => (IFileContentGenerator)
+                                new MessageFieldDefinition(
+                                    node.GetAttribute("name").FirstCharToUpper(),
+                                    node.GetAttribute("id"),
+                                    ToNativeType(node.GetAttribute("type")),
+                                    node.GetAttribute("description"),
+                                    node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                                    GetTypeLength(node.GetAttribute("type"))
+                                )
+                            )
+                            .ToList(),
+                        messageNode.ChildNodes
+                .Cast<XmlElement>()
+                            .Where(x => x.Name == "field" && x.GetAttribute("presence") == "constant" && x.GetAttribute("valueRef") != "")
+                            .Select(node => (IFileContentGenerator)
+                                new ConstantMessageFieldDefinition(
+                                    node.GetAttribute("name").FirstCharToUpper(),
+                                    node.GetAttribute("id"),
+                                    node.GetAttribute("type"),
+                                    node.GetAttribute("description") != ""? node.GetAttribute("description") : node.GetAttribute("type"),
+                                    node.GetAttribute("valueRef")
+                                )
+                            )
+                            .ToList(),
+                        Enumerable.Empty<IFileContentGenerator>().ToList(),
+                        Enumerable.Empty<IFileContentGenerator>().ToList()
+                    //messageNode.ChildNodes
+                    //    .Cast<XmlElement>()
+                    //    .Where(x => x.Name == "group")
+                    //    .Select(node => (IFileContentGenerator)
+                    //        new MessageFieldDefinition(
+                    //            node.GetAttribute("name").FirstCharToUpper(),
+                    //            node.GetAttribute("id"),
+                    //            node.GetAttribute("type"),
+                    //            node.GetAttribute("description"),
+                    //            node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                    //            GetTypeLength(node.GetAttribute("type"))
+                    //        )
+                    //    )
+                    //    .ToList(),
+                    //messageNode.ChildNodes
+                    //    .Cast<XmlElement>()
+                    //    .Where(x => x.Name == "data")
+                    //    .Select(node => (IFileContentGenerator)
+                    //        (node.GetAttribute("presence") switch
+                    //        {
+                    //            "constant" => new ConstantMessageFieldDefinition(
+                    //                node.GetAttribute("name").FirstCharToUpper(),
+                    //                node.GetAttribute("id"),
+                    //                node.GetAttribute("type"),
+                    //                node.GetAttribute("valueRef"),
+                    //                node.GetAttribute("description")
+                    //            ),
+                    //            _ => new MessageFieldDefinition(
+                    //                node.GetAttribute("name").FirstCharToUpper(),
+                    //                node.GetAttribute("id"),
+                    //                node.GetAttribute("type"),
+                    //                node.GetAttribute("description"),
+                    //                node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                    //                GetTypeLength(node.GetAttribute("type"))),
+                    //        }))
+                    //    .ToList()
+                    );
+                yield return ($"{ns}\\Messages\\{generator.Name}", generator.GenerateFileContent());
+            }
+        }
 
-            //                // the presence of group and data should indicate that type is not blittable
-
-            //                // should create inner type and field for group size
-            //                ("group", _) => null,
-            //                // data represents variable size field
-            //                ("data", _) => null,
-            //                (_, _) => null
-            //            })
-            //            .Where(x => x != null)
-            //            .ToList()
-            //    );
-            //    yield return ($"{ns}\\Messages\\{generator.Name}", generator.GenerateFileContent());
-            //}
+        private static int GetTypeLength(string type)
+        {
+            int length;
+            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(ToNativeType(type), out length)
+                && !TypesCatalog.CustomTypeLengths.TryGetValue(type, out length))
+                throw new ArgumentException($"Could not get type {type} length");
+            return length;
         }
 
         private static string GetNamespaceFromPath(string path)
@@ -114,7 +156,7 @@ namespace SbeSourceGenerator
             foreach (XmlElement typeNode in typeNodes)
             {
                 var generatedType = typeNode.Name switch
-                { 
+                {
                     "composite" => GenerateComposite(ns, typeNode),
                     "enum" => GenerateEnum(ns, typeNode),
                     "type" => GenerateType(ns, typeNode),
@@ -133,6 +175,7 @@ namespace SbeSourceGenerator
                 typeNode.GetAttribute("name").FirstCharToUpper(),
                 typeNode.GetAttribute("description"),
                 ToNativeType(typeNode.GetAttribute("encodingType")),
+                GetTypeLength(ToNativeType(typeNode.GetAttribute("encodingType"))),
                 typeNode.ChildNodes
                     .Cast<XmlElement>()
                     .Select(node => new EnumFieldDefinition(
@@ -142,6 +185,9 @@ namespace SbeSourceGenerator
                     ))
                     .ToList()
             );
+            if (generator is IBlittable blittableType)
+                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
+
             yield return ($"{ns}\\Sets\\{typeNode.GetAttribute("name")}", generator.GenerateFileContent());
         }
 
@@ -157,7 +203,7 @@ namespace SbeSourceGenerator
                             ns,
                             typeNode.GetAttribute("name"),
                             typeNode.GetAttribute("description"),
-                            typeNode.GetAttribute("length")
+                            typeNode.GetAttribute("length") == "" ? 0 : int.Parse(typeNode.GetAttribute("length"))
                         ),
                         (_, "optional") => new OptionalTypeDefinition(
                             ns,
@@ -165,7 +211,8 @@ namespace SbeSourceGenerator
                             typeNode.GetAttribute("description"),
                             ToNativeType(typeNode.GetAttribute("primitiveType")),
                             typeNode.GetAttribute("semanticType"),
-                            typeNode.GetAttribute("nullValue")
+                            typeNode.GetAttribute("nullValue"),
+                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
                         ),
                         (_, "constant") => new ConstantTypeDefinition(
                             ns,
@@ -181,9 +228,12 @@ namespace SbeSourceGenerator
                             typeNode.GetAttribute("name"),
                             typeNode.GetAttribute("description"),
                             ToNativeType(typeNode.GetAttribute("primitiveType")),
-                            typeNode.GetAttribute("semanticType")
+                            typeNode.GetAttribute("semanticType"),
+                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
                         )
                     };
+                if (generator is IBlittable blittableType)
+                    TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
                 yield return ($"{ns}\\Types\\{typeNode.GetAttribute("name")}", generator.GenerateFileContent());
             }
         }
@@ -198,6 +248,7 @@ namespace SbeSourceGenerator
                     typeNode.GetAttribute("description"),
                     ToNativeType(typeNode.GetAttribute("encodingType")),
                     typeNode.GetAttribute("semanticType"),
+                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(typeNode.GetAttribute("encodingType"))],
                     typeNode.ChildNodes
                         .Cast<XmlElement>()
                         .Select(node => new EnumFieldDefinition(
@@ -213,6 +264,7 @@ namespace SbeSourceGenerator
                     typeNode.GetAttribute("description"),
                     ToNativeType(typeNode.GetAttribute("encodingType")),
                     typeNode.GetAttribute("semanticType"),
+                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(typeNode.GetAttribute("encodingType"))],
                     typeNode.ChildNodes
                         .Cast<XmlElement>()
                         .Select(node => new EnumFieldDefinition(
@@ -223,6 +275,8 @@ namespace SbeSourceGenerator
                         .ToList()
                     )
             };
+            if (generator is IBlittable blittableType)
+                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
             yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", generator.GenerateFileContent());
         }
 
@@ -235,9 +289,9 @@ namespace SbeSourceGenerator
                 typeNode.GetAttribute("semanticType"),
                 typeNode.ChildNodes
                     .Cast<XmlElement>()
-                    .Select(node => (node.GetAttribute("presence"), node.GetAttribute("length")) switch
+                    .Select(node => (IFileContentGenerator)((node.GetAttribute("presence"), node.GetAttribute("length")) switch
                     {
-                        ("constant", _) => (IFileContentGenerator)new ConstantTypeFieldDefinition(
+                        ("constant", _) => new ConstantTypeFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
                             node.GetAttribute("description"),
                             ToNativeType(node.GetAttribute("primitiveType")),
@@ -247,7 +301,8 @@ namespace SbeSourceGenerator
                         ("optional", _) => new NullableValueFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
                             node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType"))
+                            ToNativeType(node.GetAttribute("primitiveType")),
+                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType")))
                         ),
                         ("", "0") => new ArrayFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
@@ -257,12 +312,15 @@ namespace SbeSourceGenerator
                         (_, _) => new ValueFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
                             node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType"))
+                            ToNativeType(node.GetAttribute("primitiveType")),
+                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType")))
                         )
                     }
-                    )
+                    ))
                     .ToList()
             );
+            if (generator.Fields.All(f => f is IBlittable))
+                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = generator.Fields.Sum(f => ((IBlittable)f).Length);
             yield return ($"{ns}\\Composites\\{generator.Name}", generator.GenerateFileContent());
             var semanticGenerator = (generator.SemanticType) switch
             {
@@ -333,6 +391,17 @@ namespace SbeSourceGenerator
                 "uint16" => "ushort",
                 "uint32" => "uint",
                 "uint64" => "ulong",
+
+                "Int8" => "sbyte",
+                "Int16" => "short",
+                "Int32" => "int",
+                "Int64" => "long",
+                "Char" => "char",
+                "UInt8" => "byte",
+                "UInt16" => "ushort",
+                "UInt32" => "uint",
+                "UInt64" => "ulong",
+
                 "Int8NULL" => "sbyte",
                 "Int16NULL" => "short",
                 "Int32NULL" => "int",

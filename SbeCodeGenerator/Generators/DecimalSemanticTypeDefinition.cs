@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace SbeSourceGenerator
@@ -13,9 +12,7 @@ namespace SbeSourceGenerator
                 namespace {{Namespace}};
                 public partial struct {{Name}}
                 {
-                    /// <summary>
-                    /// Decimal value from mantissa and exponent
-                    /// </summary>
+                {{SummaryGenerator.Generate("Decimal value from mantissa and exponent", 1, nameof(DecimalSemanticTypeDefinition))}}
                     public decimal{{(hasNullable ? "?" : "")}} Value => Mantissa.ToDecimalWithPrecision(-Exponent);
                 }
                 """;
