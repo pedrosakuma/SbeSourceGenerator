@@ -1,10 +1,12 @@
-﻿namespace SbeSourceGenerator
+﻿using System.Text;
+
+namespace SbeSourceGenerator
 {
     internal record NumberExtensions(string Namespace) : IFileContentGenerator
     {
-        public string GenerateFileContent()
+        public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            return $$"""
+            sb.Append($$"""
                 using System.Runtime.CompilerServices;
                 namespace {{Namespace}}; 
                 public static class NumberExtensions
@@ -88,8 +90,7 @@
                         return time.Value.ToDateTimeWithUnit(unit);
                     }
                 }
-                """;
-            throw new System.NotImplementedException();
+                """);
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace SbeSourceGenerator
+﻿using System.Text;
+
+namespace SbeSourceGenerator
 {
     public class MessageFieldDefinition : IFileContentGenerator, IBlittableMessageField
     {
@@ -19,13 +21,11 @@
             this.Offset = Offset;
             this.Length = Length;
         }
-        public string GenerateFileContent()
+        public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            return $$"""
-                    [FieldOffset({{Offset}})]
-                {{SummaryGenerator.Generate(Description, 1, nameof(MessageFieldDefinition))}}
-                    public {{Type}} {{Name}};
-                """;
+            sb.AppendSummary(Description, tabs, nameof(MessageFieldDefinition));
+            sb.AppendLine($"[FieldOffset({Offset})]", tabs);
+            sb.AppendLine($"public {Type} {Name};", tabs);
         }
     }
 }

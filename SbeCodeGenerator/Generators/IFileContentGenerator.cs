@@ -1,7 +1,9 @@
-﻿namespace SbeSourceGenerator
+﻿using System.Text;
+
+namespace SbeSourceGenerator
 {
     public interface IFileContentGenerator
     {
-        public string GenerateFileContent();
+        public void AppendFileContent(StringBuilder sb, int tabs = 0);
     }
 }

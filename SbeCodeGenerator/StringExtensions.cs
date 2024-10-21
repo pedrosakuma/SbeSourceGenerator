@@ -34,12 +34,9 @@ namespace SbeSourceGenerator
             return new string(result);
         }
 
-        private static readonly char[] Uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
         public static string ToKebabCase(this string value)
         {
-            //var result = JsonNamingPolicy.SnakeCaseUpper.ConvertName(value);
-            //return result;
-            return value.ToUpper();
+            return JsonNamingPolicy.SnakeCaseUpper.ConvertName(value);
         }
     }
 

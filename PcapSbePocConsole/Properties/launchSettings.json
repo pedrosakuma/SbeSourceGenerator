@@ -2,7 +2,7 @@
   "profiles": {
     "PcapSbePocConsole": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\Users\\pedrotravi\\Downloads\\20230704_MBO_084_InstrumentDefinition\\20230704_MBO_084_InstrumentDefinition.pcap"
+      "commandLineArgs": "C:\\Users\\pedrotravi\\Downloads\\20220919_MBO\\20220919_MBO_084_InstrumentDefinition.pcap"
     }
   }
 }

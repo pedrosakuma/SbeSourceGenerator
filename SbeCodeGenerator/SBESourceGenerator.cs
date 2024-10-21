@@ -1,8 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Generators.Fields;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
@@ -44,8 +46,9 @@ namespace SbeSourceGenerator
                 yield return item;
             foreach (var item in GenerateMessages(ns, d))
                 yield return item;
-
-            yield return ($"Utilities\\NumberExtensions", new NumberExtensions(ns).GenerateFileContent());
+            StringBuilder sb = new StringBuilder();
+            new NumberExtensions(ns).AppendFileContent(sb);
+            yield return ($"Utilities\\NumberExtensions", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateMessages(string ns, XmlDocument d)
@@ -64,7 +67,9 @@ namespace SbeSourceGenerator
                         messageNode.GetAttribute("deprecated"),
                         messageNode.ChildNodes
                             .Cast<XmlElement>()
-                            .Where(x => x.Name == "field" && (x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional"))
+                            .Where(x => x.Name == "field")
+                            .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
+                            .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
                             .Select(node => (IFileContentGenerator)
                                 new MessageFieldDefinition(
                                     node.GetAttribute("name").FirstCharToUpper(),
@@ -77,7 +82,7 @@ namespace SbeSourceGenerator
                             )
                             .ToList(),
                         messageNode.ChildNodes
-                .Cast<XmlElement>()
+                            .Cast<XmlElement>()
                             .Where(x => x.Name == "field" && x.GetAttribute("presence") == "constant" && x.GetAttribute("valueRef") != "")
                             .Select(node => (IFileContentGenerator)
                                 new ConstantMessageFieldDefinition(
@@ -89,46 +94,60 @@ namespace SbeSourceGenerator
                                 )
                             )
                             .ToList(),
-                        Enumerable.Empty<IFileContentGenerator>().ToList(),
-                        Enumerable.Empty<IFileContentGenerator>().ToList()
-                    //messageNode.ChildNodes
-                    //    .Cast<XmlElement>()
-                    //    .Where(x => x.Name == "group")
-                    //    .Select(node => (IFileContentGenerator)
-                    //        new MessageFieldDefinition(
-                    //            node.GetAttribute("name").FirstCharToUpper(),
-                    //            node.GetAttribute("id"),
-                    //            node.GetAttribute("type"),
-                    //            node.GetAttribute("description"),
-                    //            node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
-                    //            GetTypeLength(node.GetAttribute("type"))
-                    //        )
-                    //    )
-                    //    .ToList(),
-                    //messageNode.ChildNodes
-                    //    .Cast<XmlElement>()
-                    //    .Where(x => x.Name == "data")
-                    //    .Select(node => (IFileContentGenerator)
-                    //        (node.GetAttribute("presence") switch
-                    //        {
-                    //            "constant" => new ConstantMessageFieldDefinition(
-                    //                node.GetAttribute("name").FirstCharToUpper(),
-                    //                node.GetAttribute("id"),
-                    //                node.GetAttribute("type"),
-                    //                node.GetAttribute("valueRef"),
-                    //                node.GetAttribute("description")
-                    //            ),
-                    //            _ => new MessageFieldDefinition(
-                    //                node.GetAttribute("name").FirstCharToUpper(),
-                    //                node.GetAttribute("id"),
-                    //                node.GetAttribute("type"),
-                    //                node.GetAttribute("description"),
-                    //                node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
-                    //                GetTypeLength(node.GetAttribute("type"))),
-                    //        }))
-                    //    .ToList()
+                        messageNode.ChildNodes
+                            .Cast<XmlElement>()
+                            .Where(x => x.Name == "group")
+                            .Select(node => (IFileContentGenerator)
+                                new GroupDefinition(
+                                    ns,
+                                    node.GetAttribute("name").FirstCharToUpper(),
+                                    node.GetAttribute("id"),
+                                    node.GetAttribute("dimensionType"),
+                                    node.GetAttribute("description"),
+                                    node.ChildNodes
+                                        .Cast<XmlElement>()
+                                        .Where(x => x.Name == "field")
+                                        .Where(x=> x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
+                                        .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
+                                        .Select(field => (IFileContentGenerator)
+                                            new MessageFieldDefinition(
+                                                field.GetAttribute("name").FirstCharToUpper(),
+                                                field.GetAttribute("id"),
+                                                ToNativeType(field.GetAttribute("type")),
+                                                field.GetAttribute("description"),
+                                                field.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                                                GetTypeLength(field.GetAttribute("type"))
+                                            )
+                                        ).ToList(),
+                                    node.ChildNodes
+                                        .Cast<XmlElement>()
+                                        .Where(x => x.Name == "field" && x.GetAttribute("presence") == "constant")
+                                        .Select(field => (IFileContentGenerator)
+                                            new ConstantMessageFieldDefinition(
+                                                field.GetAttribute("name").FirstCharToUpper(),
+                                                field.GetAttribute("id"),
+                                                field.GetAttribute("type"),
+                                                field.GetAttribute("description"),
+                                                field.GetAttribute("valueRef")
+                                            )
+                                        ).ToList()
+                                )
+                            ).ToList(),
+                        messageNode.ChildNodes
+                            .Cast<XmlElement>()
+                            .Where(x => x.Name == "data")
+                            .Select(node => (IFileContentGenerator)
+                                new DataFieldDefinition(
+                                    node.GetAttribute("name").FirstCharToUpper(),
+                                    node.GetAttribute("id"),
+                                    node.GetAttribute("type"),
+                                    node.GetAttribute("description")
+                                )
+                            ).ToList()
                     );
-                yield return ($"{ns}\\Messages\\{generator.Name}", generator.GenerateFileContent());
+                StringBuilder sb = new StringBuilder();
+                generator.AppendFileContent(sb);
+                yield return ($"{ns}\\Messages\\{generator.Name}", sb.ToString());
             }
         }
 
@@ -187,8 +206,9 @@ namespace SbeSourceGenerator
             );
             if (generator is IBlittable blittableType)
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
-
-            yield return ($"{ns}\\Sets\\{typeNode.GetAttribute("name")}", generator.GenerateFileContent());
+            StringBuilder sb = new StringBuilder();
+            generator.AppendFileContent(sb);
+            yield return ($"{ns}\\Sets\\{typeNode.GetAttribute("name")}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode)
@@ -198,13 +218,6 @@ namespace SbeSourceGenerator
                 var generator =
                     (typeNode.GetAttribute("primitiveType"), typeNode.GetAttribute("presence")) switch
                     {
-                        ("char", _) => (IFileContentGenerator)new FixedSizeCharTypeDefinition
-                        (
-                            ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            typeNode.GetAttribute("length") == "" ? 0 : int.Parse(typeNode.GetAttribute("length"))
-                        ),
                         (_, "optional") => new OptionalTypeDefinition(
                             ns,
                             typeNode.GetAttribute("name"),
@@ -223,6 +236,13 @@ namespace SbeSourceGenerator
                             typeNode.GetAttribute("length"),
                             typeNode.InnerText
                         ),
+                        ("char", _) => (IFileContentGenerator)new FixedSizeCharTypeDefinition
+                        (
+                            ns,
+                            typeNode.GetAttribute("name"),
+                            typeNode.GetAttribute("description"),
+                            typeNode.GetAttribute("length") == "" ? 0 : int.Parse(typeNode.GetAttribute("length"))
+                        ),
                         (_, _) => new TypeDefinition(
                             ns,
                             typeNode.GetAttribute("name"),
@@ -232,9 +252,13 @@ namespace SbeSourceGenerator
                             GetTypeLength(typeNode.GetAttribute("primitiveType"))
                         )
                     };
+                if (generator is ConstantTypeDefinition constantType) 
+                    TypesCatalog.CustomConstantTypes.Add(constantType.Name);
                 if (generator is IBlittable blittableType)
                     TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
-                yield return ($"{ns}\\Types\\{typeNode.GetAttribute("name")}", generator.GenerateFileContent());
+                StringBuilder sb = new StringBuilder();
+                generator.AppendFileContent(sb);
+                yield return ($"{ns}\\Types\\{typeNode.GetAttribute("name")}", sb.ToString());
             }
         }
 
@@ -277,7 +301,9 @@ namespace SbeSourceGenerator
             };
             if (generator is IBlittable blittableType)
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
-            yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", generator.GenerateFileContent());
+            StringBuilder sb = new StringBuilder();
+            generator.AppendFileContent(sb);
+            yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode)
@@ -307,7 +333,7 @@ namespace SbeSourceGenerator
                         ("", "0") => new ArrayFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
                             node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType"))
+                            "byte"
                         ),
                         (_, _) => new ValueFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
@@ -321,7 +347,9 @@ namespace SbeSourceGenerator
             );
             if (generator.Fields.All(f => f is IBlittable))
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = generator.Fields.Sum(f => ((IBlittable)f).Length);
-            yield return ($"{ns}\\Composites\\{generator.Name}", generator.GenerateFileContent());
+            StringBuilder sb = new StringBuilder();
+            generator.AppendFileContent(sb);
+            yield return ($"{ns}\\Composites\\{generator.Name}", sb.ToString());
             var semanticGenerator = (generator.SemanticType) switch
             {
                 "Price" => (IFileContentGenerator)new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
@@ -331,8 +359,10 @@ namespace SbeSourceGenerator
                 "UTCTimestamp" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
                 _ => new NullSemanticTypeDefintion()
             };
+            sb.Clear();
+            semanticGenerator.AppendFileContent(sb);
             if (semanticGenerator is not NullSemanticTypeDefintion)
-                yield return ($"{ns}\\Composites\\{generator.Name}.{generator.SemanticType}", semanticGenerator.GenerateFileContent());
+                yield return ($"{ns}\\Composites\\{generator.Name}.{generator.SemanticType}", sb.ToString());
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)

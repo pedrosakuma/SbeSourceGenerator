@@ -35,5 +35,6 @@ namespace SbeSourceGenerator
         };
 
         public static readonly Dictionary<string, int> CustomTypeLengths = new Dictionary<string, int>();
+        public static readonly HashSet<string> CustomConstantTypes = new HashSet<string>();
     }
 }

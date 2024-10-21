@@ -1,5 +1,6 @@
 ﻿using B3.Market.Data.Messages;
 using SharpPcap.LibPcap;
+using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -20,7 +21,8 @@ namespace PcapSbePocConsole
         }
     }
     [StructLayout(LayoutKind.Explicit)]
-    public struct SBEPacketHeader {
+    public struct SBEPacketHeader
+    {
         [FieldOffset(0)]
         public byte ChannelId;
         [FieldOffset(1)]
@@ -119,7 +121,8 @@ namespace PcapSbePocConsole
         static void Main(string[] args)
         {
             using var device = new CaptureFileReaderDevice(args[0]);
-            device.Open(new SharpPcap.DeviceConfiguration {
+            device.Open(new SharpPcap.DeviceConfiguration
+            {
 
             });
             device.OnPacketArrival += Device_OnPacketArrival;
@@ -131,7 +134,7 @@ namespace PcapSbePocConsole
             var data = e.Data.Slice(PCAPHeaderSize);
 
             ref readonly SBEPacketHeader packet = ref MemoryMarshal.AsRef<SBEPacketHeader>(data);
-            Console.WriteLine(packet);
+            //Console.WriteLine(packet);
             var headerSize = Unsafe.SizeOf<SBEHeader>();
             data = data.Slice(Unsafe.SizeOf<SBEPacketHeader>());
             do
@@ -140,17 +143,29 @@ namespace PcapSbePocConsole
                 data = data.Slice(headerSize);
                 var length = header.Framing.MessageLength - headerSize;
                 var body = data.Slice(0, length);
-                Console.WriteLine(header);
+                //Console.WriteLine(header);
                 data = data.Slice(length);
-
                 switch (header.Message.TemplateId)
                 {
-                    case 4:
-                        Console.WriteLine(Encoding.ASCII.GetString(body));
-                        var bodySize = Unsafe.SizeOf<SecurityDefinition_4Data>();
-
+                    case SecurityDefinition_4Data.MESSAGE_ID:
+                        //Console.WriteLine(Encoding.ASCII.GetString(body));
                         ref readonly SecurityDefinition_4Data sd = ref MemoryMarshal.AsRef<SecurityDefinition_4Data>(body);
-                        Console.WriteLine(sd);
+                        var variablePart = body.Slice(SecurityDefinition_4Data.MESSAGE_SIZE);
+                        Console.WriteLine(sd.Symbol.ToString());
+                        sd.ConsumeVariableLengthSegments(variablePart, 
+                            nu => {
+                                Console.WriteLine(nu.UnderlyingSymbol.ToString());
+                            },
+                            nl => { 
+                                Console.WriteLine(nl.LegSymbol.ToString());
+                            },
+                            nia => { 
+                                //Console.WriteLine(nia);
+                            },
+                            sdd => {
+                                var s = Encoding.UTF8.GetString(sdd.VarData);
+                                Console.WriteLine(s);
+                            });
                         break;
                 }
             }
