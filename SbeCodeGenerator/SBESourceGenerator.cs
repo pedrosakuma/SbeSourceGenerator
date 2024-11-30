@@ -70,15 +70,27 @@ namespace SbeSourceGenerator
                             .Where(x => x.Name == "field")
                             .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
                             .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
-                            .Select(node => (IFileContentGenerator)
-                                new MessageFieldDefinition(
-                                    node.GetAttribute("name").FirstCharToUpper(),
-                                    node.GetAttribute("id"),
-                                    ToNativeType(node.GetAttribute("type")),
-                                    node.GetAttribute("description"),
-                                    node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
-                                    GetTypeLength(node.GetAttribute("type"))
-                                )
+                            .Select(node =>
+                                node.GetAttribute("presence") switch
+                                {
+                                    "optional" => new OptionalMessageFieldDefinition(
+                                        node.GetAttribute("name").FirstCharToUpper(),
+                                        node.GetAttribute("id"),
+                                        ToNativeType(node.GetAttribute("type")),
+                                        GetUnderlyingType(node.GetAttribute("type")),
+                                        node.GetAttribute("description"),
+                                        node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                                        GetTypeLength(node.GetAttribute("type"))
+                                    ),
+                                    _ => (IFileContentGenerator)new MessageFieldDefinition(
+                                        node.GetAttribute("name").FirstCharToUpper(),
+                                        node.GetAttribute("id"),
+                                        ToNativeType(node.GetAttribute("type")),
+                                        node.GetAttribute("description"),
+                                        node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                                        GetTypeLength(node.GetAttribute("type"))
+                                    )
+                                }
                             )
                             .ToList(),
                         messageNode.ChildNodes
@@ -151,6 +163,11 @@ namespace SbeSourceGenerator
             }
         }
 
+        private static string? GetUnderlyingType(string type)
+        {
+            TypesCatalog.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType);
+            return underlyingType;
+        }
         private static int GetTypeLength(string type)
         {
             int length;
@@ -218,15 +235,7 @@ namespace SbeSourceGenerator
                 var generator =
                     (typeNode.GetAttribute("primitiveType"), typeNode.GetAttribute("presence")) switch
                     {
-                        (_, "optional") => new OptionalTypeDefinition(
-                            ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            ToNativeType(typeNode.GetAttribute("primitiveType")),
-                            typeNode.GetAttribute("semanticType"),
-                            typeNode.GetAttribute("nullValue"),
-                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
-                        ),
+                        
                         (_, "constant") => new ConstantTypeDefinition(
                             ns,
                             typeNode.GetAttribute("name"),
@@ -242,6 +251,15 @@ namespace SbeSourceGenerator
                             typeNode.GetAttribute("name"),
                             typeNode.GetAttribute("description"),
                             typeNode.GetAttribute("length") == "" ? 0 : int.Parse(typeNode.GetAttribute("length"))
+                        ),
+                        (_, "optional") => new OptionalTypeDefinition(
+                            ns,
+                            typeNode.GetAttribute("name"),
+                            typeNode.GetAttribute("description"),
+                            ToNativeType(typeNode.GetAttribute("primitiveType")),
+                            typeNode.GetAttribute("semanticType"),
+                            typeNode.GetAttribute("nullValue"),
+                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
                         ),
                         (_, _) => new TypeDefinition(
                             ns,
@@ -301,6 +319,8 @@ namespace SbeSourceGenerator
             };
             if (generator is IBlittable blittableType)
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
+            if(generator is EnumDefinition enumDefinition)
+                TypesCatalog.EnumPrimitiveTypes.Add(enumDefinition.Name, enumDefinition.EncodingType);
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", sb.ToString());

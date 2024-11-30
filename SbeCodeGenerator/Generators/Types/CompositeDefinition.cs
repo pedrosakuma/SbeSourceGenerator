@@ -12,9 +12,12 @@ namespace SbeSourceGenerator
             sb.AppendUsings(tabs, "System.Runtime.InteropServices");
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(CompositeDefinition));
-            
-            if(blittable)
+
+            if (blittable)
+            {
+                sb.AppendLine("[StructLayout(LayoutKind.Sequential, Pack = 1)]", tabs);
                 sb.AppendLine($"public partial struct {Name}", tabs);
+            }
             else
                 sb.AppendLine($"public ref struct {Name}", tabs);
 

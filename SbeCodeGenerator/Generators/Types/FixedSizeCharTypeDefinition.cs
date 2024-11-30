@@ -25,7 +25,13 @@ namespace SbeSourceGenerator
                 sb.AppendLine($"public unsafe struct {Name}", tabs);
                 sb.AppendLine("{", tabs);
                 sb.AppendLine("private byte value;", tabs + 1);
-                sb.AppendLine("public override string ToString() => System.Text.Encoding.ASCII.GetString(this);", tabs + 1);
+                sb.AppendLine("public override string ToString()", tabs + 1);
+                sb.AppendLine("{", tabs + 1);
+                sb.AppendLine("fixed (byte* ptr = &value)", tabs + 2);
+                sb.AppendLine("{", tabs + 2);
+                sb.AppendLine("return System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)ptr)!;", tabs + 3);
+                sb.AppendLine("}", tabs + 2);
+                sb.AppendLine("}", tabs + 1);
                 sb.AppendLine("}", tabs);
             }
         }

@@ -1,14 +1,18 @@
 ﻿using B3.Market.Data.Messages;
+using B3.Umdf.Mbo.Sbe;
 using SharpPcap.LibPcap;
+using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Unicode;
 
 namespace PcapSbePocConsole
 {
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit, Pack = 0)]
     public struct SBEHeader
     {
         [FieldOffset(0)]
@@ -20,7 +24,7 @@ namespace PcapSbePocConsole
             return $"\tFraming: {Framing}\n\tMessage: {Message}\n";
         }
     }
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit, Pack = 0)]
     public struct SBEPacketHeader
     {
         [FieldOffset(0)]
@@ -148,23 +152,22 @@ namespace PcapSbePocConsole
                 switch (header.Message.TemplateId)
                 {
                     case SecurityDefinition_4Data.MESSAGE_ID:
-                        //Console.WriteLine(Encoding.ASCII.GetString(body));
                         ref readonly SecurityDefinition_4Data sd = ref MemoryMarshal.AsRef<SecurityDefinition_4Data>(body);
                         var variablePart = body.Slice(SecurityDefinition_4Data.MESSAGE_SIZE);
                         Console.WriteLine(sd.Symbol.ToString());
                         sd.ConsumeVariableLengthSegments(variablePart, 
                             nu => {
-                                Console.WriteLine(nu.UnderlyingSymbol.ToString());
+                                Console.WriteLine("\t{0}", nu.UnderlyingSymbol.ToString());
                             },
                             nl => { 
-                                Console.WriteLine(nl.LegSymbol.ToString());
+                                Console.WriteLine("\t{0}", nl.LegSymbol.ToString());
                             },
-                            nia => { 
-                                //Console.WriteLine(nia);
+                            nia => {
+                                Console.WriteLine("\t{0} - {1}", nia.InstrAttribType, nia.InstrAttribValue);
                             },
                             sdd => {
                                 var s = Encoding.UTF8.GetString(sdd.VarData);
-                                Console.WriteLine(s);
+                                Console.WriteLine("\t{0}", s);
                             });
                         break;
                 }
@@ -172,6 +175,7 @@ namespace PcapSbePocConsole
             while (data.Length != 0);
         }
     }
+
     [System.Runtime.CompilerServices.InlineArray(6)]
     [DebuggerDisplay("{ToString}")]
     public unsafe struct Asset
@@ -179,7 +183,10 @@ namespace PcapSbePocConsole
         private byte value;
         public override string ToString()
         {
-            return System.Text.Encoding.ASCII.GetString(this);
+            fixed (byte* ptr = &value)
+            {
+                return System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)ptr)!;
+            }
         }
     }
 }

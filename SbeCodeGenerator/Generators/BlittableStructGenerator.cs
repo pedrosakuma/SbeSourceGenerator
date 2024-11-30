@@ -16,7 +16,7 @@ namespace SbeSourceGenerator
         internal static void AppendStructDefinition(this StringBuilder sb, int tabs, string description, string name, string source)
         {
             sb.AppendSummary(description, tabs, source);
-            sb.AppendLine("[StructLayout(LayoutKind.Explicit)]", tabs);
+            sb.AppendLine("[StructLayout(LayoutKind.Explicit, Pack = 0)]", tabs);
             sb.AppendLine($"public partial struct {name}Data", tabs);
         }
 
