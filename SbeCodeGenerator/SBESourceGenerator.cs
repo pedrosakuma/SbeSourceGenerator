@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Generators.Fields;
+using SbeSourceGenerator.Generators.Types;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +9,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Xml;
-using System.Xml.Linq;
 
 namespace SbeSourceGenerator
 {
@@ -56,6 +57,7 @@ namespace SbeSourceGenerator
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(d.NameTable);
             nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
             var messageNodes = d.SelectNodes("//sbe:message", nsmgr);
+            var messages = new List<MessageDefinition>();
             foreach (XmlElement messageNode in messageNodes)
             {
                 var generator = new MessageDefinition(
@@ -101,7 +103,7 @@ namespace SbeSourceGenerator
                                     node.GetAttribute("name").FirstCharToUpper(),
                                     node.GetAttribute("id"),
                                     node.GetAttribute("type"),
-                                    node.GetAttribute("description") != ""? node.GetAttribute("description") : node.GetAttribute("type"),
+                                    node.GetAttribute("description") != "" ? node.GetAttribute("description") : node.GetAttribute("type"),
                                     node.GetAttribute("valueRef")
                                 )
                             )
@@ -119,7 +121,7 @@ namespace SbeSourceGenerator
                                     node.ChildNodes
                                         .Cast<XmlElement>()
                                         .Where(x => x.Name == "field")
-                                        .Where(x=> x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
+                                        .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
                                         .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
                                         .Select(field => (IFileContentGenerator)
                                             new MessageFieldDefinition(
@@ -157,10 +159,20 @@ namespace SbeSourceGenerator
                                 )
                             ).ToList()
                     );
+                messages.Add(generator);
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
                 yield return ($"{ns}\\Messages\\{generator.Name}", sb.ToString());
             }
+            foreach (var item in GenerateParser(ns, messages))
+                yield return item;
+        }
+
+        private static IEnumerable<(string name, string content)> GenerateParser(string ns, List<MessageDefinition> messages)
+        {
+            StringBuilder sb = new StringBuilder();
+            new ParserGenerator(ns, "", messages).AppendFileContent(sb);
+            yield return ($"{ns}\\BaseParser", sb.ToString());
         }
 
         private static string? GetUnderlyingType(string type)
@@ -235,7 +247,7 @@ namespace SbeSourceGenerator
                 var generator =
                     (typeNode.GetAttribute("primitiveType"), typeNode.GetAttribute("presence")) switch
                     {
-                        
+
                         (_, "constant") => new ConstantTypeDefinition(
                             ns,
                             typeNode.GetAttribute("name"),
@@ -270,13 +282,37 @@ namespace SbeSourceGenerator
                             GetTypeLength(typeNode.GetAttribute("primitiveType"))
                         )
                     };
-                if (generator is ConstantTypeDefinition constantType) 
+                if (generator is ConstantTypeDefinition constantType)
                     TypesCatalog.CustomConstantTypes.Add(constantType.Name);
                 if (generator is IBlittable blittableType)
                     TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
                 yield return ($"{ns}\\Types\\{typeNode.GetAttribute("name")}", sb.ToString());
+                if (generator is TypeDefinition typeDefinition)
+                {
+                    var semanticGenerator = (typeDefinition.SemanticType) switch
+                    {
+                        "LocalMktDate" => (IFileContentGenerator)new LocalMktDateSemanticTypeDefinition(typeDefinition.Namespace, typeDefinition.Name, false),
+                        _ => new NullSemanticTypeDefintion()
+                    };
+                    sb.Clear();
+                    semanticGenerator.AppendFileContent(sb);
+                    if (semanticGenerator is not NullSemanticTypeDefintion)
+                        yield return ($"{typeDefinition.Namespace}\\Types\\{typeDefinition.Name}.Semantic", sb.ToString());
+                }
+                if (generator is OptionalTypeDefinition optionalTypeDefinition)
+                {
+                    var semanticGenerator = (optionalTypeDefinition.SemanticType) switch
+                    {
+                        "LocalMktDate" => (IFileContentGenerator)new LocalMktDateSemanticTypeDefinition(optionalTypeDefinition.Namespace, optionalTypeDefinition.Name, true),
+                        _ => new NullSemanticTypeDefintion()
+                    };
+                    sb.Clear();
+                    semanticGenerator.AppendFileContent(sb);
+                    if (semanticGenerator is not NullSemanticTypeDefintion)
+                        yield return ($"{optionalTypeDefinition.Namespace}\\Types\\{optionalTypeDefinition.Name}.Semantic", sb.ToString());
+                }
             }
         }
 
@@ -320,7 +356,7 @@ namespace SbeSourceGenerator
             if (generator is IBlittable blittableType)
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
             if(generator is EnumDefinition enumDefinition)
-                TypesCatalog.EnumPrimitiveTypes.Add(enumDefinition.Name, enumDefinition.EncodingType);
+                TypesCatalog.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", sb.ToString());
@@ -348,7 +384,8 @@ namespace SbeSourceGenerator
                             node.GetAttribute("name").FirstCharToUpper(),
                             node.GetAttribute("description"),
                             ToNativeType(node.GetAttribute("primitiveType")),
-                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType")))
+                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType"))),
+                            node.GetAttribute("nullValue") == "" ? null : node.GetAttribute("nullValue")
                         ),
                         ("", "0") => new ArrayFieldDefinition(
                             node.GetAttribute("name").FirstCharToUpper(),
@@ -366,23 +403,29 @@ namespace SbeSourceGenerator
                     .ToList()
             );
             if (generator.Fields.All(f => f is IBlittable))
-                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = generator.Fields.Sum(f => ((IBlittable)f).Length);
+                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = generator.Fields.SumFieldLength();
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Composites\\{generator.Name}", sb.ToString());
-            var semanticGenerator = (generator.SemanticType) switch
+            var semanticGenerator = (generator.Name) switch
             {
                 "Price" => (IFileContentGenerator)new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "Price8" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "PriceOptional" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "PriceOffset8Optional" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
                 "Percentage" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "Qty" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "MonthYear" => new MonthYearSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "UTCTimestamp" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "RatioQty" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "Fixed8" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "Percentage9" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "MaturityMonthYear" => new MonthYearSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "UTCTimestampNanos" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
+                "UTCTimestampSeconds" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
                 _ => new NullSemanticTypeDefintion()
             };
             sb.Clear();
             semanticGenerator.AppendFileContent(sb);
             if (semanticGenerator is not NullSemanticTypeDefintion)
-                yield return ($"{ns}\\Composites\\{generator.Name}.{generator.SemanticType}", sb.ToString());
+                yield return ($"{ns}\\Composites\\{generator.Name}.Semantic", sb.ToString());
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)

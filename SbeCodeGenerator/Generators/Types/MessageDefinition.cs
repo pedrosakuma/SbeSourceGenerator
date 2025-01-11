@@ -1,5 +1,4 @@
 ﻿using SbeSourceGenerator.Generators.Fields;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -71,7 +70,7 @@ namespace SbeSourceGenerator
             new ConstantMessageFieldDefinition("MessageId", "Id", "int", "Message Id", 
                 Id.ToString()).AppendFileContent(sb, tabs);
             new ConstantMessageFieldDefinition("MessageSize", "Size", "int", "Message Size", 
-                Fields.Sum(f => ((IBlittableMessageField)f).Length).ToString()).AppendFileContent(sb, tabs);
+                Fields.SumFieldLength().ToString()).AppendFileContent(sb, tabs);
         }
 
         private void AppendConstantsFileContent(StringBuilder sb, int tabs)
@@ -87,7 +86,7 @@ namespace SbeSourceGenerator
                 var blittableField = (IBlittableMessageField)field;
                 blittableField.Offset ??= offset;
                 field.AppendFileContent(sb, tabs);
-                offset += blittableField.Length;
+                offset = blittableField.Offset.Value + blittableField.Length;
             }
         }
     }

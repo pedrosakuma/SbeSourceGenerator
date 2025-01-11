@@ -13,7 +13,8 @@
 
   <ItemGroup>
     <Compile Remove="Generated\**" />
-	<Content Include="Generated\**" />
+    <EmbeddedResource Remove="Generated\**" />
+    <None Remove="Generated\**" />
   </ItemGroup>
 
   <ItemGroup>

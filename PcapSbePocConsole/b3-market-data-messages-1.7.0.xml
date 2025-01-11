@@ -154,7 +154,7 @@ History
 	xsi:schemaLocation="http://fixprotocol.io/2016/sbe sbe.xsd">
 	<types>
 		<!-- Mandatory definitions -->
-		<composite name="messageHeader" description="Message identifiers and length of message root.">
+		<composite name="MessageHeader" description="Message identifiers and length of message root.">
 			<type name="blockLength" primitiveType="uint16" description="Root block length."/>
 			<type name="templateId" primitiveType="uint16" description="Template ID."/>
 			<type name="schemaId" primitiveType="uint16" description="Schema ID."/>
@@ -1193,7 +1193,7 @@ History
 	<!-- Comment the message below if your code generation tool can generate code for composite types that aren't used inside messages -->
 	<!-- ============================================================================================================================= -->
 	<sbe:message name="HeaderMessage_0" id="0" description="Generate code for PacketHeader and FramingHeader for convenience, making easier to handle those headers as SBE instead of handling as pure binary format. It is not meant to be used as a standalone SBE message.">
-		<field name="packetHeader" id="2" type="PacketHeader"/>
-		<field name="framingHeader" id="3" type="FramingHeader"/>
+		<field name="framingHeader" id="1" type="FramingHeader"/>
+		<field name="messageHeader" id="2" type="MessageHeader"/>
 	</sbe:message>
 </sbe:messageSchema>

@@ -2,7 +2,11 @@
   "profiles": {
     "PcapSbePocConsole": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\Users\\pedrotravi\\Downloads\\20230704_MBO\\20230704_MBO_084_InstrumentDefinition.pcap"
+      "commandLineArgs": "",
+      "environmentVariables": {
+        "instrumentDefinition": "C:\\Users\\pedrotravi\\Downloads\\20230704_MBO\\20230704_MBO_084_InstrumentDefinition.pcap",
+        "incremental": "C:\\Users\\pedrotravi\\Downloads\\20230704_MBO\\20230704_MBO_084_Incremental_FeedA.pcap"
+      }
     }
   }
 }

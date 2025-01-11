@@ -23,7 +23,7 @@ namespace SbeSourceGenerator
 
             sb.AppendLine("{", tabs);
             if(blittable)
-                sb.AppendLine($"public const int MESSAGE_SIZE = {Fields.Cast<IBlittable>().Sum(f => f.Length)};", tabs + 1);
+                sb.AppendLine($"public const int MESSAGE_SIZE = {Fields.SumFieldLength()};", tabs + 1);
             
             foreach (var field in Fields)
                 field.AppendFileContent(sb, tabs + 1);

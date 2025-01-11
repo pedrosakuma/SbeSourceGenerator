@@ -15,7 +15,7 @@ namespace SbeSourceGenerator
             if (hasNullable)
             {
                 sb.AppendSummary("Date value from offset and unit", tabs + 1, nameof(MonthYearSemanticTypeDefinition));
-                sb.AppendLine($"public DateTime? Value => (Year.HasValue && Month.HasValue && Day.HasValue) ? new DateTime(Year.Value, Month.Value, Day.Value) : null;", tabs + 1);
+                sb.AppendLine($"public DateTime? Value => (Year.HasValue && Month.HasValue && Day.HasValue) && Year.Value != 9999 ? new DateTime(Year.Value, Month.Value, Day.Value) : null;", tabs + 1);
             }
             else
             {

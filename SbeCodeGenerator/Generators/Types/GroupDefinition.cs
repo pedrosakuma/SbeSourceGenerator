@@ -22,7 +22,7 @@ namespace SbeSourceGenerator
         private void AppendMessageDefinitionConstants(StringBuilder sb, int tabs)
         {
             new ConstantMessageFieldDefinition("MessageSize", "Size", "int", "Message Size",
-                Fields.Sum(f => ((IBlittableMessageField)f).Length).ToString()).AppendFileContent(sb, tabs);
+                Fields.SumFieldLength().ToString()).AppendFileContent(sb, tabs);
         }
 
         private void AppendConstantsFileContent(StringBuilder sb, int tabs)
@@ -38,7 +38,7 @@ namespace SbeSourceGenerator
                 var blittableField = (IBlittableMessageField)field;
                 blittableField.Offset ??= offset;
                 field.AppendFileContent(sb, tabs);
-                offset += blittableField.Length;
+                offset = blittableField.Offset.Value + blittableField.Length;
             }
         }
     }

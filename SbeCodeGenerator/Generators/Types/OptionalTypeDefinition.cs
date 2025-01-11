@@ -12,7 +12,7 @@ namespace SbeSourceGenerator
                 nullValue = TypesCatalog.NullValueByType[PrimitiveType];
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(OptionalTypeDefinition));
-            sb.AppendLine($"public struct {Name}", tabs);
+            sb.AppendLine($"public partial struct {Name}", tabs);
             sb.AppendLine("{", tabs);
             sb.AppendLine($"private {PrimitiveType} value;", tabs + 1);
             sb.AppendLine($"public {PrimitiveType}? Value => value == {nullValue} ? null : value;", tabs + 1);
