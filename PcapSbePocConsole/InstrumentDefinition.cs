@@ -56,6 +56,6 @@ namespace PcapSbePocConsole
         public List<Underlyings> Underlyings { get; } = new();
         public List<Leg> Legs { get; } = new();
         public List<InstrAttrib> InstrAttribs { get; } = new();
-        public LastTradePrice LastTradePrice { get; } = new(); 
+        public LastTradePrice LastTradePrice { get; } = new();
     }
 }

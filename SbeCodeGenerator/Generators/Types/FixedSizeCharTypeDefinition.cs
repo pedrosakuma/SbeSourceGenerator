@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 
 namespace SbeSourceGenerator
 {
@@ -9,7 +8,7 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             if (Length == 0)
-            { 
+            {
                 sb.AppendLine($"namespace {Namespace};", tabs);
                 sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
                 sb.AppendLine($"public struct {Name}", tabs);

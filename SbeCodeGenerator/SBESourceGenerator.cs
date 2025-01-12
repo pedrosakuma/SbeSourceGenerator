@@ -355,7 +355,7 @@ namespace SbeSourceGenerator
             };
             if (generator is IBlittable blittableType)
                 TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
-            if(generator is EnumDefinition enumDefinition)
+            if (generator is EnumDefinition enumDefinition)
                 TypesCatalog.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);

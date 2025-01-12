@@ -11,7 +11,7 @@ namespace PcapSbePocConsole
         private MarketDataState state;
 
         public event Action<MarketDataState>? StateChanged;
-        
+
         public MarketDataHandler(Dictionary<ulong, InstrumentDefinition> instrumentsById, Dictionary<string, InstrumentDefinition> instrumentsBySymbol)
         {
             this.state = MarketDataState.None;
@@ -36,14 +36,15 @@ namespace PcapSbePocConsole
                     break;
             }
         }
-        public void RegisterStatistics(int type) {
+        public void RegisterStatistics(int type)
+        {
             lock (Statistics)
             {
                 ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(Statistics, type, out _);
                 count++;
             }
         }
-        
+
         public override void Callback(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(AuctionImbalance_19Data.MESSAGE_ID);

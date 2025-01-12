@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SbeSourceGenerator.Generators
@@ -8,9 +7,9 @@ namespace SbeSourceGenerator.Generators
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendUsings(tabs, 
-                "System", 
-                "System.Runtime.InteropServices", 
+            sb.AppendUsings(tabs,
+                "System",
+                "System.Runtime.InteropServices",
                 "System.Runtime.CompilerServices");
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(ParserGenerator));

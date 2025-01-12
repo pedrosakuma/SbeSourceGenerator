@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace SbeSourceGenerator
 {
@@ -18,7 +14,8 @@ namespace SbeSourceGenerator
                     blittableMessageField.Offset ??= offset;
                     offset = blittableMessageField.Offset.Value + blittableMessageField.Length;
                 }
-                else if (field is IBlittable blittable) {
+                else if (field is IBlittable blittable)
+                {
                     offset += blittable.Length;
                 }
             }

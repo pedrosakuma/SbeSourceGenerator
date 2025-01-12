@@ -22,9 +22,9 @@ namespace SbeSourceGenerator
                 sb.AppendLine($"public ref struct {Name}", tabs);
 
             sb.AppendLine("{", tabs);
-            if(blittable)
+            if (blittable)
                 sb.AppendLine($"public const int MESSAGE_SIZE = {Fields.SumFieldLength()};", tabs + 1);
-            
+
             foreach (var field in Fields)
                 field.AppendFileContent(sb, tabs + 1);
             if (!blittable)

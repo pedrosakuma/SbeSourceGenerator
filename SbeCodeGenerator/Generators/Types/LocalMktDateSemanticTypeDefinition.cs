@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 
 namespace SbeSourceGenerator.Generators.Types
 {
-    internal record LocalMktDateSemanticTypeDefinition(string Namespace, string Name, bool IsNullable) : IFileContentGenerator
+    public record LocalMktDateSemanticTypeDefinition(string Namespace, string Name, bool IsNullable) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {

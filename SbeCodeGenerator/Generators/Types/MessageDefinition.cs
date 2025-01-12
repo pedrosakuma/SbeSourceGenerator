@@ -6,7 +6,7 @@ using System.Text;
 namespace SbeSourceGenerator
 {
     public record MessageDefinition(string Namespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
-        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants, 
+        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
         List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
@@ -45,7 +45,7 @@ namespace SbeSourceGenerator
                     sb.AppendLine("offset += GroupSizeEncoding.MESSAGE_SIZE;", tabs + 1);
                     sb.AppendLine($"for (int i = 0; i < group{group.Name}.NumInGroup; i++)", tabs + 1);
                     sb.AppendLine("{", tabs + 1);
-                    sb.AppendLine($"ref readonly var data = ref MemoryMarshal.AsRef<{group.Name}Data>(buffer.Slice(offset));", tabs +2);
+                    sb.AppendLine($"ref readonly var data = ref MemoryMarshal.AsRef<{group.Name}Data>(buffer.Slice(offset));", tabs + 2);
                     sb.AppendLine($"callback{group.Name}(data);", tabs + 2);
                     sb.AppendLine($"offset += {group.Name}Data.MESSAGE_SIZE;", tabs + 2);
                     sb.AppendLine("}", tabs + 1);
@@ -67,9 +67,9 @@ namespace SbeSourceGenerator
 
         private void AppendMessageDefinitionConstants(StringBuilder sb, int tabs)
         {
-            new ConstantMessageFieldDefinition("MessageId", "Id", "int", "Message Id", 
+            new ConstantMessageFieldDefinition("MessageId", "Id", "int", "Message Id",
                 Id.ToString()).AppendFileContent(sb, tabs);
-            new ConstantMessageFieldDefinition("MessageSize", "Size", "int", "Message Size", 
+            new ConstantMessageFieldDefinition("MessageSize", "Size", "int", "Message Size",
                 Fields.SumFieldLength().ToString()).AppendFileContent(sb, tabs);
         }
 

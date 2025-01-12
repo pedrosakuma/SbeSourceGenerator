@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 
 namespace SbeSourceGenerator
 {
@@ -14,7 +12,7 @@ namespace SbeSourceGenerator
             new string('\t', 4),
             new string('\t', 5),
             new string('\t', 6),
-        ]; 
+        ];
         public static void AppendLine(this StringBuilder sb, string value, int tabs = 0)
         {
             sb.Append(Tabs[tabs]);

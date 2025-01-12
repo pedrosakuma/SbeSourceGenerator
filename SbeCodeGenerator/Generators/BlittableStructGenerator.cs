@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Xml.Linq;
+﻿using System.Text;
 
 namespace SbeSourceGenerator
 {
-    internal static  class BlittableStructGenerator
+    internal static class BlittableStructGenerator
     {
         internal static void AppendStructDefinition(this StringBuilder sb, int tabs, string description, string name, string source, string ns)
         {

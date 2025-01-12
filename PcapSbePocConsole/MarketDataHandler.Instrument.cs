@@ -61,7 +61,8 @@ namespace PcapSbePocConsole
                 );
                 string? description = null;
                 message.ConsumeVariableLengthSegments(variablePart,
-                    noUnderlyings => {
+                    noUnderlyings =>
+                    {
                         instrument.Underlyings.Add(
                             new Underlyings(
                                 noUnderlyings.UnderlyingSecurityID.Value,
@@ -69,7 +70,8 @@ namespace PcapSbePocConsole
                             )
                         );
                     },
-                    noLegs => {
+                    noLegs =>
+                    {
                         instrument.Legs.Add(
                             new Leg(
                                 noLegs.LegSecurityID.Value,
@@ -80,7 +82,8 @@ namespace PcapSbePocConsole
                             )
                         );
                     },
-                    noInstrAttribs => {
+                    noInstrAttribs =>
+                    {
                         instrument.InstrAttribs.Add(
                             new InstrAttrib(
                                 noInstrAttribs.InstrAttribType,
@@ -88,7 +91,8 @@ namespace PcapSbePocConsole
                             )
                         );
                     },
-                    securityDesc => {
+                    securityDesc =>
+                    {
                         description = Encoding.UTF8.GetString(securityDesc.VarData);
                     });
 

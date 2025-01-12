@@ -1,7 +1,7 @@
 ﻿namespace PcapSbePocConsole
 {
     public record Underlyings(
-        ulong UnderlyingSecurityID, 
+        ulong UnderlyingSecurityID,
         string UnderlyingSymbol
     )
     {

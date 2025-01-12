@@ -1,9 +1,5 @@
-﻿using SharpPcap.LibPcap;
-using System.Runtime.InteropServices;
-using B3.Market.Data.Messages;
-using System.Runtime.CompilerServices;
-using PacketDotNet;
-using System.Reflection.PortableExecutable;
+﻿using PacketDotNet;
+using SharpPcap.LibPcap;
 
 namespace PcapSbePocConsole
 {
