@@ -5,10 +5,10 @@ namespace PcapSbePocConsole
 {
     public partial class MarketDataHandler
     {
-        public override void Callback(ref readonly SecurityDefinition_4Data message, ReadOnlySpan<byte> variablePart)
+        public override void Callback(ref readonly SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
         {
-            RegisterStatistics(SecurityDefinition_4Data.MESSAGE_ID);
-            if (state == MarketDataState.Synchronizing)
+            RegisterStatistics(SecurityDefinition_12Data.MESSAGE_ID);
+            if (state == MarketDataState.InstrumentDefinition)
             {
                 var instrument = new InstrumentDefinition(
                     message.SecurityID.Value,
@@ -65,8 +65,6 @@ namespace PcapSbePocConsole
                         instrument.Underlyings.Add(
                             new Underlyings(
                                 noUnderlyings.UnderlyingSecurityID.Value,
-                                noUnderlyings.IndexPct.Value,
-                                noUnderlyings.IndexTheoreticalQty.Value,
                                 noUnderlyings.UnderlyingSymbol.ToString()
                             )
                         );

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SbeSourceGenerator.Generators
@@ -19,15 +20,16 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("{", tabs + 1);
             sb.AppendLine("ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);", tabs + 2);
             sb.AppendLine("data = data.Slice(Unsafe.SizeOf<PacketHeader>());", tabs + 2);
-            sb.AppendLine("var headerSize = Unsafe.SizeOf<HeaderMessage_0Data>();", tabs + 2);
             sb.AppendLine("do", tabs + 2);
             sb.AppendLine("{", tabs + 2);
-            sb.AppendLine("ref readonly HeaderMessage_0Data header = ref MemoryMarshal.AsRef<HeaderMessage_0Data>(data);", tabs + 3);
-            sb.AppendLine("data = data.Slice(headerSize);", tabs + 3);
-            sb.AppendLine("var length = header.FramingHeader.MessageLength - headerSize;", tabs + 3);
+            sb.AppendLine("ref readonly FramingHeader framingHeader = ref MemoryMarshal.AsRef<FramingHeader>(data);", tabs + 3);
+            sb.AppendLine("data = data.Slice(FramingHeader.MESSAGE_SIZE);", tabs + 3);
+            sb.AppendLine("ref readonly MessageHeader messageHeader = ref MemoryMarshal.AsRef<MessageHeader>(data);", tabs + 3);
+            sb.AppendLine("data = data.Slice(MessageHeader.MESSAGE_SIZE);", tabs + 3);
+            sb.AppendLine("var length = framingHeader.MessageLength - (FramingHeader.MESSAGE_SIZE + MessageHeader.MESSAGE_SIZE);", tabs + 3);
             sb.AppendLine("var body = data.Slice(0, length);", tabs + 3);
             sb.AppendLine("data = data.Slice(length);", tabs + 3);
-            sb.AppendLine("switch (header.MessageHeader.TemplateId)", tabs + 3);
+            sb.AppendLine("switch (messageHeader.TemplateId)", tabs + 3);
             sb.AppendLine("{", tabs + 3);
             foreach (var type in MessageTypes)
             {
@@ -47,7 +49,7 @@ namespace SbeSourceGenerator.Generators
                 sb.AppendLine("break;", tabs + 5);
             }
             sb.AppendLine("default:", tabs + 4);
-            sb.AppendLine("Console.WriteLine(header.MessageHeader.TemplateId);", tabs + 5);
+            sb.AppendLine("Console.WriteLine(messageHeader.TemplateId);", tabs + 5);
             sb.AppendLine("break;", tabs + 5);
             sb.AppendLine("}", tabs + 3);
             sb.AppendLine("}", tabs + 2);

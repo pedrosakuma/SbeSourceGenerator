@@ -1,6 +1,5 @@
 ﻿using B3.Market.Data.Messages;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace PcapSbePocConsole
 {
@@ -24,18 +23,25 @@ namespace PcapSbePocConsole
             switch (state)
             {
                 case MarketDataState.None:
-                    state = MarketDataState.Synchronizing;
+                    state = MarketDataState.InstrumentDefinition;
                     StateChanged?.Invoke(state);
                     break;
-                case MarketDataState.Synchronizing:
-                    state = MarketDataState.Synchronized;
+                case MarketDataState.InstrumentDefinition:
+                    state = MarketDataState.Snapshot;
+                    StateChanged?.Invoke(state);
+                    break;
+                case MarketDataState.Snapshot:
+                    state = MarketDataState.Incrementals;
                     StateChanged?.Invoke(state);
                     break;
             }
         }
         public void RegisterStatistics(int type) {
-            ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(Statistics, type, out _);
-            count++;
+            lock (Statistics)
+            {
+                ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(Statistics, type, out _);
+                count++;
+            }
         }
         
         public override void Callback(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
@@ -108,11 +114,6 @@ namespace PcapSbePocConsole
             RegisterStatistics(Order_MBO_50Data.MESSAGE_ID);
             base.Callback(in message, variablePart);
         }
-        public override void Callback(ref readonly PriceBand_20Data message, ReadOnlySpan<byte> variablePart)
-        {
-            RegisterStatistics(PriceBand_20Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
-        }
         public override void Callback(ref readonly PriceBand_22Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(PriceBand_22Data.MESSAGE_ID);
@@ -121,11 +122,6 @@ namespace PcapSbePocConsole
         public override void Callback(ref readonly QuantityBand_21Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(QuantityBand_21Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
-        }
-        public override void Callback(ref readonly SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
-        {
-            RegisterStatistics(SecurityDefinition_12Data.MESSAGE_ID);
             base.Callback(in message, variablePart);
         }
         public override void Callback(ref readonly SecurityGroupPhase_10Data message, ReadOnlySpan<byte> variablePart)
@@ -181,6 +177,11 @@ namespace PcapSbePocConsole
                 lastTradePrice.MDEntryTimestamp = message.MDEntryTimestamp.Value;
                 lastTradePrice.RptSeq = message.RptSeq.Value;
             }
+        }
+
+        internal void Init()
+        {
+            StateChanged?.Invoke(MarketDataState.None);
         }
     }
 }

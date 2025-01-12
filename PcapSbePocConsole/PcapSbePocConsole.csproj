@@ -18,12 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="b3-market-data-messages-1.7.0.xml" />
     <None Remove="b3-market-data-messages-1.8.0.xml" />
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="b3-market-data-messages-1.7.0.xml" />
+    <AdditionalFiles Include="b3-market-data-messages-1.8.0.xml" />
   </ItemGroup>
 
   <ItemGroup>

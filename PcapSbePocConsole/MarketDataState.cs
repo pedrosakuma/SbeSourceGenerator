@@ -9,8 +9,8 @@ namespace PcapSbePocConsole
     public enum MarketDataState
     {
         None,
-        Synchronizing,
-        Synchronized,
-        
+        InstrumentDefinition,
+        Snapshot,
+        Incrementals,
     }
 }
