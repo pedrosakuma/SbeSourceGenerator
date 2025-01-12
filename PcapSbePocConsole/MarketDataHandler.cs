@@ -1,11 +1,12 @@
 ﻿using B3.Market.Data.Messages;
+using PcapSbePocConsole.Models;
 using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
     public partial class MarketDataHandler : BaseParser
     {
-        public Dictionary<int, int> Statistics = new Dictionary<int, int>();
+        public Dictionary<int, int> Statistics;
         private Dictionary<ulong, InstrumentDefinition> instrumentsById;
         private Dictionary<string, InstrumentDefinition> instrumentsBySymbol;
         private MarketDataState state;
@@ -14,10 +15,18 @@ namespace PcapSbePocConsole
 
         public MarketDataHandler(Dictionary<ulong, InstrumentDefinition> instrumentsById, Dictionary<string, InstrumentDefinition> instrumentsBySymbol)
         {
+            this.Statistics = MessageIds.ToDictionary(k => k, v => 0);
             this.state = MarketDataState.None;
             this.instrumentsById = instrumentsById;
             this.instrumentsBySymbol = instrumentsBySymbol;
         }
+
+        public void ChangeState(MarketDataState state)
+        {
+            this.state = state;
+            StateChanged?.Invoke(state);
+        }
+
         public override void Callback(ref readonly SequenceReset_1Data message, ReadOnlySpan<byte> variablePart)
         {
             switch (state)
@@ -30,19 +39,12 @@ namespace PcapSbePocConsole
                     state = MarketDataState.Snapshot;
                     StateChanged?.Invoke(state);
                     break;
-                case MarketDataState.Snapshot:
-                    state = MarketDataState.Incrementals;
-                    StateChanged?.Invoke(state);
-                    break;
             }
         }
         public void RegisterStatistics(int type)
         {
-            lock (Statistics)
-            {
-                ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(Statistics, type, out _);
-                count++;
-            }
+            ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(Statistics, type, out _);
+            Interlocked.Increment(ref count);
         }
 
         public override void Callback(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)

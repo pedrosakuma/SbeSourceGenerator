@@ -1,4 +1,5 @@
 ﻿using B3.Market.Data.Messages;
+using PcapSbePocConsole.Models;
 using System.Text;
 
 namespace PcapSbePocConsole

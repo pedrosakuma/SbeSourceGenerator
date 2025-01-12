@@ -1,6 +1,6 @@
 ﻿using B3.Market.Data.Messages;
 
-namespace PcapSbePocConsole
+namespace PcapSbePocConsole.Models
 {
     public record Leg(
         ulong LegSecurityID,

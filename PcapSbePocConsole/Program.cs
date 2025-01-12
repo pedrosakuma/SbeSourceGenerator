@@ -1,10 +1,13 @@
 ﻿using PacketDotNet;
+using PcapSbePocConsole.Models;
+using SharpPcap;
 using SharpPcap.LibPcap;
 
 namespace PcapSbePocConsole
 {
     public partial class Program
     {
+        static readonly TaskCompletionSource completion = new TaskCompletionSource();
         static readonly Dictionary<ulong, InstrumentDefinition> instrumentsById = new();
         static readonly Dictionary<string, InstrumentDefinition> instrumentsBySymbol = new();
         static readonly MarketDataHandler parser = new MarketDataHandler(instrumentsById, instrumentsBySymbol);
@@ -15,7 +18,8 @@ namespace PcapSbePocConsole
 
             parser.StateChanged += Parser_StateChanged;
             parser.Init();
-            Console.ReadLine();
+            completion.Task.Wait();
+
             foreach (var stat in parser.Statistics.OrderBy(k => k.Key))
             {
                 Console.WriteLine("{0} - {1}", stat.Key, stat.Value);
@@ -24,13 +28,20 @@ namespace PcapSbePocConsole
 
         private static void StartCapture(string file)
         {
-            var captures = new List<CaptureFileReaderDevice>();
+            StartCapture(file, () => { });
+        }
+        private static void StartCapture(string file, Action end)
+        {
             var device = new CaptureFileReaderDevice(file);
-            device.Open(new SharpPcap.DeviceConfiguration
-            {
-                Mode = SharpPcap.DeviceModes.DataTransferUdp
+            device.Open(new DeviceConfiguration { 
+                BufferSize = 524288
             });
             device.OnPacketArrival += Device_OnPacketArrival;
+            device.OnCaptureStopped += (sender, e) =>
+            {
+                Console.WriteLine("Capture stopped {0}", ((CaptureFileReaderDevice)sender).FileName);
+                end();
+            };
             Console.WriteLine("Starting capture {0}", Path.GetFileName(file));
             device.StartCapture();
         }
@@ -47,25 +58,28 @@ namespace PcapSbePocConsole
                     break;
                 case MarketDataState.Snapshot:
                     StartCapture(
-                        Environment.GetEnvironmentVariable("snapshot") ?? throw new NullReferenceException("snapshot is required")
+                        Environment.GetEnvironmentVariable("snapshot") ?? throw new NullReferenceException("snapshot is required"),
+                        () => parser.ChangeState(MarketDataState.Incrementals)
                     );
                     break;
                 case MarketDataState.Incrementals:
                     StartCapture(
-                        Environment.GetEnvironmentVariable("incrementalsA") ?? throw new NullReferenceException("snapshot is required")
+                        Environment.GetEnvironmentVariable("incrementalsA") ?? throw new NullReferenceException("snapshot is required"),
+                        () => parser.ChangeState(MarketDataState.End)
                     );
                     //StartCapture(
                     //    Environment.GetEnvironmentVariable("incrementalsB") ?? throw new NullReferenceException("snapshot is required")
                     //);
+                    break;
+                case MarketDataState.End:
+                    completion.SetResult();
                     break;
             }
         }
 
         private unsafe static void Device_OnPacketArrival(object sender, SharpPcap.PacketCapture e)
         {
-            var rawPacket = e.GetPacket();
-            var p = Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
-
+            var p = e.GetPacket().GetPacket();
             var udp = p.Extract<UdpPacket>();
             var data = udp.PayloadData.AsSpan();
 

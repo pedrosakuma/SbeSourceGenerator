@@ -1,4 +1,4 @@
-﻿namespace PcapSbePocConsole
+﻿namespace PcapSbePocConsole.Models
 {
     public record Underlyings(
         ulong UnderlyingSecurityID,

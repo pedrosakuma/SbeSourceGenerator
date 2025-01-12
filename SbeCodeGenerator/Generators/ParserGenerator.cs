@@ -15,6 +15,11 @@ namespace SbeSourceGenerator.Generators
             sb.AppendSummary(Description, tabs, nameof(ParserGenerator));
             sb.AppendLine($"public abstract class BaseParser", tabs);
             sb.AppendLine("{", tabs);
+            sb.AppendLine("public static int[] MessageIds = new int[]", tabs + 1);
+            sb.AppendLine("{", tabs + 1);
+            foreach (var type in MessageTypes)
+                sb.AppendLine($"{type.Name}Data.MESSAGE_ID,", tabs + 2);
+            sb.AppendLine("};", tabs + 1);
             sb.AppendLine("public void Parse(ReadOnlySpan<byte> data)", tabs + 1);
             sb.AppendLine("{", tabs + 1);
             sb.AppendLine("ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);", tabs + 2);

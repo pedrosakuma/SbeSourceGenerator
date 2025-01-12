@@ -6,5 +6,6 @@
         InstrumentDefinition,
         Snapshot,
         Incrementals,
+        End,
     }
 }
