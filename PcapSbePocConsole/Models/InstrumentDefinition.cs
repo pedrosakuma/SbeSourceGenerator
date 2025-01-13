@@ -57,5 +57,7 @@ namespace PcapSbePocConsole.Models
         public List<Leg> Legs { get; } = new();
         public List<InstrAttrib> InstrAttribs { get; } = new();
         public LastTradePrice LastTradePrice { get; } = new();
+        public Status Status { get; } = new();
+        public OrderBook OrderBook { get; } = new();
     }
 }

@@ -14,8 +14,6 @@ namespace PcapSbePocConsole
 
         static void Main(string[] args)
         {
-            DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds(TimeSpan.FromDays(1).Seconds).UtcDateTime);
-
             parser.StateChanged += Parser_StateChanged;
             parser.Init();
             completion.Task.Wait();
