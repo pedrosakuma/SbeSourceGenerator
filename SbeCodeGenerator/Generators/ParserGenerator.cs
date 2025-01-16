@@ -29,9 +29,9 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("{", tabs++);
             sb.AppendLine("if(data.Length == 0) { return; }", tabs);
             sb.AppendLine("ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);", tabs);
-            sb.AppendLine("data = data.Slice(Unsafe.SizeOf<PacketHeader>());", tabs);
             sb.AppendLine("if(!shouldConsume(in packet, data))", tabs++);
             sb.AppendLine("return;", tabs--);
+            sb.AppendLine("data = data.Slice(Unsafe.SizeOf<PacketHeader>());", tabs);
             sb.AppendLine("do", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("ref readonly FramingHeader framingHeader = ref MemoryMarshal.AsRef<FramingHeader>(data);", tabs);

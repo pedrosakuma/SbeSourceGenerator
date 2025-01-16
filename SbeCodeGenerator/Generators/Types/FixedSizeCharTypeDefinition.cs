@@ -12,9 +12,9 @@ namespace SbeSourceGenerator
                 sb.AppendLine($"namespace {Namespace};", tabs);
                 sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
                 sb.AppendLine($"public struct {Name}", tabs);
-                sb.AppendLine("{", tabs);
-                sb.AppendLine($"public byte Value;", tabs + 1);
-                sb.AppendLine("}", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"public byte Value;", tabs);
+                sb.AppendLine("}", --tabs);
             }
             else
             {
@@ -22,18 +22,18 @@ namespace SbeSourceGenerator
                 sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
                 sb.AppendLine($"[System.Runtime.CompilerServices.InlineArray({Length})]", tabs);
                 sb.AppendLine($"public unsafe struct {Name}", tabs);
-                sb.AppendLine("{", tabs);
-                sb.AppendLine("private byte value;", tabs + 1);
-                sb.AppendLine("public override string ToString()", tabs + 1);
-                sb.AppendLine("{", tabs + 1);
-                sb.AppendLine("fixed (byte* ptr = &value)", tabs + 2);
-                sb.AppendLine("{", tabs + 2);
-                sb.AppendLine($"var span = new Span<byte>(ptr, {Length});", tabs + 3);
-                sb.AppendLine($"var index = span.IndexOf((byte)0);", tabs + 3);
-                sb.AppendLine($"return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((nint)ptr, index == -1 ? {Length} : index)!;", tabs + 3);
-                sb.AppendLine("}", tabs + 2);
-                sb.AppendLine("}", tabs + 1);
-                sb.AppendLine("}", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("private byte value;", tabs);
+                sb.AppendLine("public override string ToString()", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("fixed (byte* ptr = &value)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"var span = new Span<byte>(ptr, {Length});", tabs);
+                sb.AppendLine($"var index = span.IndexOf((byte)0);", tabs);
+                sb.AppendLine($"return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((nint)ptr, index == -1 ? {Length} : index)!;", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("}", --tabs);
             }
         }
     }

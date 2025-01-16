@@ -18,6 +18,8 @@ namespace PcapSbePocConsole
         public IReadOnlyDictionary<string, InstrumentDefinition> InstrumentsBySymbol => instrumentsBySymbol;
         public IReadOnlyDictionary<string, List<InstrumentDefinition>> InstrumentsBySecurityGroup => instrumentsBySecurityGroup;
 
+        public uint LastSequence { get; internal set; }
+
         public ChannelState()
         {
             instrumentsById = new Dictionary<ulong, InstrumentDefinition>();

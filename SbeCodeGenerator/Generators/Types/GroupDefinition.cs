@@ -9,13 +9,13 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendStructDefinition(tabs, Description, Name, nameof(GroupDefinition));
-            sb.AppendLine("{", tabs);
+            sb.AppendLine("{", tabs++);
 
-            AppendMessageDefinitionConstants(sb, tabs + 1);
-            AppendConstantsFileContent(sb, tabs + 1);
-            AppendFieldsFileContent(sb, tabs + 1);
+            AppendMessageDefinitionConstants(sb, tabs);
+            AppendConstantsFileContent(sb, tabs);
+            AppendFieldsFileContent(sb, tabs);
 
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("}", --tabs);
         }
         private void AppendMessageDefinitionConstants(StringBuilder sb, int tabs)
         {

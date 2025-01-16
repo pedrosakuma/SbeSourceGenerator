@@ -13,49 +13,49 @@ namespace SbeSourceGenerator
         {
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
-            sb.AppendLine("{", tabs);
-            AppendMessageDefinitionConstants(sb, tabs + 1);
-            AppendConstantsFileContent(sb, tabs + 1);
-            AppendFieldsFileContent(sb, tabs + 1);
-            AppendGroupsFileContent(sb, tabs + 1);
-            AppendConsumeVariable(sb, tabs + 1);
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("{", tabs++);
+            AppendMessageDefinitionConstants(sb, tabs);
+            AppendConstantsFileContent(sb, tabs);
+            AppendFieldsFileContent(sb, tabs);
+            AppendGroupsFileContent(sb, tabs);
+            AppendConsumeVariable(sb, tabs);
+            sb.AppendLine("}", --tabs);
         }
 
         private void AppendConsumeVariable(StringBuilder sb, int tabs)
         {
             if (Groups.Any() || Datas.Any())
             {
-                sb.AppendLine("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ", tabs);
+                sb.AppendLine("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ", tabs++);
                 foreach (var group in Groups.Cast<GroupDefinition>())
                 {
-                    sb.AppendLine($"Action<{group.Name}Data> callback{group.Name}, ", tabs + 1);
+                    sb.AppendLine($"Action<{group.Name}Data> callback{group.Name}, ", tabs);
                 }
                 foreach (var data in Datas.Cast<DataFieldDefinition>())
                 {
-                    sb.AppendLine($"{data.Type}.Callback callback{data.Name}, ", tabs + 1);
+                    sb.AppendLine($"{data.Type}.Callback callback{data.Name}, ", tabs);
                 }
                 sb.Remove(sb.Length - 4, 4);
-                sb.AppendLine(")");
-                sb.AppendLine("{", tabs);
-                sb.AppendLine("int offset = 0;", tabs + 1);
+                sb.AppendLine(")", --tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("int offset = 0;", tabs);
                 foreach (var group in Groups.Cast<GroupDefinition>())
                 {
-                    sb.AppendLine($"ref readonly GroupSizeEncoding group{group.Name} = ref MemoryMarshal.AsRef<GroupSizeEncoding>(buffer.Slice(offset));", tabs + 1);
-                    sb.AppendLine("offset += GroupSizeEncoding.MESSAGE_SIZE;", tabs + 1);
-                    sb.AppendLine($"for (int i = 0; i < group{group.Name}.NumInGroup; i++)", tabs + 1);
-                    sb.AppendLine("{", tabs + 1);
-                    sb.AppendLine($"ref readonly var data = ref MemoryMarshal.AsRef<{group.Name}Data>(buffer.Slice(offset));", tabs + 2);
-                    sb.AppendLine($"callback{group.Name}(data);", tabs + 2);
-                    sb.AppendLine($"offset += {group.Name}Data.MESSAGE_SIZE;", tabs + 2);
-                    sb.AppendLine("}", tabs + 1);
+                    sb.AppendLine($"ref readonly GroupSizeEncoding group{group.Name} = ref MemoryMarshal.AsRef<GroupSizeEncoding>(buffer.Slice(offset));", tabs);
+                    sb.AppendLine("offset += GroupSizeEncoding.MESSAGE_SIZE;", tabs);
+                    sb.AppendLine($"for (int i = 0; i < group{group.Name}.NumInGroup; i++)", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine($"ref readonly var data = ref MemoryMarshal.AsRef<{group.Name}Data>(buffer.Slice(offset));", tabs);
+                    sb.AppendLine($"callback{group.Name}(data);", tabs);
+                    sb.AppendLine($"offset += {group.Name}Data.MESSAGE_SIZE;", tabs);
+                    sb.AppendLine("}", --tabs);
                 }
                 foreach (var data in Datas.Cast<DataFieldDefinition>())
                 {
-                    sb.AppendLine($"var datas{data.Name} = {data.Type}.Create(buffer.Slice(offset));", tabs + 1);
-                    sb.AppendLine($"callback{data.Name}(datas{data.Name});", tabs + 1);
+                    sb.AppendLine($"var datas{data.Name} = {data.Type}.Create(buffer.Slice(offset));", tabs);
+                    sb.AppendLine($"callback{data.Name}(datas{data.Name});", tabs);
                 }
-                sb.AppendLine("}", tabs);
+                sb.AppendLine("}", --tabs);
             }
         }
 

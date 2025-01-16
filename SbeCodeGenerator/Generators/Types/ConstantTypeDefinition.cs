@@ -18,9 +18,9 @@ namespace SbeSourceGenerator
             sb.AppendLine($"namespace {Namespace};");
             sb.AppendSummary(Description, tabs, nameof(ConstantTypeDefinition));
             sb.AppendLine($"public struct {Name}");
-            sb.AppendLine("{", tabs);
-            sb.AppendLine($"public const {primitiveType} Value = {value};", tabs + 1);
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine($"public const {primitiveType} Value = {value};", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

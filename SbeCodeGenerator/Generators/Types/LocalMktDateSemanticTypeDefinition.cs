@@ -8,17 +8,17 @@ namespace SbeSourceGenerator.Generators.Types
         {
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendLine($"public partial struct {Name}", tabs);
-            sb.AppendLine("{", tabs);
-            sb.AppendSummary("Date", tabs + 1, nameof(LocalMktDateSemanticTypeDefinition));
+            sb.AppendLine("{", tabs++);
+            sb.AppendSummary("Date", tabs, nameof(LocalMktDateSemanticTypeDefinition));
             if (IsNullable)
             {
-                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => Value == null ? null : DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs + 1);
+                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => Value == null ? null : DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs);
             }
             else
             {
-                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs + 1);
+                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs);
             }
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

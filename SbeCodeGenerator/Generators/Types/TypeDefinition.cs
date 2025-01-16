@@ -10,9 +10,9 @@ namespace SbeSourceGenerator
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(TypeDefinition));
             sb.AppendLine($"public partial struct {Name}", tabs);
-            sb.AppendLine("{", tabs);
-            sb.AppendLine($"public {PrimitiveType} Value;", tabs + 1);
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine($"public {PrimitiveType} Value;", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

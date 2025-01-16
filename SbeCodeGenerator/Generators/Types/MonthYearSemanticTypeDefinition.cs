@@ -11,18 +11,18 @@ namespace SbeSourceGenerator
             var hasNullable = Fields.Where(f => f is NullableValueFieldDefinition).Any();
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendLine($"public partial struct {Name}", tabs);
-            sb.AppendLine("{", tabs);
+            sb.AppendLine("{", tabs++);
             if (hasNullable)
             {
-                sb.AppendSummary("Date value from offset and unit", tabs + 1, nameof(MonthYearSemanticTypeDefinition));
-                sb.AppendLine($"public DateTime? Value => (Year.HasValue && Month.HasValue && Day.HasValue) && Year.Value != 9999 ? new DateTime(Year.Value, Month.Value, Day.Value) : null;", tabs + 1);
+                sb.AppendSummary("Date value from offset and unit", tabs, nameof(MonthYearSemanticTypeDefinition));
+                sb.AppendLine($"public DateTime? Value => (Year.HasValue && Month.HasValue && Day.HasValue) && Year.Value != 9999 ? new DateTime(Year.Value, Month.Value, Day.Value) : null;", tabs);
             }
             else
             {
-                sb.AppendSummary("Date value from offset and unit", tabs + 1, nameof(MonthYearSemanticTypeDefinition));
-                sb.AppendLine($"public DateTime Value => new DateTime(Year, Month, Day);", tabs + 1);
+                sb.AppendSummary("Date value from offset and unit", tabs, nameof(MonthYearSemanticTypeDefinition));
+                sb.AppendLine($"public DateTime Value => new DateTime(Year, Month, Day);", tabs);
             }
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

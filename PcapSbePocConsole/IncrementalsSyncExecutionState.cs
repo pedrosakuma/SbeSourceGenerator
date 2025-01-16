@@ -1,22 +1,21 @@
 ﻿using B3.Market.Data.Messages;
+using System.Collections.Concurrent;
 using PcapSbePocConsole.Models;
-using System.Numerics;
-using System.Runtime.InteropServices;
+
 namespace PcapSbePocConsole
 {
     public class IncrementalsSyncExecutionState
     {
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
-        private readonly List<byte[]> enqueuedMessages;
+        private readonly Feeds feed;
+        private readonly BlockingCollection<byte[]> enqueuedMessages;
         
-        private CyclicalSyncState state;
-        private Dictionary<ulong, InstrumentDefinition> instrumentsById;
-        private uint TotalNumberReports;
+        private ChannelState channelState;
 
-        public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider)
+        public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider, Feeds feed)
         {
-            this.enqueuedMessages = new List<byte[]>();
+            this.enqueuedMessages = new BlockingCollection<byte[]>();
             this.parser = new MessageParser(ShouldConsume)
             {
                 SequenceReset_1MessageReceived = SequenceReset_1MessageReceived,
@@ -35,22 +34,127 @@ namespace PcapSbePocConsole
                 OpenInterest_29MessageReceived = OpenInterest_29MessageReceived,
                 SnapshotFullRefresh_Header_30MessageReceived = SnapshotFullRefresh_Header_30MessageReceived,
                 ExecutionStatistics_56MessageReceived = ExecutionStatistics_56MessageReceived,
-                SnapshotFullRefresh_Orders_MBO_71MessageReceived = SnapshotFullRefresh_Orders_MBO_71MessageReceived,
+
+                News_5MessageReceived = News_5MessageReceived,
+
+                EmptyBook_9MessageReceived = EmptyBook_9MessageReceived,
+                DeleteOrder_MBO_51MessageReceived = DeleteOrder_MBO_51MessageReceived,
+                MassDeleteOrders_MBO_52MessageReceived = MassDeleteOrders_MBO_52MessageReceived,
+                Order_MBO_50MessageReceived = Order_MBO_50MessageReceived,
+                TradeBust_57MessageReceived = TradeBust_57MessageReceived,
+                Trade_53MessageReceived = Trade_53MessageReceived,
+                
             };
             this.connectionProvider = connectionProvider;
+            this.feed = feed;
+        }
+
+        private void Trade_53MessageReceived(ref readonly Trade_53Data message, ReadOnlySpan<byte> variablePart)
+        {
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var trade = security.LastTradePrice;
+                trade.MatchEventIndicator = message.MatchEventIndicator;
+                trade.TradingSessionID = message.TradingSessionID;
+                trade.TradeCondition = message.TradeCondition;
+                trade.MDEntryPx = message.MDEntryPx.Value;
+                trade.MDEntrySize = message.MDEntrySize.Value;
+                trade.TradeID = message.TradeID.Value;
+                trade.MDEntryBuyer = message.MDEntryBuyer.Value;
+                trade.MDEntrySeller = message.MDEntrySeller.Value;
+                trade.TradeDate = message.TradeDate.Date;
+                trade.MDEntryTimestamp = message.MDEntryTimestamp.Value;
+            }
+        }
+
+        private void TradeBust_57MessageReceived(ref readonly TradeBust_57Data message, ReadOnlySpan<byte> variablePart)
+        {
+            Console.WriteLine(nameof(TradeBust_57Data));
+        }
+
+        private void Order_MBO_50MessageReceived(ref readonly Order_MBO_50Data message, ReadOnlySpan<byte> variablePart)
+        {
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var entries = security.OrderBook.EntriesByType(message.MDEntryType);
+                switch (message.MDUpdateAction)
+                {
+                    case MDUpdateAction.NEW:
+                        entries.Insert(
+                            (int)message.MDEntryPositionNo.Value - 1, 
+                            new OrderBookEntry
+                            {
+                                Price = message.MDEntryPx?.Value,
+                                Quantity = message.MDEntrySize.Value,
+                                EnteringFirm = message.EnteringFirm.Value,
+                                Timestamp = message.MDInsertTimestamp.Value
+                            }
+                        );
+                        break;
+                    case MDUpdateAction.CHANGE:
+                        var entry = entries[(int)message.MDEntryPositionNo.Value - 1];
+                        entry.Price = message.MDEntryPx?.Value;
+                        entry.Quantity = message.MDEntrySize.Value;
+                        entry.EnteringFirm = message.EnteringFirm.Value;
+                        entry.Timestamp = message.MDInsertTimestamp.Value;
+                        break;
+                    case MDUpdateAction.DELETE:
+                        entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
+                        break;
+                    case MDUpdateAction.OVERLAY:
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        private void MassDeleteOrders_MBO_52MessageReceived(ref readonly MassDeleteOrders_MBO_52Data message, ReadOnlySpan<byte> variablePart)
+        {
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var entries = security.OrderBook.EntriesByType(message.MDEntryType);
+                switch (message.MDUpdateAction)
+                {
+                    case MDUpdateAction.DELETE_THRU:
+                        entries.RemoveRange((int)message.MDEntryPositionNo.Value - 1, entries.Count - (int)message.MDEntryPositionNo.Value - 1);
+                        break;
+                    case MDUpdateAction.DELETE_FROM:
+                        entries.RemoveRange(0, (int)message.MDEntryPositionNo.Value);
+                        break;
+                    default:
+                        throw new ArgumentException("Not expected", nameof(message.MDUpdateAction));
+                }
+            }
+        }
+
+        private void EmptyBook_9MessageReceived(ref readonly EmptyBook_9Data message, ReadOnlySpan<byte> variablePart)
+        {
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var book = security.OrderBook;
+                book.Offers.Clear();
+                book.Bids.Clear();
+            }
+        }
+
+        private void DeleteOrder_MBO_51MessageReceived(ref readonly DeleteOrder_MBO_51Data message, ReadOnlySpan<byte> variablePart)
+        {
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var entries = security.OrderBook.EntriesByType(message.MDEntryType);
+                entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
+            }
+        }
+
+        private void News_5MessageReceived(ref readonly News_5Data message, ReadOnlySpan<byte> variablePart)
+        {
+            Console.WriteLine(nameof(News_5Data));
         }
 
         private void SequenceReset_1MessageReceived(ref readonly SequenceReset_1Data message, ReadOnlySpan<byte> variablePart)
         {
-            switch (state)
-            {
-                case CyclicalSyncState.SeekingStart:
-                    state = CyclicalSyncState.Syncing;
-                    break;
-                case CyclicalSyncState.Syncing:
-                    state = CyclicalSyncState.Synced;
-                    break;
-            }
+            Console.WriteLine(nameof(SequenceReset_1Data));
         }
 
         private void Sequence_2MessageReceived(ref readonly Sequence_2Data message, ReadOnlySpan<byte> variablePart)
@@ -59,57 +163,125 @@ namespace PcapSbePocConsole
         }
         private void SecurityStatus_3MessageReceived(ref readonly SecurityStatus_3Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(SecurityStatus_3Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var status = security.Status;
+                status.TradingSessionID = message.TradingSessionID;
+                status.SecurityTradingStatus = message.SecurityTradingStatus;
+                status.SecurityTradingEvent = message.SecurityTradingEvent;
+                status.TradeDate = message.TradeDate.Date;
+                status.TradSesOpenTime = message.TradSesOpenTime?.Value;
+            }
         }
 
         private void SecurityGroupPhase_10MessageReceived(ref readonly SecurityGroupPhase_10Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(SecurityGroupPhase_10Data));
+            var securityGroup = message.SecurityGroup.ToString();
+            if (channelState.InstrumentsBySecurityGroup.TryGetValue(securityGroup, out var instruments))
+            {
+                foreach (var security in instruments)
+                {
+                    var phase = security.Phase;
+                    phase.TradingSessionID = message.TradingSessionID;
+                    phase.TradingSessionSubID = message.TradingSessionSubID;
+                    phase.SecurityTradingEvent = message.SecurityTradingEvent;
+                    phase.TradeDate = message.TradeDate.Date;
+                    phase.TradSesOpenTime = message.TradSesOpenTime?.Value;
+                }
+            }
         }
 
         private void OpeningPrice_15MessageReceived(ref readonly OpeningPrice_15Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(OpeningPrice_15Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var summary = security.Summary;
+                summary.OpeningPrice = message.MDEntryPx.Value;
+                summary.OpeningPriceNetChange = message.NetChgPrevDay?.Value;
+                summary.OpeningTradeDate = message.TradeDate.Date;
+            }
         }
 
         private void TheoreticalOpeningPrice_16MessageReceived(ref readonly TheoreticalOpeningPrice_16Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(TheoreticalOpeningPrice_16Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var theoreticalOpeningPrice = security.TheoreticalOpeningPrice;
+                theoreticalOpeningPrice.MatchEventIndicator = message.MatchEventIndicator;
+                theoreticalOpeningPrice.MDUpdateAction = message.MDUpdateAction;
+                theoreticalOpeningPrice.TradeDate = message.TradeDate.Date;
+                theoreticalOpeningPrice.MDEntryPx = message.MDEntryPx?.Value;
+                theoreticalOpeningPrice.MDEntrySize = message.MDEntrySize.Value;
+                theoreticalOpeningPrice.MDEntryTimestamp = message.MDEntryTimestamp.Value;
+            }
         }
 
         private void ClosingPrice_17MessageReceived(ref readonly ClosingPrice_17Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(ClosingPrice_17Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var summary = security.Summary;
+                summary.ClosingPrice = message.MDEntryPx.Value;
+                summary.ClosingTradeDate = message.TradeDate.Date;
+
+            }
         }
 
         private void AuctionImbalance_19MessageReceived(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(AuctionImbalance_19Data));
-        }
-
-        private void SnapshotFullRefresh_Orders_MBO_71MessageReceived(ref readonly SnapshotFullRefresh_Orders_MBO_71Data message, ReadOnlySpan<byte> variablePart)
-        {
-            Console.WriteLine(nameof(SnapshotFullRefresh_Orders_MBO_71Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))
+            {
+                var auctionImbalance = instrument.AuctionImbalance;
+                auctionImbalance.MatchEventIndicator = message.MatchEventIndicator;
+                auctionImbalance.MDUpdateAction = message.MDUpdateAction;
+                auctionImbalance.ImbalanceCondition = message.ImbalanceCondition;
+                auctionImbalance.MDEntrySize = message.MDEntrySize.Value;
+                auctionImbalance.MDEntryTimestamp = message.MDEntryTimestamp.Value;
+            }
         }
 
         private void QuantityBand_21MessageReceived(ref readonly QuantityBand_21Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(QuantityBand_21Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))
+            {
+                var bands = instrument.Bands;
+                bands.AvgDailyTradedQty = message.AvgDailyTradedQty.Value;
+                bands.MaxTradeVol = message.MaxTradeVol.Value;
+            }
         }
 
         private void PriceBand_22MessageReceived(ref readonly PriceBand_22Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(PriceBand_22Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))
+            {
+                var bands = instrument.Bands;
+                bands.PriceBandType = message.PriceBandType;
+                bands.PriceLimitType = message.PriceLimitType;
+                bands.PriceBandMidpointPriceType = message.PriceBandMidpointPriceType;
+                bands.LowLimitPrice = message.LowLimitPrice?.Value;
+                bands.HighLimitPrice = message.HighLimitPrice?.Value;
+                bands.TradingReferencePrice = message.TradingReferencePrice?.Value;
+            }
         }
 
         private void HighPrice_24MessageReceived(ref readonly HighPrice_24Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(HighPrice_24Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var summary = security.Summary;
+                summary.HighPrice = message.MDEntryPx.Value;
+                summary.HighTradeDate = message.TradeDate.Date;
+            }
         }
 
         private void LowPrice_25MessageReceived(ref readonly LowPrice_25Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(LowPrice_25Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+            {
+                var summary = security.Summary;
+                summary.LowPrice = message.MDEntryPx.Value;
+                summary.LowTradeDate = message.TradeDate.Date;
+            }
         }
 
         private void LastTradePrice_27MessageReceived(ref readonly LastTradePrice_27Data message, ReadOnlySpan<byte> variablePart)
@@ -119,7 +291,14 @@ namespace PcapSbePocConsole
 
         private void OpenInterest_29MessageReceived(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(OpenInterest_29Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))
+            {
+                var openInterest = instrument.OpenInterest;
+                openInterest.MatchEventIndicator = message.MatchEventIndicator;
+                openInterest.TradeDate = message.TradeDate.Date;
+                openInterest.MDEntrySize = message.MDEntrySize.Value;
+                openInterest.MDEntryTimestamp = message.MDEntryTimestamp.Value;
+            }
         }
 
         private void SnapshotFullRefresh_Header_30MessageReceived(ref readonly SnapshotFullRefresh_Header_30Data message, ReadOnlySpan<byte> variablePart)
@@ -128,39 +307,50 @@ namespace PcapSbePocConsole
         }
         private void ExecutionStatistics_56MessageReceived(ref readonly ExecutionStatistics_56Data message, ReadOnlySpan<byte> variablePart)
         {
-            Console.WriteLine(nameof(ExecutionStatistics_56Data));
+            if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))
+            {
+                var executionStatistics = instrument.ExecutionStatistics;
+                executionStatistics.MatchEventIndicator = message.MatchEventIndicator;
+                executionStatistics.TradingSessionID = message.TradingSessionID;
+                executionStatistics.TradeDate = message.TradeDate.Date;
+                executionStatistics.TradeVolume = message.TradeVolume.Value;
+                executionStatistics.VwapPx = message.VwapPx?.Value;
+                executionStatistics.NetChgPrevDay = message.NetChgPrevDay?.Value;
+                executionStatistics.NumberOfTrades = message.NumberOfTrades.Value;
+                executionStatistics.MDEntryTimestamp = message.MDEntryTimestamp.Value;
+            }
         }
 
 
-        public async Task Prepare(byte channel)
+        public async Task PrepareAsync(byte channel)
         {
-            enqueuedMessages.Clear();
             var buffer = new byte[1024 * 2];
-            using (var connection = connectionProvider.ConnectSnapshot(channel))
+            using (var connection = connectionProvider.ConnectIncrementals(channel, feed))
             {
                 connection.Connect();
-                state = CyclicalSyncState.SeekingStart;
-                while (state != CyclicalSyncState.Synced)
+                while (connection.IsConnected)
                 {
                     int length = await connection.ReceiveAsync(buffer);
-                    parser.Parse(buffer.AsSpan(0, length));
-                    if(state == CyclicalSyncState.Syncing)
-                    {
+                    if (length != 0)
                         enqueuedMessages.Add(buffer.AsSpan(0, length).ToArray());
-                    }
                 }
             }
         }
 
-        public void Sync(Dictionary<ulong, InstrumentDefinition> instrumentsById)
+        public void Sync(ChannelState channelState)
         {
-            this.instrumentsById = instrumentsById;
-            foreach (var message in enqueuedMessages)
+            this.channelState = channelState;
+            foreach (var message in enqueuedMessages.GetConsumingEnumerable())
                 parser.Parse(message);
         }
 
         private bool ShouldConsume(ref readonly PacketHeader packet, ReadOnlySpan<byte> data)
         {
+            if (packet.SequenceNumber <= channelState.LastSequence)
+                return false;
+            if (packet.SequenceNumber != channelState.LastSequence + 1)
+                throw new InvalidOperationException();
+            channelState.LastSequence = packet.SequenceNumber;
             return true;
         }
 

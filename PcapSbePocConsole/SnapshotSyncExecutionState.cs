@@ -1,5 +1,6 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Models;
+using System;
 namespace PcapSbePocConsole
 {
     public class SnapshotSyncExecutionState
@@ -7,7 +8,7 @@ namespace PcapSbePocConsole
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
         private readonly List<byte[]> enqueuedMessages;
-        
+
         private CyclicalSyncState state;
         private ChannelState channelState;
         private uint TotalNumberReports;
@@ -175,7 +176,8 @@ namespace PcapSbePocConsole
                         {
                             case MDEntryType.BID:
                                 bids.Insert((int)entry.MDEntryPositionNo.Value - 1,
-                                    new OrderBookEntry { 
+                                    new OrderBookEntry
+                                    {
                                         EnteringFirm = entry.EnteringFirm.Value,
                                         Timestamp = entry.MDInsertTimestamp.Value,
                                         Price = entry.MDEntryPx.Value,
@@ -242,27 +244,24 @@ namespace PcapSbePocConsole
                 {
                     int length = await connection.ReceiveAsync(buffer);
                     parser.Parse(buffer.AsSpan(0, length));
-                    if(state == CyclicalSyncState.Syncing)
-                    {
-                        enqueuedMessages.Add(buffer.AsSpan(0, length).ToArray());
-                    }
                 }
             }
         }
 
-        public uint Sync(ChannelState channelState)
+        public void Sync(ChannelState channelState)
         {
             this.channelState = channelState;
             foreach (var message in enqueuedMessages)
                 parser.Parse(message);
-            return lastSequence;
         }
 
         private bool ShouldConsume(ref readonly PacketHeader packet, ReadOnlySpan<byte> data)
         {
-            lastSequence = packet.SequenceNumber;
+            if (state == CyclicalSyncState.Synced)
+                channelState.LastSequence = packet.SequenceNumber;
+            if (state == CyclicalSyncState.Syncing)
+                enqueuedMessages.Add(data.ToArray());
             return true;
         }
-
     }
 }

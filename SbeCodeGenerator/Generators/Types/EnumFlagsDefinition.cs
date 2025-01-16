@@ -12,14 +12,14 @@ namespace SbeSourceGenerator
             sb.AppendSummary(Description, tabs, nameof(EnumFlagsDefinition));
             sb.AppendLine($"[System.Flags]", tabs);
             sb.AppendLine($"public enum {Name} : {EncodingType}", tabs);
-            sb.AppendLine("{", tabs);
+            sb.AppendLine("{", tabs++);
             foreach (var field in Fields)
             {
                 if (field.Description != "")
-                    sb.AppendSummary(Description, tabs + 1, nameof(EnumFlagsDefinition));
-                sb.AppendLine($"{field.Name} = {1 << int.Parse(field.Value)},", tabs + 1);
+                    sb.AppendSummary(Description, tabs, nameof(EnumFlagsDefinition));
+                sb.AppendLine($"{field.Name} = {1 << int.Parse(field.Value)},", tabs);
             }
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

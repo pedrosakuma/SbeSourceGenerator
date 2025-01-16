@@ -13,10 +13,10 @@ namespace SbeSourceGenerator
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(OptionalTypeDefinition));
             sb.AppendLine($"public partial struct {Name}", tabs);
-            sb.AppendLine("{", tabs);
-            sb.AppendLine($"private {PrimitiveType} value;", tabs + 1);
-            sb.AppendLine($"public {PrimitiveType}? Value => value == {nullValue} ? null : value;", tabs + 1);
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine($"private {PrimitiveType} value;", tabs);
+            sb.AppendLine($"public {PrimitiveType}? Value => value == {nullValue} ? null : value;", tabs);
+            sb.AppendLine("}", --tabs);
         }
     }
 }

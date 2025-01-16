@@ -11,14 +11,14 @@ namespace SbeSourceGenerator
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(EnumDefinition));
             sb.AppendLine($"public enum {Name} : {ChangeTypeIfNeeded(EncodingType)}", tabs);
-            sb.AppendLine("{", tabs);
+            sb.AppendLine("{", tabs++);
             foreach (var field in Fields)
             {
                 if (field.Description != "")
-                    sb.AppendSummary(Description, tabs + 1, nameof(EnumDefinition));
-                sb.AppendLine($"{field.Name} = {IncludeQuotationAndCastIfNeeded(field.Value, EncodingType)},", tabs + 1);
+                    sb.AppendSummary(Description, tabs, nameof(EnumDefinition));
+                sb.AppendLine($"{field.Name} = {IncludeQuotationAndCastIfNeeded(field.Value, EncodingType)},", tabs);
             }
-            sb.AppendLine("}", tabs);
+            sb.AppendLine("}", --tabs);
         }
 
         private string IncludeQuotationAndCastIfNeeded(string value, string encodingType)
