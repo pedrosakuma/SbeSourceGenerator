@@ -71,6 +71,23 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine(nameof(TradeBust_57Data));
         }
+        private void OrderBookUpdated(InstrumentDefinition security, OrderBook orderBook)
+        {
+            if (security.Symbol == "CSNA3")
+            {
+                Console.SetCursorPosition(0,0);
+                if (orderBook.Bids.Count > 20 && orderBook.Offers.Count > 20)
+                { 
+                for (int i = 0; i < 20; i++)
+                {
+                    var bid = orderBook.Bids[i];
+                    var offer = orderBook.Offers[i];
+                    Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price}\t\t{offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
+                }
+                }
+            }
+        }
+
 
         private void Order_MBO_50MessageReceived(ref readonly Order_MBO_50Data message, ReadOnlySpan<byte> variablePart)
         {
@@ -106,6 +123,7 @@ namespace PcapSbePocConsole
                     default:
                         break;
                 }
+                OrderBookUpdated(security, security.OrderBook);
             }
         }
 
@@ -117,7 +135,7 @@ namespace PcapSbePocConsole
                 switch (message.MDUpdateAction)
                 {
                     case MDUpdateAction.DELETE_THRU:
-                        entries.RemoveRange((int)message.MDEntryPositionNo.Value - 1, entries.Count - (int)message.MDEntryPositionNo.Value - 1);
+                        entries.RemoveRange((int)message.MDEntryPositionNo.Value - 1, entries.Count - (int)message.MDEntryPositionNo.Value);
                         break;
                     case MDUpdateAction.DELETE_FROM:
                         entries.RemoveRange(0, (int)message.MDEntryPositionNo.Value);
@@ -125,6 +143,8 @@ namespace PcapSbePocConsole
                     default:
                         throw new ArgumentException("Not expected", nameof(message.MDUpdateAction));
                 }
+                OrderBookUpdated(security, security.OrderBook);
+
             }
         }
 
@@ -135,6 +155,8 @@ namespace PcapSbePocConsole
                 var book = security.OrderBook;
                 book.Offers.Clear();
                 book.Bids.Clear();
+                OrderBookUpdated(security, security.OrderBook);
+
             }
         }
 
@@ -144,6 +166,7 @@ namespace PcapSbePocConsole
             {
                 var entries = security.OrderBook.EntriesByType(message.MDEntryType);
                 entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
+                OrderBookUpdated(security, security.OrderBook);
             }
         }
 
