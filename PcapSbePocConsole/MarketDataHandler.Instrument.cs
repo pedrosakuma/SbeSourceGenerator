@@ -6,7 +6,7 @@ namespace PcapSbePocConsole
 {
     public partial class MarketDataHandler
     {
-        public override void Callback(ref readonly SecurityDefinition_4Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SecurityDefinition_4Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(SecurityDefinition_4Data.MESSAGE_ID);
             if (state == MarketDataState.InstrumentDefinition)
@@ -103,7 +103,7 @@ namespace PcapSbePocConsole
                 instrumentsBySymbol[instrument.Symbol] = instrument;
             }
         }
-        public override void Callback(ref readonly SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(SecurityDefinition_12Data.MESSAGE_ID);
             if (state == MarketDataState.InstrumentDefinition)
@@ -200,27 +200,27 @@ namespace PcapSbePocConsole
                 instrumentsBySymbol[instrument.Symbol] = instrument;
             }
         }
-        public override void Callback(ref readonly TheoreticalOpeningPrice_16Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly TheoreticalOpeningPrice_16Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(TheoreticalOpeningPrice_16Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly TradeBust_57Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly TradeBust_57Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(TradeBust_57Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly ForwardTrade_54Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly ForwardTrade_54Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(ForwardTrade_54Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly SecurityGroupPhase_10Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SecurityGroupPhase_10Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(SecurityGroupPhase_10Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly SecurityStatus_3Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SecurityStatus_3Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(SecurityStatus_3Data.MESSAGE_ID);
             if (instrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))

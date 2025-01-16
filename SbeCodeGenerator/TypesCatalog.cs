@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace SbeSourceGenerator
 {
@@ -34,8 +35,8 @@ namespace SbeSourceGenerator
             { "ulong", sizeof(ulong) },
         };
 
-        public static readonly Dictionary<string, string> EnumPrimitiveTypes = new Dictionary<string, string>();
-        public static readonly Dictionary<string, int> CustomTypeLengths = new Dictionary<string, int>();
+        public static readonly ConcurrentDictionary<string, string> EnumPrimitiveTypes = new ConcurrentDictionary<string, string>();
+        public static readonly ConcurrentDictionary<string, int> CustomTypeLengths = new ConcurrentDictionary<string, int>();
         public static readonly HashSet<string> CustomConstantTypes = new HashSet<string>();
     }
 }

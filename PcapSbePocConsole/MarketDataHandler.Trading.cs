@@ -10,7 +10,7 @@ namespace PcapSbePocConsole
 {
     public partial class MarketDataHandler
     {
-        public override void Callback(ref readonly Trade_53Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly Trade_53Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(Trade_53Data.MESSAGE_ID);
             if (instrumentsById.TryGetValue(message.SecurityID.Value, out var instrument))

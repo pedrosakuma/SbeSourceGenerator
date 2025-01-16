@@ -8,20 +8,53 @@ namespace PcapSbePocConsole
     public partial class Program
     {
         static readonly TaskCompletionSource completion = new TaskCompletionSource();
-        static readonly Dictionary<ulong, InstrumentDefinition> instrumentsById = new();
-        static readonly Dictionary<string, InstrumentDefinition> instrumentsBySymbol = new();
-        static readonly MarketDataHandler parser = new MarketDataHandler(instrumentsById, instrumentsBySymbol);
+        //static readonly MarketDataHandler parser = new MarketDataHandler(null, instrumentsById, instrumentsBySymbol);
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            parser.StateChanged += Parser_StateChanged;
-            parser.Init();
-            completion.Task.Wait();
-
-            foreach (var stat in parser.Statistics.OrderBy(k => k.Key))
+            var p = new PcapMarketDataConnectionProvider(new MarketConfig
             {
-                Console.WriteLine("{0} - {1}", stat.Key, stat.Value);
-            }
+                Channels = new Dictionary<byte, ChannelConfig> 
+                {
+                    { 84, new ChannelConfig
+                        {
+                            Channel = 84,
+                            Incrementals = new IncrementalsConfig
+                            {
+                                AddressFeedA = Environment.GetEnvironmentVariable("incrementalsA")
+                                    ?? throw new NullReferenceException("incrementalsA is required"),
+                                AddressFeedB = Environment.GetEnvironmentVariable("incrementalsB")
+                                    ?? throw new NullReferenceException("incrementalsB is required")
+                            },
+                            InstrumentDefinition = new InstrumentDefinitionConfig
+                            {
+                                Address = Environment.GetEnvironmentVariable("instrumentDefinition")
+                                    ?? throw new NullReferenceException("instrumentDefinition is required")
+                            },
+                            Snapshot = new SnapshotConfig
+                            {
+                                Address = Environment.GetEnvironmentVariable("snapshot")
+                                    ?? throw new NullReferenceException("snapshot is required")
+                            }
+                        }
+                    }
+                }
+            }, new DateTime(2024, 9, 9, 15, 50, 00));
+            var client = new MarketDataClient(p);
+            InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
+            SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);
+            var instrumentSyncTask = instrumentSync.SyncAsync(84);
+            await snapshotSync.PrepareAsync(84);
+            var lastSequence = snapshotSync.Sync(await instrumentSyncTask);
+            Console.WriteLine(lastSequence);
+            //parser.StateChanged += Parser_StateChanged;
+            //parser.Init();
+            //completion.Task.Wait();
+
+            //foreach (var stat in parser.Statistics.OrderBy(k => k.Key))
+            //{
+            //    Console.WriteLine("{0} - {1}", stat.Key, stat.Value);
+            //}
         }
 
         private static void StartCapture(string file)
@@ -56,14 +89,14 @@ namespace PcapSbePocConsole
                     break;
                 case MarketDataState.Snapshot:
                     StartCapture(
-                        Environment.GetEnvironmentVariable("snapshot") ?? throw new NullReferenceException("snapshot is required"),
-                        () => parser.ChangeState(MarketDataState.Incrementals)
+                        Environment.GetEnvironmentVariable("snapshot") ?? throw new NullReferenceException("snapshot is required")
+                        //() => parser.ChangeState(MarketDataState.Incrementals)
                     );
                     break;
                 case MarketDataState.Incrementals:
                     StartCapture(
-                        Environment.GetEnvironmentVariable("incrementalsA") ?? throw new NullReferenceException("snapshot is required"),
-                        () => parser.ChangeState(MarketDataState.End)
+                        Environment.GetEnvironmentVariable("incrementalsA") ?? throw new NullReferenceException("snapshot is required")
+                        //() => parser.ChangeState(MarketDataState.End)
                     );
                     //StartCapture(
                     //    Environment.GetEnvironmentVariable("incrementalsB") ?? throw new NullReferenceException("snapshot is required")
@@ -80,8 +113,8 @@ namespace PcapSbePocConsole
             var p = e.GetPacket().GetPacket();
             var udp = p.Extract<UdpPacket>();
             var data = udp.PayloadData.AsSpan();
-
-            parser.Parse(data);
+            
+            //parser.Parse(data);
         }
     }
 }

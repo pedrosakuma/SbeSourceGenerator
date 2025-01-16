@@ -28,7 +28,9 @@ namespace SbeSourceGenerator
                 sb.AppendLine("{", tabs + 1);
                 sb.AppendLine("fixed (byte* ptr = &value)", tabs + 2);
                 sb.AppendLine("{", tabs + 2);
-                sb.AppendLine("return System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)ptr)!;", tabs + 3);
+                sb.AppendLine($"var span = new Span<byte>(ptr, {Length});", tabs + 3);
+                sb.AppendLine($"var index = span.IndexOf((byte)0);", tabs + 3);
+                sb.AppendLine($"return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((nint)ptr, index == -1 ? {Length} : index)!;", tabs + 3);
                 sb.AppendLine("}", tabs + 2);
                 sb.AppendLine("}", tabs + 1);
                 sb.AppendLine("}", tabs);

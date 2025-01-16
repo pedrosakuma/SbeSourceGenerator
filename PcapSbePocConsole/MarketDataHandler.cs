@@ -4,18 +4,19 @@ using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
-    public partial class MarketDataHandler : BaseParser
+    public partial class MarketDataHandler
     {
         public Dictionary<int, int> Statistics;
         private Dictionary<ulong, InstrumentDefinition> instrumentsById;
         private Dictionary<string, InstrumentDefinition> instrumentsBySymbol;
         private MarketDataState state;
-
+        private MessageParser parser;
         public event Action<MarketDataState>? StateChanged;
 
-        public MarketDataHandler(Dictionary<ulong, InstrumentDefinition> instrumentsById, Dictionary<string, InstrumentDefinition> instrumentsBySymbol)
+        public MarketDataHandler(MessageParser parser, Dictionary<ulong, InstrumentDefinition> instrumentsById, Dictionary<string, InstrumentDefinition> instrumentsBySymbol)
         {
-            this.Statistics = MessageIds.ToDictionary(k => k, v => 0);
+            this.parser = parser;
+            this.Statistics = MessageParser.MessageIds.ToDictionary(k => k, v => 0);
             this.state = MarketDataState.None;
             this.instrumentsById = instrumentsById;
             this.instrumentsBySymbol = instrumentsBySymbol;
@@ -27,7 +28,7 @@ namespace PcapSbePocConsole
             StateChanged?.Invoke(state);
         }
 
-        public override void Callback(ref readonly SequenceReset_1Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SequenceReset_1Data message, ReadOnlySpan<byte> variablePart)
         {
             switch (state)
             {
@@ -47,43 +48,43 @@ namespace PcapSbePocConsole
             Interlocked.Increment(ref count);
         }
 
-        public override void Callback(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
         {
+
             RegisterStatistics(AuctionImbalance_19Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
 
-        public override void Callback(ref readonly SettlementPrice_28Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SettlementPrice_28Data message, ReadOnlySpan<byte> variablePart)
         {
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)
         {
-            base.Callback(in message, variablePart);
+
         }
-        
-        
-        public override void Callback(ref readonly ChannelReset_11Data message, ReadOnlySpan<byte> variablePart)
+         
+        public void Callback(ref readonly ChannelReset_11Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(ChannelReset_11Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
 
-        public override void Callback(ref readonly News_5Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly News_5Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(News_5Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
 
-        public override void Callback(ref readonly Sequence_2Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly Sequence_2Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(Sequence_2Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly SnapshotFullRefresh_Header_30Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly SnapshotFullRefresh_Header_30Data message, ReadOnlySpan<byte> variablePart)
         {
             RegisterStatistics(SnapshotFullRefresh_Header_30Data.MESSAGE_ID);
-            base.Callback(in message, variablePart);
+
         }
 
         

@@ -172,7 +172,7 @@ namespace SbeSourceGenerator
         {
             StringBuilder sb = new StringBuilder();
             new ParserGenerator(ns, "", messages).AppendFileContent(sb);
-            yield return ($"{ns}\\BaseParser", sb.ToString());
+            yield return ($"{ns}\\MessageParser", sb.ToString());
         }
 
         private static string? GetUnderlyingType(string type)

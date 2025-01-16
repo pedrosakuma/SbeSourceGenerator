@@ -2,7 +2,7 @@
 {
     public record OrderBook
     {
-        //public Bids Bids{ get; set; }
-        //public Offers Offers { get; set; }
+        public List<OrderBookEntry> Bids { get; } = new();
+        public List<OrderBookEntry> Offers { get; } = new();
     }
 }

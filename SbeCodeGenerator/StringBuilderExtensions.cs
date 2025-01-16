@@ -12,6 +12,10 @@ namespace SbeSourceGenerator
             new string('\t', 4),
             new string('\t', 5),
             new string('\t', 6),
+            new string('\t', 7),
+            new string('\t', 8),
+            new string('\t', 9),
+            new string('\t', 10),
         ];
         public static void AppendLine(this StringBuilder sb, string value, int tabs = 0)
         {

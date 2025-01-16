@@ -9,17 +9,17 @@ namespace PcapSbePocConsole
 {
     public partial class MarketDataHandler
     {
-        public override void Callback(ref readonly PriceBand_20Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly PriceBand_20Data message, ReadOnlySpan<byte> variablePart)
         {
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly PriceBand_22Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly PriceBand_22Data message, ReadOnlySpan<byte> variablePart)
         {
-            base.Callback(in message, variablePart);
+
         }
-        public override void Callback(ref readonly QuantityBand_21Data message, ReadOnlySpan<byte> variablePart)
+        public void Callback(ref readonly QuantityBand_21Data message, ReadOnlySpan<byte> variablePart)
         {
-            base.Callback(in message, variablePart);
+
         }
     }
 }

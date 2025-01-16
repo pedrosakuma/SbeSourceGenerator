@@ -18,6 +18,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="MarketDataHandler.Aggregated.cs" />
+    <Compile Remove="MarketDataHandler.Bands.cs" />
+    <Compile Remove="MarketDataHandler.Book.cs" />
+    <Compile Remove="MarketDataHandler.cs" />
+    <Compile Remove="MarketDataHandler.Instrument.cs" />
+    <Compile Remove="MarketDataHandler.Summary.cs" />
+    <Compile Remove="MarketDataHandler.Trading.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="b3-market-data-messages-1.8.0.xml" />
   </ItemGroup>
 
