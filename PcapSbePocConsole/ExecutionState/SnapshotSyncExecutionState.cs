@@ -1,5 +1,6 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Connection;
+using PcapSbePocConsole.Handlers;
 using PcapSbePocConsole.Models;
 namespace PcapSbePocConsole
 {
@@ -65,12 +66,7 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var status = security.Status;
-                    status.TradingSessionID = message.TradingSessionID;
-                    status.SecurityTradingStatus = message.SecurityTradingStatus;
-                    status.SecurityTradingEvent = message.SecurityTradingEvent;
-                    status.TradeDate = message.TradeDate.Date;
-                    status.TradSesOpenTime = message.TradSesOpenTime?.Value;
+                    message.Handle(security.Status);
                 }
             }
         }
@@ -84,12 +80,7 @@ namespace PcapSbePocConsole
                 {
                     foreach (var security in instruments)
                     {
-                        var phase = security.Phase;
-                        phase.TradingSessionID = message.TradingSessionID;
-                        phase.TradingSessionSubID = message.TradingSessionSubID;
-                        phase.SecurityTradingEvent = message.SecurityTradingEvent;
-                        phase.TradeDate = message.TradeDate.Date;
-                        phase.TradSesOpenTime = message.TradSesOpenTime?.Value;
+                        message.Handle(security.Phase);
                     }
                 }
             }
@@ -101,10 +92,7 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var summary = security.Summary;
-                    summary.OpeningPrice = message.MDEntryPx.Value;
-                    summary.OpeningPriceNetChange = message.NetChgPrevDay?.Value;
-                    summary.OpeningTradeDate = message.TradeDate.Date;
+                    message.Handle(security.Summary);
                 }
             }
         }
@@ -114,10 +102,7 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var summary = security.Summary;
-                    summary.ClosingPrice = message.MDEntryPx.Value;
-                    summary.ClosingTradeDate = message.TradeDate.Date;
-
+                    message.Handle(security.Summary);
                 }
             }
         }
@@ -128,9 +113,7 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var summary = security.Summary;
-                    summary.HighPrice = message.MDEntryPx.Value;
-                    summary.HighTradeDate = message.TradeDate.Date;
+                    message.Handle(security.Summary);
                 }
             }
         }
@@ -141,9 +124,7 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var summary = security.Summary;
-                    summary.LowPrice = message.MDEntryPx.Value;
-                    summary.LowTradeDate = message.TradeDate.Date;
+                    message.Handle(security.Summary);
                 }
             }
         }
@@ -155,13 +136,20 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
+                    message.Handle(security.TheoreticalOpeningPrice);
                 }
             }
         }
 
         private void AuctionImbalance_19MessageReceived(ref readonly AuctionImbalance_19Data message, ReadOnlySpan<byte> variablePart)
         {
-            //Console.WriteLine(nameof(AuctionImbalance_19Data));
+            if (state == CyclicalSyncState.Synced)
+            {
+                if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+                {
+                    message.Handle(security.AuctionImbalance);
+                }
+            }
         }
 
         private void SnapshotFullRefresh_Orders_MBO_71MessageReceived(ref readonly SnapshotFullRefresh_Orders_MBO_71Data message, ReadOnlySpan<byte> variablePart)
@@ -170,49 +158,31 @@ namespace PcapSbePocConsole
             {
                 if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
                 {
-                    var offers = security.OrderBook.Offers;
-                    var bids = security.OrderBook.Bids;
-                    message.ConsumeVariableLengthSegments(variablePart, entry =>
-                    {
-                        switch (entry.MDEntryType)
-                        {
-                            case MDEntryType.BID:
-                                bids.Insert((int)entry.MDEntryPositionNo.Value - 1,
-                                    new OrderBookEntry
-                                    {
-                                        EnteringFirm = entry.EnteringFirm.Value,
-                                        Timestamp = entry.MDInsertTimestamp.Value,
-                                        Price = entry.MDEntryPx.Value,
-                                        Quantity = entry.MDEntrySize.Value,
-                                    });
-                                break;
-                            case MDEntryType.OFFER:
-                                offers.Insert((int)entry.MDEntryPositionNo.Value - 1,
-                                    new OrderBookEntry
-                                    {
-                                        EnteringFirm = entry.EnteringFirm.Value,
-                                        Timestamp = entry.MDInsertTimestamp.Value,
-                                        Price = entry.MDEntryPx.Value,
-                                        Quantity = entry.MDEntrySize.Value,
-                                    });
-                                break;
-                            default:
-                                break;
-                        }
-                    });
+                    message.Handle(variablePart, security.OrderBook);
                 }
             }
-            //Console.WriteLine(nameof(SnapshotFullRefresh_Orders_MBO_71Data));
         }
 
         private void QuantityBand_21MessageReceived(ref readonly QuantityBand_21Data message, ReadOnlySpan<byte> variablePart)
         {
-            //Console.WriteLine(nameof(QuantityBand_21Data));
+            if (state == CyclicalSyncState.Synced)
+            {
+                if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+                {
+                    message.Handle(security.Bands);
+                }
+            }
         }
 
         private void PriceBand_22MessageReceived(ref readonly PriceBand_22Data message, ReadOnlySpan<byte> variablePart)
         {
-            //Console.WriteLine(nameof(PriceBand_22Data));
+            if (state == CyclicalSyncState.Synced)
+            {
+                if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
+                {
+                    message.Handle(security.Bands);
+                }
+            }
         }
 
         private void LastTradePrice_27MessageReceived(ref readonly LastTradePrice_27Data message, ReadOnlySpan<byte> variablePart)
