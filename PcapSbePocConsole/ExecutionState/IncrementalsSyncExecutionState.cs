@@ -64,10 +64,11 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine(nameof(TradeBust_57Data));
         }
-        private void OrderBookUpdated(Definition security, OrderBook orderBook)
+        private void OrderBookUpdated(Definition security, OrderBook orderBook, uint index)
         {
             return;
-            if (security.Symbol == "CSNA3")
+            if (security.Symbol == "CSNA3"
+                && index <= 20)
             {
                 Console.SetCursorPosition(0, 0);
                 if (orderBook.Bids.Count > 20 && orderBook.Offers.Count > 20)
@@ -76,7 +77,7 @@ namespace PcapSbePocConsole
                     {
                         var bid = orderBook.Bids[i];
                         var offer = orderBook.Offers[i];
-                        Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price}\t\t{offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
+                        Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price} {offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
                     }
                 }
             }
@@ -88,7 +89,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
             }
         }
 
@@ -97,7 +98,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
 
             }
         }
@@ -107,7 +108,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook, 0);
             }
         }
 
@@ -116,7 +117,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
             }
         }
 
@@ -223,7 +224,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.LastTradePrice);
-            }
+            } 
         }
 
         private void OpenInterest_29MessageReceived(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)
@@ -247,7 +248,7 @@ namespace PcapSbePocConsole
         }
 
 
-        public void Prepare(byte channel)
+        public void Prepare(byte channel, CancellationToken token)
         {
             Console.WriteLine("Incrementals Starting");
             var buffer = new byte[1024 * 2];
@@ -266,7 +267,8 @@ namespace PcapSbePocConsole
                 foreach (var message in enqueuedMessages.GetConsumingEnumerable())
                     parser.Parse(message);
                 Console.WriteLine("Incrementals Consumed enqueued");
-                while (true)
+                Console.Clear();
+                while (!token.IsCancellationRequested)
                 {
                     int length = connection.Receive(buffer);
                     if (length != 0)

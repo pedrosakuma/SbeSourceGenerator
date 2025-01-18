@@ -13,6 +13,8 @@ namespace PcapSbePocConsole.Connection
         private readonly UdpClient client;
         private readonly AddressConfig config;
 
+        public bool Connected => device.Opened;
+
         public PcapReplayer(AddressConfig config)
         {
             device = new CaptureFileReaderDevice(config.Address);

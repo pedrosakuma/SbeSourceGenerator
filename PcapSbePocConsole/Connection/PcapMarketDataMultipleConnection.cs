@@ -1,8 +1,11 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Configs;
+using System;
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Threading.Channels;
 
 namespace PcapSbePocConsole.Connection
 {
@@ -12,20 +15,27 @@ namespace PcapSbePocConsole.Connection
         private readonly PcapReplayer[] replayers;
         private readonly UdpClient[] clients;
         private readonly AddressConfig[] configs;
+        private readonly Task[] consumer; 
+        private readonly Channel<(IMemoryOwner<byte>, int)> channel;
 
-        public bool IsConnected => clients.Any(c => c.Client.Connected);
+        public bool IsConnected => replayers.Any(c => c.Connected);
 
         public PcapMarketDataMultipleConnection(AddressConfig[] configs)
         {
+            this.channel = Channel.CreateUnbounded<(IMemoryOwner<byte>, int)>(
+                new UnboundedChannelOptions { 
+                    SingleReader = true
+                }
+            );
             this.configs = configs;
             replayers = new PcapReplayer[configs.Length];
             clients = new UdpClient[configs.Length];
+            consumer = new Task[configs.Length];
             for (int i = 0; i < configs.Length; i++)
             {
                 replayers[i] = new PcapReplayer(configs[i]);
                 clients[i] = new UdpClient(configs[i].MulticastEndpoint.Port);
             }
-
         }
 
         public void Dispose()
@@ -39,14 +49,11 @@ namespace PcapSbePocConsole.Connection
 
         public int Receive(byte[] buffer)
         {
-            for (int i = 0; i < clients.Length; i++)
+            if(channel.Reader.TryRead(out var data))
             {
-                var socketEndpoint = (EndPoint)configs[i].MulticastEndpoint;
-                int length = clients[i].Client.ReceiveFrom(buffer, ref socketEndpoint);
-                if (ShouldReturn(buffer.AsSpan(0, length)))
-                {
-                    return length;
-                }
+                data.Item1.Memory.Span.Slice(0, data.Item2).CopyTo(buffer);
+                data.Item1.Dispose();
+                return data.Item2;
             }
             return 0;
         }
@@ -54,11 +61,8 @@ namespace PcapSbePocConsole.Connection
         private bool ShouldReturn(ReadOnlySpan<byte> data)
         {
             ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);
-            if (packet.SequenceNumber != 0
-                && packet.SequenceNumber <= lastConsumed)
-                return false;
-            lastConsumed = packet.SequenceNumber;
-            return true;
+            return packet.SequenceNumber == 0
+                || Interlocked.CompareExchange(ref lastConsumed, packet.SequenceNumber, packet.SequenceNumber - 1) == packet.SequenceNumber - 1;
         }
 
         public void Connect()
@@ -67,6 +71,25 @@ namespace PcapSbePocConsole.Connection
             {
                 replayers[i].Start();
                 clients[i].JoinMulticastGroup(configs[i].MulticastEndpoint.Address);
+                var index = i;
+                consumer[i] = Task.Run(() => Consume(clients[index], configs[index].MulticastEndpoint));
+            }
+        }
+
+        private void Consume(UdpClient udpClient, EndPoint socketEndpoint)
+        {
+            var memory = MemoryPool<byte>.Shared.Rent(2048);
+            while (IsConnected)
+            {
+                int length = udpClient.Client.ReceiveFrom(memory.Memory.Span, ref socketEndpoint);
+                if (length > 0)
+                {
+                    if (ShouldReturn(memory.Memory.Span.Slice(0, length)))
+                    { 
+                        channel.Writer.TryWrite((memory, length));
+                        memory = MemoryPool<byte>.Shared.Rent(2048);
+                    }
+                }
             }
         }
     }

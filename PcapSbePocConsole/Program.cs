@@ -1,5 +1,6 @@
 ﻿using PcapSbePocConsole.Configs;
 using PcapSbePocConsole.Connection;
+using System.IO.Pipelines;
 using System.Net;
 
 namespace PcapSbePocConsole
@@ -46,14 +47,17 @@ namespace PcapSbePocConsole
             InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
             IncrementalsSyncExecutionState incrementalsSync = new IncrementalsSyncExecutionState(p, Feeds.FeedA | Feeds.FeedB);
             SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);
-            var incrementalPrepare = Task.Run(() => incrementalsSync.Prepare(channel));
+            CancellationTokenSource source = new CancellationTokenSource();
+
+            var incrementalPrepare = Task.Run(() => incrementalsSync.Prepare(channel, source.Token));
             var snapshotPrepare = Task.Run(() => snapshotSync.Prepare(channel));
             var state = instrumentSync.Sync(channel);
             snapshotSync.Sync(state);
             await snapshotPrepare;
             incrementalsSync.Sync(state);
-            await incrementalPrepare;
             Console.ReadLine();
+            source.Cancel();
+            await incrementalPrepare;
         }
     }
 }

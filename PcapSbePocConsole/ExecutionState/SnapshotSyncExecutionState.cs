@@ -1,6 +1,7 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
+using PcapSbePocConsole.Models;
 namespace PcapSbePocConsole
 {
     public class SnapshotSyncExecutionState

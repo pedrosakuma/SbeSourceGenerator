@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <PackageReference Include="SharpPcap" Version="6.3.0" />
+    <PackageReference Include="System.IO.Pipelines" Version="9.0.1" />
   </ItemGroup>
 
   <ItemGroup>
