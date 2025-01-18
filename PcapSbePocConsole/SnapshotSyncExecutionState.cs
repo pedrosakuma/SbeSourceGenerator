@@ -1,6 +1,5 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Models;
-using System;
 namespace PcapSbePocConsole
 {
     public class SnapshotSyncExecutionState
@@ -45,9 +44,11 @@ namespace PcapSbePocConsole
             switch (state)
             {
                 case CyclicalSyncState.SeekingStart:
+                    Console.WriteLine("Snapshot Syncing");
                     state = CyclicalSyncState.Syncing;
                     break;
                 case CyclicalSyncState.Syncing:
+                    Console.WriteLine("Snapshot Synced");
                     state = CyclicalSyncState.Synced;
                     break;
             }
@@ -232,8 +233,9 @@ namespace PcapSbePocConsole
             //Console.WriteLine(nameof(ExecutionStatistics_56Data));
         }
 
-        public async Task PrepareAsync(byte channel)
+        public void Prepare(byte channel)
         {
+            Console.WriteLine("Snapshot SeekingStart");
             enqueuedMessages.Clear();
             var buffer = new byte[1024 * 2];
             using (var connection = connectionProvider.ConnectSnapshot(channel))
@@ -242,7 +244,7 @@ namespace PcapSbePocConsole
                 state = CyclicalSyncState.SeekingStart;
                 while (state != CyclicalSyncState.Synced)
                 {
-                    int length = await connection.ReceiveAsync(buffer);
+                    int length = connection.Receive(buffer);
                     parser.Parse(buffer.AsSpan(0, length));
                 }
             }
@@ -250,9 +252,11 @@ namespace PcapSbePocConsole
 
         public void Sync(ChannelState channelState)
         {
+            Console.WriteLine("Snapshot Consuming");
             this.channelState = channelState;
             foreach (var message in enqueuedMessages)
                 parser.Parse(message);
+            Console.WriteLine("Snapshot Consumed");
         }
 
         private bool ShouldConsume(ref readonly PacketHeader packet, ReadOnlySpan<byte> data)

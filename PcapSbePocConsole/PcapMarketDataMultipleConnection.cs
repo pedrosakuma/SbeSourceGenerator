@@ -1,81 +1,60 @@
-﻿using PacketDotNet;
-using SharpPcap;
-using SharpPcap.LibPcap;
+﻿using B3.Market.Data.Messages;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Threading.Channels;
-using B3.Market.Data.Messages;
 
 namespace PcapSbePocConsole
 {
     public class PcapMarketDataMultipleConnection : IMarketDataConnection
     {
         private uint lastConsumed;
-        private readonly Channel<byte[]> queue;
-        private readonly CaptureFileReaderDevice[] devices;
+        private readonly PcapReplayer[] replayers;
+        private readonly UdpClient[] clients;
+        private readonly AddressConfig[] configs;
 
-        public bool IsConnected => !queue.Reader.Completion.IsCompleted;
+        public bool IsConnected => clients.Any(c => c.Client.Connected);
 
-        public PcapMarketDataMultipleConnection(string[] files, int capacity)
+        public PcapMarketDataMultipleConnection(AddressConfig[] configs)
         {
-            queue = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions()
+            this.configs = configs;
+            replayers = new PcapReplayer[configs.Length];
+            clients = new UdpClient[configs.Length];
+            for (int i = 0; i < configs.Length; i++)
             {
-                SingleReader = true
-            });
-            devices = new CaptureFileReaderDevice[files.Length];
-            for (int i = 0; i < files.Length; i++)
-            {
-                var device = new CaptureFileReaderDevice(files[i]);
-                devices[i] = device;
-                device.Open(new DeviceConfiguration
-                {
-                    BufferSize = 524288
-                });
-                device.OnPacketArrival += Device_OnPacketArrival;
-                device.OnCaptureStopped += Device_OnCaptureStopped;
+                replayers[i] = new PcapReplayer(configs[i]);
+                clients[i] = new UdpClient(configs[i].MulticastEndpoint.Port);
             }
-        }
 
-        private void Device_OnCaptureStopped(object sender, CaptureStoppedEventStatus status)
-        {
-            if(devices.All(d => !d.Opened))
-                queue.Writer.Complete();
-        }
-
-        private readonly DateTime readFrom;
-        private void Device_OnPacketArrival(object sender, PacketCapture e)
-        {
-            var p = e.GetPacket().GetPacket();
-            var udp = p.Extract<UdpPacket>();
-            queue.Writer.TryWrite(udp.PayloadData);
         }
 
         public void Dispose()
         {
-            for (int i = 0; i < devices.Length; i++)
-                devices[i].Dispose();
+            for (int i = 0; i < replayers.Length; i++)
+            { 
+                replayers[i].Dispose();
+                clients[i].Dispose();
+            }
         }
 
-        public async Task<int> ReceiveAsync(byte[] buffer)
+        public int Receive(byte[] buffer)
         {
-            if (!devices.All(d => d.Opened))
-                throw new InvalidOperationException("Device is not open");
-
-            while(await queue.Reader.WaitToReadAsync())
+            for (int i = 0; i < clients.Length; i++)
             {
-                var data = await queue.Reader.ReadAsync();
-                if (ShouldReturn(data))
+                var socketEndpoint = (EndPoint)configs[i].MulticastEndpoint;
+                int length = clients[i].Client.ReceiveFrom(buffer, ref socketEndpoint);
+                if (ShouldReturn(buffer.AsSpan(0, length)))
                 {
-                    data.AsSpan().CopyTo(buffer);
-                    return data.Length;
+                    return length;
                 }
             }
             return 0;
         }
 
-        private bool ShouldReturn(byte[] data)
+        private bool ShouldReturn(ReadOnlySpan<byte> data)
         {
             ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);
-            if (packet.SequenceNumber <= lastConsumed)
+            if (packet.SequenceNumber != 0 
+                && packet.SequenceNumber <= lastConsumed)
                 return false;
             lastConsumed = packet.SequenceNumber;
             return true;
@@ -83,8 +62,11 @@ namespace PcapSbePocConsole
 
         public void Connect()
         {
-            for (int i = 0; i < devices.Length; i++)
-                devices[i].StartCapture();
+            for (int i = 0; i < configs.Length; i++)
+            {
+                replayers[i].Start();
+                clients[i].JoinMulticastGroup(configs[i].MulticastEndpoint.Address);
+            }
         }
     }
 }

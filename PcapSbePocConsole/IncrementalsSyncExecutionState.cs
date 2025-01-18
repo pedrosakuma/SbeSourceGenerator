@@ -1,6 +1,6 @@
 ﻿using B3.Market.Data.Messages;
-using System.Collections.Concurrent;
 using PcapSbePocConsole.Models;
+using System.Collections.Concurrent;
 
 namespace PcapSbePocConsole
 {
@@ -10,8 +10,9 @@ namespace PcapSbePocConsole
         private readonly IMarketDataConnectionProvider connectionProvider;
         private readonly Feeds feed;
         private readonly BlockingCollection<byte[]> enqueuedMessages;
-        
+
         private ChannelState channelState;
+        private CyclicalSyncState state;
 
         public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider, Feeds feed)
         {
@@ -43,7 +44,7 @@ namespace PcapSbePocConsole
                 Order_MBO_50MessageReceived = Order_MBO_50MessageReceived,
                 TradeBust_57MessageReceived = TradeBust_57MessageReceived,
                 Trade_53MessageReceived = Trade_53MessageReceived,
-                
+
             };
             this.connectionProvider = connectionProvider;
             this.feed = feed;
@@ -73,17 +74,18 @@ namespace PcapSbePocConsole
         }
         private void OrderBookUpdated(InstrumentDefinition security, OrderBook orderBook)
         {
+            return;
             if (security.Symbol == "CSNA3")
             {
-                Console.SetCursorPosition(0,0);
+                Console.SetCursorPosition(0, 0);
                 if (orderBook.Bids.Count > 20 && orderBook.Offers.Count > 20)
-                { 
-                for (int i = 0; i < 20; i++)
                 {
-                    var bid = orderBook.Bids[i];
-                    var offer = orderBook.Offers[i];
-                    Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price}\t\t{offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
-                }
+                    for (int i = 0; i < 20; i++)
+                    {
+                        var bid = orderBook.Bids[i];
+                        var offer = orderBook.Offers[i];
+                        Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price}\t\t{offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
+                    }
                 }
             }
         }
@@ -98,7 +100,7 @@ namespace PcapSbePocConsole
                 {
                     case MDUpdateAction.NEW:
                         entries.Insert(
-                            (int)message.MDEntryPositionNo.Value - 1, 
+                            (int)message.MDEntryPositionNo.Value - 1,
                             new OrderBookEntry
                             {
                                 Price = message.MDEntryPx?.Value,
@@ -345,17 +347,30 @@ namespace PcapSbePocConsole
         }
 
 
-        public async Task PrepareAsync(byte channel)
+        public void Prepare(byte channel)
         {
+            Console.WriteLine("Incrementals Starting");
             var buffer = new byte[1024 * 2];
             using (var connection = connectionProvider.ConnectIncrementals(channel, feed))
             {
                 connection.Connect();
-                while (connection.IsConnected)
+                state = CyclicalSyncState.SeekingStart;
+                while (state != CyclicalSyncState.Synced)
                 {
-                    int length = await connection.ReceiveAsync(buffer);
+                    int length = connection.Receive(buffer);
                     if (length != 0)
                         enqueuedMessages.Add(buffer.AsSpan(0, length).ToArray());
+                }
+                Console.WriteLine("Incrementals Consuming enqueued");
+                enqueuedMessages.CompleteAdding();
+                foreach (var message in enqueuedMessages.GetConsumingEnumerable())
+                    parser.Parse(message);
+                Console.WriteLine("Incrementals Consumed enqueued");
+                while (true)
+                {
+                    int length = connection.Receive(buffer);
+                    if (length != 0)
+                        parser.Parse(buffer.AsSpan(0, length));
                 }
             }
         }
@@ -363,8 +378,9 @@ namespace PcapSbePocConsole
         public void Sync(ChannelState channelState)
         {
             this.channelState = channelState;
-            foreach (var message in enqueuedMessages.GetConsumingEnumerable())
+            while (enqueuedMessages.TryTake(out var message, 0))
                 parser.Parse(message);
+            state = CyclicalSyncState.Synced;
         }
 
         private bool ShouldConsume(ref readonly PacketHeader packet, ReadOnlySpan<byte> data)

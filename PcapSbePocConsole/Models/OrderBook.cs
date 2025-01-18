@@ -6,7 +6,8 @@ namespace PcapSbePocConsole.Models
     {
         public List<OrderBookEntry> Bids { get; } = new();
         public List<OrderBookEntry> Offers { get; } = new();
-        public List<OrderBookEntry> EntriesByType(MDEntryType type) {
+        public List<OrderBookEntry> EntriesByType(MDEntryType type)
+        {
             switch (type)
             {
                 case MDEntryType.BID:

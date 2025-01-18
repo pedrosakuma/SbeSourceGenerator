@@ -7,9 +7,10 @@
         IMarketDataConnection ConnectIncrementals(byte channel, Feeds feeds);
     }
 
-    public interface IMarketDataConnection : IDisposable {
+    public interface IMarketDataConnection : IDisposable
+    {
         void Connect();
         bool IsConnected { get; }
-        Task<int> ReceiveAsync(byte[] buffer);
+        int Receive(byte[] buffer);
     }
 }

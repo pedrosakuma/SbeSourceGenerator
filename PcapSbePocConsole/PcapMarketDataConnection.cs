@@ -1,70 +1,39 @@
-﻿using PacketDotNet;
-using SharpPcap;
-using SharpPcap.LibPcap;
-using System.Collections.Concurrent;
-using System.Threading.Channels;
+﻿using System.Net;
+using System.Net.Sockets;
 
 namespace PcapSbePocConsole
 {
     public class PcapMarketDataConnection : IMarketDataConnection
     {
-        private readonly Channel<byte[]> queue;
-        private readonly CaptureFileReaderDevice device;
+        private readonly AddressConfig config;
+        private readonly PcapReplayer replayer;
+        private readonly UdpClient client;
 
-        public bool IsConnected => !queue.Reader.Completion.IsCompleted;
+        public bool IsConnected => client.Client.IsBound;
 
-        public PcapMarketDataConnection(string file, int capacity, DateTime readFrom)
+        public PcapMarketDataConnection(AddressConfig config)
         {
-            this.readFrom = readFrom;
-
-            queue = Channel.CreateUnbounded<byte[]>();
-            device = new CaptureFileReaderDevice(file);
-            device.Open(new DeviceConfiguration
-            {
-                BufferSize = 524288
-            });
-            device.OnPacketArrival += Device_OnPacketArrival;
-            device.OnCaptureStopped += Device_OnCaptureStopped;
+            this.config = config;
+            replayer = new PcapReplayer(config);
+            client = new UdpClient(config.MulticastEndpoint.Port);
         }
 
-        private void Device_OnCaptureStopped(object sender, CaptureStoppedEventStatus status)
-        {
-            queue.Writer.Complete();
-        }
-
-        private readonly DateTime readFrom;
-        private void Device_OnPacketArrival(object sender, PacketCapture e)
-        {
-            if (e.Header.Timeval.Date > readFrom)
-            {
-                var p = e.GetPacket().GetPacket();
-                var udp = p.Extract<UdpPacket>();
-                queue.Writer.TryWrite(udp.PayloadData);
-            }
-        }
- 
         public void Dispose()
         {
-            device.Dispose();
+            replayer.Dispose();
+            client.Dispose();
         }
 
-        public async Task<int> ReceiveAsync(byte[] buffer)
+        public int Receive(byte[] buffer)
         {
-            if (!device.Opened)
-                throw new InvalidOperationException("Device is not open");
-
-            if (await queue.Reader.WaitToReadAsync())
-            {
-                var data = await queue.Reader.ReadAsync();
-                data.AsSpan().CopyTo(buffer);
-                return data.Length;
-            }
-            return 0;
+            var endpoint = (EndPoint)config.MulticastEndpoint;
+            return client.Client.ReceiveFrom(buffer, ref endpoint);
         }
 
         public void Connect()
         {
-            device.StartCapture();
+            client.JoinMulticastGroup(this.config.MulticastEndpoint.Address);
+            replayer.Start();
         }
     }
 }

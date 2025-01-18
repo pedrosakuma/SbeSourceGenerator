@@ -1,49 +1,57 @@
-﻿namespace PcapSbePocConsole
+﻿using System.Net;
+
+namespace PcapSbePocConsole
 {
     public partial class Program
     {
         static async Task Main(string[] args)
         {
-            var p = new PcapMarketDataConnectionProvider(new MarketConfig
-            {
-                Channels = new Dictionary<byte, ChannelConfig> 
+            var c = new MarketConfig
+            (
+                new Dictionary<byte, ChannelConfig>
                 {
                     { 84, new ChannelConfig
-                        {
-                            Channel = 84,
-                            Incrementals = new IncrementalsConfig
+                        (
+                            84,
+                            new AddressConfig
+                            (
+                                Environment.GetEnvironmentVariable("instrumentDefinition")!,
+                                IPEndPoint.Parse("224.100.0.1:10101")
+                            ),
+                            new AddressConfig
+                            (
+                                Environment.GetEnvironmentVariable("snapshot")!,
+                                IPEndPoint.Parse("224.100.0.2:10102")
+                            ),
+                            new IncrementalsConfig
                             {
-                                AddressFeedA = Environment.GetEnvironmentVariable("incrementalsA")
-                                    ?? throw new NullReferenceException("incrementalsA is required"),
-                                AddressFeedB = Environment.GetEnvironmentVariable("incrementalsB")
-                                    ?? throw new NullReferenceException("incrementalsB is required")
-                            },
-                            InstrumentDefinition = new InstrumentDefinitionConfig
-                            {
-                                Address = Environment.GetEnvironmentVariable("instrumentDefinition")
-                                    ?? throw new NullReferenceException("instrumentDefinition is required")
-                            },
-                            Snapshot = new SnapshotConfig
-                            {
-                                Address = Environment.GetEnvironmentVariable("snapshot")
-                                    ?? throw new NullReferenceException("snapshot is required")
+                                FeedA = new AddressConfig(
+                                    Environment.GetEnvironmentVariable("incrementalsA")!,
+                                    IPEndPoint.Parse("224.100.0.3:10103")
+                                ),
+                                FeedB = new AddressConfig(
+                                    Environment.GetEnvironmentVariable("incrementalsB")!,
+                                    IPEndPoint.Parse("224.100.0.4:10104")
+                                )
                             }
-                        }
+                        )
                     }
                 }
-            }, new DateTime(2020, 9, 9, 15, 50, 00));
+            );
             byte channel = 84;
-            var client = new MarketDataClient(p);
+            var p = new PcapMarketDataConnectionProvider(c, new DateTime(2020, 9, 9, 15, 50, 00));
+            //var client = new MarketDataClient(p);
             InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
             IncrementalsSyncExecutionState incrementalsSync = new IncrementalsSyncExecutionState(p, Feeds.FeedA | Feeds.FeedB);
             SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);
-            var instrumentSyncTask = instrumentSync.SyncAsync(channel);
-            var incrementalsSyncTask = incrementalsSync.PrepareAsync(channel);
-            await snapshotSync.PrepareAsync(channel);
-            var state = await instrumentSyncTask;
+            var incrementalPrepare = Task.Run(() => incrementalsSync.Prepare(channel));
+            var snapshotPrepare = Task.Run(() => snapshotSync.Prepare(channel));
+            var state = instrumentSync.Sync(channel);
             snapshotSync.Sync(state);
+            await snapshotPrepare;
             incrementalsSync.Sync(state);
-            await incrementalsSyncTask;
+            await incrementalPrepare;
+            Console.ReadLine();
         }
     }
 }

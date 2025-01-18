@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using B3.Market.Data.Messages;
-
-namespace PcapSbePocConsole.Models
+﻿namespace PcapSbePocConsole.Models
 {
     public record Summary
     {

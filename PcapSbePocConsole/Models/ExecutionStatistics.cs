@@ -7,7 +7,7 @@ namespace PcapSbePocConsole.Models
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public TradingSessionID TradingSessionID { get; set; }
         public DateOnly? TradeDate { get; set; }
-        public long TradeVolume{ get; set; }
+        public long TradeVolume { get; set; }
         public decimal? VwapPx { get; set; }
         public decimal? NetChgPrevDay { get; set; }
         public long NumberOfTrades { get; set; }
