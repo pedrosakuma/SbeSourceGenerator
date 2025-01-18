@@ -1,4 +1,4 @@
-﻿namespace PcapSbePocConsole
+﻿namespace PcapSbePocConsole.Configs
 {
     public record ChannelConfig(
         byte Channel,

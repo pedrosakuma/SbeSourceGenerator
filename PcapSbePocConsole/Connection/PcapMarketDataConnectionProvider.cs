@@ -1,4 +1,6 @@
-﻿namespace PcapSbePocConsole
+﻿using PcapSbePocConsole.Configs;
+
+namespace PcapSbePocConsole.Connection
 {
     internal class PcapMarketDataConnectionProvider : IMarketDataConnectionProvider
     {
@@ -13,7 +15,7 @@
 
         public IMarketDataConnection ConnectIncrementals(byte channel, Feeds feeds)
         {
-            if (!this.config.Channels.TryGetValue(channel, out var c))
+            if (!config.Channels.TryGetValue(channel, out var c))
                 throw new ArgumentException("Channel not found");
             var addresses = new AddressConfig[int.PopCount(feeds.GetHashCode())];
             int addressesIndex = 0;
@@ -28,14 +30,14 @@
 
         public IMarketDataConnection ConnectInstrumentDefinition(byte channel)
         {
-            if (!this.config.Channels.TryGetValue(channel, out var c))
+            if (!config.Channels.TryGetValue(channel, out var c))
                 throw new ArgumentException("Channel not found");
             return new PcapMarketDataConnection(c.InstrumentDefinition);
         }
 
         public IMarketDataConnection ConnectSnapshot(byte channel)
         {
-            if (!this.config.Channels.TryGetValue(channel, out var c))
+            if (!config.Channels.TryGetValue(channel, out var c))
                 throw new ArgumentException("Channel not found");
             return new PcapMarketDataConnection(c.Snapshot);
         }

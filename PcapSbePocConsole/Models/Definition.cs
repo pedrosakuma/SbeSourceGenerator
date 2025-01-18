@@ -3,7 +3,7 @@ using System.Text;
 
 namespace PcapSbePocConsole.Models
 {
-    public record InstrumentDefinition(
+    public record Definition(
         ulong SecurityID,
         string SecurityExchange,
         SecurityIDSource SecurityIDSource,
@@ -57,20 +57,9 @@ namespace PcapSbePocConsole.Models
         public List<Underlyings> Underlyings { get; } = new();
         public List<Leg> Legs { get; } = new();
         public List<InstrAttrib> InstrAttribs { get; } = new();
-        public LastTradePrice LastTradePrice { get; } = new();
-        public Status Status { get; } = new();
-        public Phase Phase { get; } = new();
-        public Summary Summary { get; } = new();
-        public Bands Bands { get; } = new();
-        public OpenInterest OpenInterest { get; } = new();
-        public TheoreticalOpeningPrice TheoreticalOpeningPrice { get; } = new();
-        public OrderBook OrderBook { get; } = new();
-        public AuctionImbalance AuctionImbalance { get; } = new();
-        public ExecutionStatistics ExecutionStatistics { get; } = new();
-
-        public static InstrumentDefinition Convert(SecurityDefinition_4Data message, ReadOnlySpan<byte> variablePart)
+        public static Definition Convert(SecurityDefinition_4Data message, ReadOnlySpan<byte> variablePart)
         {
-            var instrument = new InstrumentDefinition(
+            var instrument = new Definition(
                 message.SecurityID.Value,
                 message.SecurityExchange.ToString(),
                 message.SecurityIDSource,
@@ -159,9 +148,9 @@ namespace PcapSbePocConsole.Models
             instrument.Description = description;
             return instrument;
         }
-        public static InstrumentDefinition Convert(SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
+        public static Definition Convert(SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
         {
-            var instrument = new InstrumentDefinition(
+            var instrument = new Definition(
                 message.SecurityID.Value,
                 message.SecurityExchange.ToString(),
                 message.SecurityIDSource,

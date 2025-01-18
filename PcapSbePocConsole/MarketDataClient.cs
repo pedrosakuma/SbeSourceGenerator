@@ -1,4 +1,6 @@
-﻿namespace PcapSbePocConsole
+﻿using PcapSbePocConsole.Connection;
+
+namespace PcapSbePocConsole
 {
     public class MarketDataClient
     {

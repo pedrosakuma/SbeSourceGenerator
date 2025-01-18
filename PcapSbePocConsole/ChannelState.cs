@@ -4,33 +4,34 @@ namespace PcapSbePocConsole
 {
     public class ChannelState
     {
-        private readonly Dictionary<ulong, InstrumentDefinition> instrumentsById;
-        private readonly Dictionary<string, InstrumentDefinition> instrumentsBySymbol;
-        private readonly Dictionary<string, List<InstrumentDefinition>> instrumentsBySecurityGroup;
+        private readonly Dictionary<ulong, Security> instrumentsById;
+        private readonly Dictionary<string, Security> instrumentsBySymbol;
+        private readonly Dictionary<string, List<Security>> instrumentsBySecurityGroup;
 
-        public IReadOnlyDictionary<ulong, InstrumentDefinition> InstrumentsById => instrumentsById;
-        public IReadOnlyDictionary<string, InstrumentDefinition> InstrumentsBySymbol => instrumentsBySymbol;
-        public IReadOnlyDictionary<string, List<InstrumentDefinition>> InstrumentsBySecurityGroup => instrumentsBySecurityGroup;
+        public IReadOnlyDictionary<ulong, Security> InstrumentsById => instrumentsById;
+        public IReadOnlyDictionary<string, Security> InstrumentsBySymbol => instrumentsBySymbol;
+        public IReadOnlyDictionary<string, List<Security>> InstrumentsBySecurityGroup => instrumentsBySecurityGroup;
 
         public uint LastSequence { get; internal set; }
 
         public ChannelState()
         {
-            instrumentsById = new Dictionary<ulong, InstrumentDefinition>();
-            instrumentsBySymbol = new Dictionary<string, InstrumentDefinition>();
-            instrumentsBySecurityGroup = new Dictionary<string, List<InstrumentDefinition>>();
+            instrumentsById = new Dictionary<ulong, Security>();
+            instrumentsBySymbol = new Dictionary<string, Security>();
+            instrumentsBySecurityGroup = new Dictionary<string, List<Security>>();
         }
 
-        public void Add(InstrumentDefinition instrument)
+        public void Add(Definition definition)
         {
-            instrumentsById.Add(instrument.SecurityID, instrument);
-            instrumentsBySymbol.Add(instrument.Symbol, instrument);
-            if (!instrumentsBySecurityGroup.TryGetValue(instrument.SecurityGroup, out var group))
+            var security = new Security(definition);
+            instrumentsById.Add(definition.SecurityID, security);
+            instrumentsBySymbol.Add(definition.Symbol, security);
+            if (!instrumentsBySecurityGroup.TryGetValue(definition.SecurityGroup, out var group))
             {
-                group = new List<InstrumentDefinition>();
-                instrumentsBySecurityGroup.Add(instrument.SecurityGroup, group);
+                group = new List<Security>();
+                instrumentsBySecurityGroup.Add(definition.SecurityGroup, group);
             }
-            group.Add(instrument);
+            group.Add(security);
         }
     }
 }

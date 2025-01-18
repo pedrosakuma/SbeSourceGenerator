@@ -1,10 +1,11 @@
 ﻿using PacketDotNet;
+using PcapSbePocConsole.Configs;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using System.Net;
 using System.Net.Sockets;
 
-namespace PcapSbePocConsole
+namespace PcapSbePocConsole.Connection
 {
     public class PcapReplayer
     {
@@ -49,7 +50,7 @@ namespace PcapSbePocConsole
 
         public void Start()
         {
-            client.JoinMulticastGroup(this.config.MulticastEndpoint.Address, IPAddress.Loopback);
+            client.JoinMulticastGroup(config.MulticastEndpoint.Address, IPAddress.Loopback);
             device.StartCapture();
         }
     }

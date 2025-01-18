@@ -1,4 +1,5 @@
 ﻿using B3.Market.Data.Messages;
+using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Models;
 using System.Collections.Concurrent;
 
@@ -11,7 +12,7 @@ namespace PcapSbePocConsole
         private readonly Feeds feed;
         private readonly BlockingCollection<byte[]> enqueuedMessages;
 
-        private ChannelState channelState;
+        private ChannelState? channelState;
         private CyclicalSyncState state;
 
         public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider, Feeds feed)
@@ -72,7 +73,7 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine(nameof(TradeBust_57Data));
         }
-        private void OrderBookUpdated(InstrumentDefinition security, OrderBook orderBook)
+        private void OrderBookUpdated(Definition security, OrderBook orderBook)
         {
             return;
             if (security.Symbol == "CSNA3")
@@ -125,7 +126,7 @@ namespace PcapSbePocConsole
                     default:
                         break;
                 }
-                OrderBookUpdated(security, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook);
             }
         }
 
@@ -145,7 +146,7 @@ namespace PcapSbePocConsole
                     default:
                         throw new ArgumentException("Not expected", nameof(message.MDUpdateAction));
                 }
-                OrderBookUpdated(security, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook);
 
             }
         }
@@ -157,7 +158,7 @@ namespace PcapSbePocConsole
                 var book = security.OrderBook;
                 book.Offers.Clear();
                 book.Bids.Clear();
-                OrderBookUpdated(security, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook);
 
             }
         }
@@ -168,7 +169,7 @@ namespace PcapSbePocConsole
             {
                 var entries = security.OrderBook.EntriesByType(message.MDEntryType);
                 entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
-                OrderBookUpdated(security, security.OrderBook);
+                OrderBookUpdated(security.Definition, security.OrderBook);
             }
         }
 

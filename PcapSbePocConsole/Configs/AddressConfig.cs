@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace PcapSbePocConsole
+namespace PcapSbePocConsole.Configs
 {
     public record AddressConfig(string Address, IPEndPoint MulticastEndpoint);
 }

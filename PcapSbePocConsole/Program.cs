@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using PcapSbePocConsole.Configs;
+using PcapSbePocConsole.Connection;
+using System.Net;
 
 namespace PcapSbePocConsole
 {
@@ -40,7 +42,7 @@ namespace PcapSbePocConsole
             );
             byte channel = 84;
             var p = new PcapMarketDataConnectionProvider(c, new DateTime(2020, 9, 9, 15, 50, 00));
-            //var client = new MarketDataClient(p);
+            var client = new MarketDataClient(p);
             InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
             IncrementalsSyncExecutionState incrementalsSync = new IncrementalsSyncExecutionState(p, Feeds.FeedA | Feeds.FeedB);
             SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);

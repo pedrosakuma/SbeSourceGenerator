@@ -1,4 +1,4 @@
-﻿namespace PcapSbePocConsole
+﻿namespace PcapSbePocConsole.Connection
 {
     public interface IMarketDataConnectionProvider
     {

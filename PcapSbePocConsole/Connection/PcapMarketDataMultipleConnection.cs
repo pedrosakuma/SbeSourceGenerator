@@ -1,9 +1,10 @@
 ﻿using B3.Market.Data.Messages;
+using PcapSbePocConsole.Configs;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-namespace PcapSbePocConsole
+namespace PcapSbePocConsole.Connection
 {
     public class PcapMarketDataMultipleConnection : IMarketDataConnection
     {
@@ -30,7 +31,7 @@ namespace PcapSbePocConsole
         public void Dispose()
         {
             for (int i = 0; i < replayers.Length; i++)
-            { 
+            {
                 replayers[i].Dispose();
                 clients[i].Dispose();
             }
@@ -53,7 +54,7 @@ namespace PcapSbePocConsole
         private bool ShouldReturn(ReadOnlySpan<byte> data)
         {
             ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);
-            if (packet.SequenceNumber != 0 
+            if (packet.SequenceNumber != 0
                 && packet.SequenceNumber <= lastConsumed)
                 return false;
             lastConsumed = packet.SequenceNumber;

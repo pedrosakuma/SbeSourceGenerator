@@ -1,7 +1,8 @@
-﻿using System.Net;
+﻿using PcapSbePocConsole.Configs;
+using System.Net;
 using System.Net.Sockets;
 
-namespace PcapSbePocConsole
+namespace PcapSbePocConsole.Connection
 {
     public class PcapMarketDataConnection : IMarketDataConnection
     {
@@ -32,7 +33,7 @@ namespace PcapSbePocConsole
 
         public void Connect()
         {
-            client.JoinMulticastGroup(this.config.MulticastEndpoint.Address);
+            client.JoinMulticastGroup(config.MulticastEndpoint.Address);
             replayer.Start();
         }
     }

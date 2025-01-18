@@ -1,4 +1,5 @@
 ﻿using B3.Market.Data.Messages;
+using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Models;
 namespace PcapSbePocConsole
 {
@@ -71,14 +72,14 @@ namespace PcapSbePocConsole
             if (state != CyclicalSyncState.Synced)
                 return;
 
-            channelState?.Add(InstrumentDefinition.Convert(message, variablePart));
+            channelState?.Add(Definition.Convert(message, variablePart));
         }
         private void SecurityDefinition_12MessageReceived(ref readonly SecurityDefinition_12Data message, ReadOnlySpan<byte> variablePart)
         {
             if (state != CyclicalSyncState.Synced)
                 return;
 
-            channelState?.Add(InstrumentDefinition.Convert(message, variablePart));
+            channelState?.Add(Definition.Convert(message, variablePart));
         }
     }
 }
