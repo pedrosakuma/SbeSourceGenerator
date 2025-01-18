@@ -1,6 +1,5 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Models;
-using System.Diagnostics;
 
 namespace PcapSbePocConsole.Handlers
 {

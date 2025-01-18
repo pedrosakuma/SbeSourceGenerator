@@ -223,7 +223,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.LastTradePrice);
-            } 
+            }
         }
 
         private void OpenInterest_29MessageReceived(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)
