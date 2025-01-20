@@ -21,7 +21,7 @@ namespace PcapSbePocConsole.Connection
             device.Open(new DeviceConfiguration
             {
                 BufferSize = 524288,
-                Immediate = false,
+                Immediate = true,
 
             });
             device.OnPacketArrival += Device_OnPacketArrival;
@@ -41,7 +41,8 @@ namespace PcapSbePocConsole.Connection
         {
             var p = e.GetPacket().GetPacket();
             var udp = p.Extract<UdpPacket>();
-            client.Send(udp.PayloadData, udp.PayloadData.Length, config.MulticastEndpoint);
+            var segment = udp.PayloadDataSegment;
+            client.Client.SendTo(e.Data.Slice(segment.Offset, segment.Length), config.MulticastEndpoint);
         }
 
         public void Dispose()

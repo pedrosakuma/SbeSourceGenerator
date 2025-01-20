@@ -1,6 +1,5 @@
 ﻿using PcapSbePocConsole.Configs;
 using PcapSbePocConsole.Connection;
-using System.IO.Pipelines;
 using System.Net;
 
 namespace PcapSbePocConsole
@@ -9,13 +8,15 @@ namespace PcapSbePocConsole
     {
         static async Task Main(string[] args)
         {
+            byte channel = 84;
+
             var c = new MarketConfig
             (
                 new Dictionary<byte, ChannelConfig>
                 {
-                    { 84, new ChannelConfig
+                    { channel, new ChannelConfig
                         (
-                            84,
+                            channel,
                             new AddressConfig
                             (
                                 Environment.GetEnvironmentVariable("instrumentDefinition")!,
@@ -41,9 +42,7 @@ namespace PcapSbePocConsole
                     }
                 }
             );
-            byte channel = 84;
-            var p = new PcapMarketDataConnectionProvider(c, new DateTime(2020, 9, 9, 15, 50, 00));
-            var client = new MarketDataClient(p);
+            var p = new PcapMarketDataConnectionProvider(c);
             InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
             IncrementalsSyncExecutionState incrementalsSync = new IncrementalsSyncExecutionState(p, Feeds.FeedA | Feeds.FeedB);
             SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);

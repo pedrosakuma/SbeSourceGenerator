@@ -15,10 +15,21 @@ namespace PcapSbePocConsole.Connection
         private readonly PcapReplayer[] replayers;
         private readonly UdpClient[] clients;
         private readonly AddressConfig[] configs;
-        private readonly Task[] consumer; 
+        private readonly Task[] consumer;
         private readonly Channel<(IMemoryOwner<byte>, int)> channel;
 
-        public bool IsConnected => replayers.Any(c => c.Connected);
+        public bool IsConnected
+        {
+            get
+            {
+                foreach (var replayer in replayers)
+                {
+                    if (!replayer.Connected)
+                        return false;
+                }
+                return true;
+            }
+        }
 
         public PcapMarketDataMultipleConnection(AddressConfig[] configs)
         {
@@ -69,10 +80,10 @@ namespace PcapSbePocConsole.Connection
         {
             for (int i = 0; i < configs.Length; i++)
             {
-                replayers[i].Start();
-                clients[i].JoinMulticastGroup(configs[i].MulticastEndpoint.Address);
                 var index = i;
-                consumer[i] = Task.Run(() => Consume(clients[index], configs[index].MulticastEndpoint));
+                clients[index].JoinMulticastGroup(configs[index].MulticastEndpoint.Address);
+                consumer[index] = Task.Run(() => Consume(clients[index], configs[index].MulticastEndpoint));
+                replayers[index].Start();
             }
         }
 

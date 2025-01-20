@@ -5,12 +5,10 @@ namespace PcapSbePocConsole.Connection
     internal class PcapMarketDataConnectionProvider : IMarketDataConnectionProvider
     {
         private readonly MarketConfig config;
-        private readonly DateTime readFrom;
 
-        public PcapMarketDataConnectionProvider(MarketConfig config, DateTime readFrom)
+        public PcapMarketDataConnectionProvider(MarketConfig config)
         {
             this.config = config;
-            this.readFrom = readFrom;
         }
 
         public IMarketDataConnection ConnectIncrementals(byte channel, Feeds feeds)
