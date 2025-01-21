@@ -1,5 +1,4 @@
 ﻿using B3.Market.Data.Messages;
-using System.Text;
 
 namespace PcapSbePocConsole.Models
 {
@@ -56,6 +55,6 @@ namespace PcapSbePocConsole.Models
         public string? Description { get; set; }
         public List<Underlyings> Underlyings { get; } = new();
         public List<Leg> Legs { get; } = new();
-        public List<InstrAttrib> InstrAttribs { get; } = new();        
+        public List<InstrAttrib> InstrAttribs { get; } = new();
     }
 }

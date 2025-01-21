@@ -1,11 +1,10 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Configs;
-using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Threading.Channels;
 
 namespace PcapSbePocConsole.Connection
 {
@@ -16,7 +15,7 @@ namespace PcapSbePocConsole.Connection
         private readonly UdpClient[] clients;
         private readonly AddressConfig[] configs;
         private readonly Task[] consumer;
-        private readonly Channel<(IMemoryOwner<byte>, int)> channel;
+        private readonly BlockingCollection<(IMemoryOwner<byte>, int)> channel;
 
         public bool IsConnected
         {
@@ -33,11 +32,7 @@ namespace PcapSbePocConsole.Connection
 
         public PcapMarketDataMultipleConnection(AddressConfig[] configs)
         {
-            this.channel = Channel.CreateUnbounded<(IMemoryOwner<byte>, int)>(
-                new UnboundedChannelOptions { 
-                    SingleReader = true
-                }
-            );
+            this.channel = new BlockingCollection<(IMemoryOwner<byte>, int)>();
             this.configs = configs;
             replayers = new PcapReplayer[configs.Length];
             clients = new UdpClient[configs.Length];
@@ -60,7 +55,7 @@ namespace PcapSbePocConsole.Connection
 
         public int Receive(byte[] buffer)
         {
-            if(channel.Reader.TryRead(out var data))
+            if (channel.TryTake(out var data, 500))
             {
                 data.Item1.Memory.Span.Slice(0, data.Item2).CopyTo(buffer);
                 data.Item1.Dispose();
@@ -92,12 +87,12 @@ namespace PcapSbePocConsole.Connection
             var memory = MemoryPool<byte>.Shared.Rent(2048);
             while (IsConnected)
             {
-                int length = udpClient.Client.ReceiveFrom(memory.Memory.Span, ref socketEndpoint);
+                int length = udpClient.Client.Receive(memory.Memory.Span);
                 if (length > 0)
                 {
                     if (ShouldReturn(memory.Memory.Span.Slice(0, length)))
-                    { 
-                        channel.Writer.TryWrite((memory, length));
+                    {
+                        channel.Add((memory, length));
                         memory = MemoryPool<byte>.Shared.Rent(2048);
                     }
                 }

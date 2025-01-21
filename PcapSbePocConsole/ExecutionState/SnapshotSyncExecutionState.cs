@@ -1,20 +1,19 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
-using PcapSbePocConsole.Models;
 namespace PcapSbePocConsole
 {
     public class SnapshotSyncExecutionState
     {
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
+        private readonly byte channel;
         private readonly List<byte[]> enqueuedMessages;
 
         private CyclicalSyncState state;
         private ChannelState channelState;
-        private uint TotalNumberReports;
 
-        public SnapshotSyncExecutionState(IMarketDataConnectionProvider connectionProvider)
+        public SnapshotSyncExecutionState(IMarketDataConnectionProvider connectionProvider, byte channel)
         {
             this.enqueuedMessages = new List<byte[]>();
             this.parser = new MessageParser(ShouldConsume)
@@ -38,6 +37,7 @@ namespace PcapSbePocConsole
                 SnapshotFullRefresh_Orders_MBO_71MessageReceived = SnapshotFullRefresh_Orders_MBO_71MessageReceived,
             };
             this.connectionProvider = connectionProvider;
+            this.channel = channel;
         }
 
         private void SequenceReset_1MessageReceived(ref readonly SequenceReset_1Data message, ReadOnlySpan<byte> variablePart)
@@ -203,7 +203,12 @@ namespace PcapSbePocConsole
             //Console.WriteLine(nameof(ExecutionStatistics_56Data));
         }
 
-        public void Prepare(byte channel)
+        public Task Prepare()
+        {
+            return Task.Run(PrepareInternal);
+        }
+
+        private void PrepareInternal()
         {
             Console.WriteLine("Snapshot SeekingStart");
             enqueuedMessages.Clear();

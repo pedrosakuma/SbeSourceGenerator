@@ -3,7 +3,6 @@ using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
 using PcapSbePocConsole.Models;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
@@ -11,13 +10,15 @@ namespace PcapSbePocConsole
     {
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
+        private readonly byte channel;
         private readonly Feeds feed;
         private readonly BlockingCollection<byte[]> enqueuedMessages;
 
         private ChannelState? channelState;
         private CyclicalSyncState state;
+        private CancellationToken token;
 
-        public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider, Feeds feed)
+        public IncrementalsSyncExecutionState(IMarketDataConnectionProvider connectionProvider, byte channel, Feeds feed)
         {
             this.enqueuedMessages = new BlockingCollection<byte[]>();
             this.parser = new MessageParser(ShouldConsume)
@@ -50,6 +51,7 @@ namespace PcapSbePocConsole
 
             };
             this.connectionProvider = connectionProvider;
+            this.channel = channel;
             this.feed = feed;
         }
 
@@ -68,6 +70,7 @@ namespace PcapSbePocConsole
         }
         private void LastTradeUpdated(LastTradePrice lastTrade)
         {
+            return;
             if (lastTrade.Security.Definition.Symbol == "NVDC34")
             {
                 Console.SetCursorPosition(0, 0);
@@ -76,6 +79,7 @@ namespace PcapSbePocConsole
         }
         private void OrderBookUpdated(OrderBook orderBook, uint index)
         {
+            return;
             if (orderBook.Security.Definition.Symbol == "NVDC34"
                 && index <= 20)
             {
@@ -258,7 +262,13 @@ namespace PcapSbePocConsole
         }
 
 
-        public void Prepare(byte channel, CancellationToken token)
+        public Task Prepare(CancellationToken token)
+        {
+            this.token = token;
+            return Task.Run(PrepareInternal, token);
+        }
+
+        private void PrepareInternal()
         {
             Console.WriteLine("Incrementals Starting");
             var buffer = new byte[1024 * 2];

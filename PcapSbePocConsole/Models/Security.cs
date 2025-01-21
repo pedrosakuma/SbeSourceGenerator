@@ -16,9 +16,9 @@
             AuctionImbalance = new AuctionImbalance(this);
             ExecutionStatistics = new ExecutionStatistics(this);
         }
-        public Definition Definition{ get; }
+        public Definition Definition { get; }
         public LastTradePrice LastTradePrice { get; }
-        public Status Status { get; } 
+        public Status Status { get; }
         public Phase Phase { get; }
         public Summary Summary { get; }
         public Bands Bands { get; }

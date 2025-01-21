@@ -7,12 +7,13 @@ namespace PcapSbePocConsole
     {
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
+        private readonly byte channel;
         private List<byte[]> instruments;
 
         private CyclicalSyncState state;
         private ChannelState? channelState;
 
-        public InstrumentDefinitionSyncExecutionState(IMarketDataConnectionProvider connectionProvider)
+        public InstrumentDefinitionSyncExecutionState(IMarketDataConnectionProvider connectionProvider, byte channel)
         {
             this.instruments = new List<byte[]>(16384);
             this.parser = new MessageParser(ShouldConsume)
@@ -22,9 +23,10 @@ namespace PcapSbePocConsole
                 SecurityDefinition_12MessageReceived = SecurityDefinition_12MessageReceived
             };
             this.connectionProvider = connectionProvider;
+            this.channel = channel;
         }
 
-        public ChannelState Sync(byte channel)
+        public ChannelState Sync()
         {
             Console.WriteLine("InstrumentDefinition SeekingStart");
             var buffer = new byte[1024 * 2];

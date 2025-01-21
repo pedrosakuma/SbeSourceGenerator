@@ -8,34 +8,61 @@ namespace PcapSbePocConsole
     {
         static async Task Main(string[] args)
         {
-            byte channel = 84;
+            byte channelEqt = 84;
+            byte channelDrv = 72;
 
             var c = new MarketConfig
             (
                 new Dictionary<byte, ChannelConfig>
                 {
-                    { channel, new ChannelConfig
+                    { channelEqt, new ChannelConfig
                         (
-                            channel,
+                            channelEqt,
                             new AddressConfig
                             (
-                                Environment.GetEnvironmentVariable("instrumentDefinition")!,
+                                Environment.GetEnvironmentVariable("Eqt__instrumentDefinition")!,
                                 IPEndPoint.Parse("224.100.0.1:10101")
                             ),
                             new AddressConfig
                             (
-                                Environment.GetEnvironmentVariable("snapshot")!,
+                                Environment.GetEnvironmentVariable("Eqt__snapshot")!,
                                 IPEndPoint.Parse("224.100.0.2:10102")
                             ),
                             new IncrementalsConfig
                             {
                                 FeedA = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("incrementalsA")!,
+                                    Environment.GetEnvironmentVariable("Eqt__incrementalsA")!,
                                     IPEndPoint.Parse("224.100.0.3:10103")
                                 ),
                                 FeedB = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("incrementalsB")!,
+                                    Environment.GetEnvironmentVariable("Eqt__incrementalsB")!,
                                     IPEndPoint.Parse("224.100.0.4:10104")
+                                )
+                            }
+                        )
+                    },
+                    { channelDrv, new ChannelConfig
+                        (
+                            channelDrv,
+                            new AddressConfig
+                            (
+                                Environment.GetEnvironmentVariable("Drv__instrumentDefinition")!,
+                                IPEndPoint.Parse("224.200.0.1:10201")
+                            ),
+                            new AddressConfig
+                            (
+                                Environment.GetEnvironmentVariable("Drv__snapshot")!,
+                                IPEndPoint.Parse("224.200.0.2:10202")
+                            ),
+                            new IncrementalsConfig
+                            {
+                                FeedA = new AddressConfig(
+                                    Environment.GetEnvironmentVariable("Drv__incrementalsA")!,
+                                    IPEndPoint.Parse("224.200.0.3:10203")
+                                ),
+                                FeedB = new AddressConfig(
+                                    Environment.GetEnvironmentVariable("Drv__incrementalsB")!,
+                                    IPEndPoint.Parse("224.200.0.4:10204")
                                 )
                             }
                         )
@@ -43,20 +70,38 @@ namespace PcapSbePocConsole
                 }
             );
             var p = new PcapMarketDataConnectionProvider(c);
-            InstrumentDefinitionSyncExecutionState instrumentSync = new InstrumentDefinitionSyncExecutionState(p);
-            IncrementalsSyncExecutionState incrementalsSync = new IncrementalsSyncExecutionState(p, Feeds.FeedA | Feeds.FeedB);
-            SnapshotSyncExecutionState snapshotSync = new SnapshotSyncExecutionState(p);
+
             CancellationTokenSource source = new CancellationTokenSource();
 
-            var incrementalPrepare = Task.Run(() => incrementalsSync.Prepare(channel, source.Token));
-            var snapshotPrepare = Task.Run(() => snapshotSync.Prepare(channel));
-            var state = instrumentSync.Sync(channel);
-            snapshotSync.Sync(state);
-            await snapshotPrepare;
-            incrementalsSync.Sync(state);
+            InstrumentDefinitionSyncExecutionState instrumentSyncEqt = new InstrumentDefinitionSyncExecutionState(p, channelEqt);
+            IncrementalsSyncExecutionState incrementalsSyncEqt = new IncrementalsSyncExecutionState(p, channelEqt, Feeds.FeedA | Feeds.FeedB);
+            SnapshotSyncExecutionState snapshotSyncEqt = new SnapshotSyncExecutionState(p, channelEqt);
+
+            InstrumentDefinitionSyncExecutionState instrumentSyncDrv = new InstrumentDefinitionSyncExecutionState(p, channelDrv);
+            IncrementalsSyncExecutionState incrementalsSyncDrv = new IncrementalsSyncExecutionState(p, channelDrv, Feeds.FeedA | Feeds.FeedB);
+            SnapshotSyncExecutionState snapshotSyncDrv = new SnapshotSyncExecutionState(p, channelDrv);
+
+            var incrementalPrepareEqt = incrementalsSyncEqt.Prepare(source.Token);
+            var incrementalPrepareDrv = incrementalsSyncDrv.Prepare(source.Token);
+
+            var snapshotPrepareEqt = snapshotSyncEqt.Prepare();
+            var snapshotPrepareDrv = snapshotSyncDrv.Prepare();
+
+            var stateEqt = instrumentSyncEqt.Sync();
+            var stateDrv = instrumentSyncDrv.Sync();
+
+            snapshotSyncEqt.Sync(stateEqt);
+            snapshotSyncDrv.Sync(stateDrv);
+
+            await snapshotPrepareEqt;
+            incrementalsSyncEqt.Sync(stateEqt);
+            await snapshotPrepareDrv;
+            incrementalsSyncDrv.Sync(stateDrv);
+
             Console.ReadLine();
             source.Cancel();
-            await incrementalPrepare;
+            await incrementalPrepareEqt;
+            await incrementalPrepareDrv;
         }
     }
 }
