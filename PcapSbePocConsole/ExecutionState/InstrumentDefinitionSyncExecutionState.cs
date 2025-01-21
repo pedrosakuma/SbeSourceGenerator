@@ -28,7 +28,6 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine("InstrumentDefinition SeekingStart");
             var buffer = new byte[1024 * 2];
-            this.channelState = new ChannelState();
             using (var connection = connectionProvider.ConnectInstrumentDefinition(channel))
             {
                 connection.Connect();
@@ -40,6 +39,7 @@ namespace PcapSbePocConsole
                         parser.Parse(buffer.AsSpan(0, length));
                 }
             }
+            this.channelState = new ChannelState(this.instruments.Count);
             foreach (var instrumentData in instruments)
                 parser.Parse(instrumentData);
             return channelState;

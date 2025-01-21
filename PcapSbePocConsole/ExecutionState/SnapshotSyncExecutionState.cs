@@ -13,7 +13,6 @@ namespace PcapSbePocConsole
         private CyclicalSyncState state;
         private ChannelState channelState;
         private uint TotalNumberReports;
-        private uint lastSequence;
 
         public SnapshotSyncExecutionState(IMarketDataConnectionProvider connectionProvider)
         {

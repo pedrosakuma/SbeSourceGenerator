@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public class TheoreticalOpeningPrice
+    public class TheoreticalOpeningPrice(Security Security)
     {
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public MDUpdateAction MDUpdateAction { get; set; }

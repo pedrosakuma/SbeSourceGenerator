@@ -1,6 +1,6 @@
 ﻿namespace PcapSbePocConsole.Models
 {
-    public record Summary
+    public record Summary(Security Security)
     {
         public decimal OpeningPrice { get; set; }
         public decimal? OpeningPriceNetChange { get; set; }

@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public record Status
+    public record Status(Security Security)
     {
         public TradingSessionID TradingSessionID { get; set; }
         public SecurityTradingStatus SecurityTradingStatus { get; set; }

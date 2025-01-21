@@ -22,7 +22,6 @@ namespace PcapSbePocConsole.Connection
             {
                 BufferSize = 524288,
                 Immediate = true,
-
             });
             device.OnPacketArrival += Device_OnPacketArrival;
             device.OnCaptureStopped += Device_OnCaptureStopped;

@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public class ExecutionStatistics
+    public class ExecutionStatistics(Security Security)
     {
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public TradingSessionID TradingSessionID { get; set; }

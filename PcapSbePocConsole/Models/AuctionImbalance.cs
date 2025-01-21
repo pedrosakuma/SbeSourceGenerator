@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public class AuctionImbalance
+    public class AuctionImbalance(Security Security)
     {
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public MDUpdateAction MDUpdateAction { get; set; }

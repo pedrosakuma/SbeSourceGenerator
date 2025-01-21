@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public record OpenInterest
+    public record OpenInterest(Security Security)
     {
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public DateOnly TradeDate { get; set; }

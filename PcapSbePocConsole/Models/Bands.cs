@@ -1,7 +1,7 @@
 ﻿using B3.Market.Data.Messages;
 namespace PcapSbePocConsole.Models
 {
-    public class Bands
+    public class Bands(Security Security)
     {
         public long? AvgDailyTradedQty { get; set; }
         public long? MaxTradeVol { get; set; }

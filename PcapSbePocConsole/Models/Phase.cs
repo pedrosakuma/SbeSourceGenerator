@@ -1,7 +1,7 @@
 ﻿using B3.Market.Data.Messages;
 namespace PcapSbePocConsole.Models
 {
-    public record Phase
+    public record Phase(Security Security)
     {
         public TradingSessionID TradingSessionID { get; set; }
         public TradingSessionSubID TradingSessionSubID { get; set; }

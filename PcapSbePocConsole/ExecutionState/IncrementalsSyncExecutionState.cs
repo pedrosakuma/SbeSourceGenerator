@@ -3,6 +3,7 @@ using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
 using PcapSbePocConsole.Models;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
@@ -57,6 +58,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.LastTradePrice);
+                LastTradeUpdated(security.LastTradePrice);
             }
         }
 
@@ -64,20 +66,27 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine(nameof(TradeBust_57Data));
         }
-        private void OrderBookUpdated(Definition security, OrderBook orderBook, uint index)
+        private void LastTradeUpdated(LastTradePrice lastTrade)
         {
-            return;
-            if (security.Symbol == "CSNA3"
-                && index <= 20)
+            if (lastTrade.Security.Definition.Symbol == "NVDC34")
             {
                 Console.SetCursorPosition(0, 0);
+                Console.WriteLine($"{lastTrade.Security.Definition.Symbol}\t{lastTrade.MDEntryPx}\t{lastTrade.MDEntrySize}\t{lastTrade.MDEntryTimestamp}");
+            }
+        }
+        private void OrderBookUpdated(OrderBook orderBook, uint index)
+        {
+            if (orderBook.Security.Definition.Symbol == "NVDC34"
+                && index <= 20)
+            {
+                Console.SetCursorPosition(0, 1);
                 if (orderBook.Bids.Count > 20 && orderBook.Offers.Count > 20)
                 {
                     for (int i = 0; i < 20; i++)
                     {
                         var bid = orderBook.Bids[i];
                         var offer = orderBook.Offers[i];
-                        Console.WriteLine($"{bid.EnteringFirm}\t{bid.Quantity}\t{bid.Price} {offer.Price}\t{offer.Quantity}\t{offer.EnteringFirm}");
+                        Console.WriteLine($"{bid.EnteringFirm,-10}\t{bid.Quantity,-10}\t{bid.Price,-10} {offer.Price,-10}\t{offer.Quantity,-10}\t{offer.EnteringFirm,-10}");
                     }
                 }
             }
@@ -89,7 +98,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
+                OrderBookUpdated(security.OrderBook, message.MDEntryPositionNo.Value);
             }
         }
 
@@ -98,7 +107,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
+                OrderBookUpdated(security.OrderBook, message.MDEntryPositionNo.Value);
 
             }
         }
@@ -108,7 +117,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook, 0);
+                OrderBookUpdated(security.OrderBook, 0);
             }
         }
 
@@ -117,7 +126,7 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.OrderBook);
-                OrderBookUpdated(security.Definition, security.OrderBook, message.MDEntryPositionNo.Value);
+                OrderBookUpdated(security.OrderBook, message.MDEntryPositionNo.Value);
             }
         }
 
@@ -224,7 +233,8 @@ namespace PcapSbePocConsole
             if (channelState.InstrumentsById.TryGetValue(message.SecurityID.Value, out var security))
             {
                 message.Handle(security.LastTradePrice);
-            } 
+                LastTradeUpdated(security.LastTradePrice);
+            }
         }
 
         private void OpenInterest_29MessageReceived(ref readonly OpenInterest_29Data message, ReadOnlySpan<byte> variablePart)

@@ -14,16 +14,16 @@ namespace PcapSbePocConsole
 
         public uint LastSequence { get; internal set; }
 
-        public ChannelState()
+        public ChannelState(int capacity)
         {
-            instrumentsById = new Dictionary<ulong, Security>();
-            instrumentsBySymbol = new Dictionary<string, Security>();
+            instrumentsById = new Dictionary<ulong, Security>(capacity);
+            instrumentsBySymbol = new Dictionary<string, Security>(capacity);
             instrumentsBySecurityGroup = new Dictionary<string, List<Security>>();
         }
 
         public void Add(Definition definition)
         {
-            var security = new Security(definition);
+            var security = new Security(definition, 1024);
             instrumentsById.Add(definition.SecurityID, security);
             instrumentsBySymbol.Add(definition.Symbol, security);
             if (!instrumentsBySecurityGroup.TryGetValue(definition.SecurityGroup, out var group))

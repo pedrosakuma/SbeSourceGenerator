@@ -2,7 +2,7 @@
 
 namespace PcapSbePocConsole.Models
 {
-    public record LastTradePrice
+    public record LastTradePrice(Security Security)
     {
         public MatchEventIndicator MatchEventIndicator { get; set; }
         public TradingSessionID TradingSessionID { get; set; }
