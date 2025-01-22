@@ -3,6 +3,7 @@ using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
 using PcapSbePocConsole.Models;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
@@ -70,27 +71,46 @@ namespace PcapSbePocConsole
         }
         private void LastTradeUpdated(LastTradePrice lastTrade)
         {
-            return;
-            if (lastTrade.Security.Definition.Symbol == "NVDC34")
+            if (lastTrade.Security.Definition.Symbol == "WINJ24")
             {
                 Console.SetCursorPosition(0, 0);
                 Console.WriteLine($"{lastTrade.Security.Definition.Symbol}\t{lastTrade.MDEntryPx}\t{lastTrade.MDEntrySize}\t{lastTrade.MDEntryTimestamp}");
             }
         }
+        //public Dictionary<ulong, int> orderBookStatistics = new Dictionary<ulong, int>();
+        //int totalCount = 0;
         private void OrderBookUpdated(OrderBook orderBook, uint index)
         {
-            return;
-            if (orderBook.Security.Definition.Symbol == "NVDC34"
-                && index <= 20)
+            //ref var count = ref CollectionsMarshal.GetValueRefOrAddDefault(orderBookStatistics, orderBook.Security.Definition.SecurityID, out _);
+            //count++;
+            //totalCount++;
+            //if (totalCount % 100000 == 0)
+            //{
+            //    var position = this.channel switch {
+            //        72 => 0,
+            //        _ => 11,
+            //    };
+            //    Console.SetCursorPosition(0, position);
+            //    foreach (var item in orderBookStatistics.OrderByDescending(v => v.Value).Take(10))
+            //    {
+            //        Console.WriteLine($"{channelState.InstrumentsById[item.Key].Definition.Symbol,-10}\t{item.Value}");
+            //    }
+            //}
+            //return;
+            const int bookDepth = 30;
+            if (orderBook.Security.Definition.Symbol == "WINJ24"
+                && index <= bookDepth)
             {
                 Console.SetCursorPosition(0, 1);
-                if (orderBook.Bids.Count > 20 && orderBook.Offers.Count > 20)
+                Console.WriteLine($"{"Bid",17} {" Offer",-17}");
+                Console.WriteLine($"{"Qty",5} {"Price ",12} {"Price",-12}{"Qty",-5}");
+                if (orderBook.Bids.Count > bookDepth && orderBook.Offers.Count > bookDepth)
                 {
-                    for (int i = 0; i < 20; i++)
+                    for (int i = 0; i < bookDepth; i++)
                     {
                         var bid = orderBook.Bids[i];
                         var offer = orderBook.Offers[i];
-                        Console.WriteLine($"{bid.EnteringFirm,-10}\t{bid.Quantity,-10}\t{bid.Price,-10} {offer.Price,-10}\t{offer.Quantity,-10}\t{offer.EnteringFirm,-10}");
+                        Console.WriteLine($"{bid.Quantity,5} {bid.Price,-12}{offer.Price,12} {offer.Quantity,-5}");
                     }
                 }
             }
