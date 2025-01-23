@@ -74,7 +74,7 @@ namespace PcapSbePocConsole
             if (lastTrade.Security.Definition.Symbol == "WINJ24")
             {
                 Console.SetCursorPosition(0, 0);
-                Console.WriteLine($"{lastTrade.Security.Definition.Symbol}\t{lastTrade.MDEntryPx}\t{lastTrade.MDEntrySize}\t{lastTrade.MDEntryTimestamp}");
+                Console.WriteLine($"{lastTrade.Security.Definition.Symbol} {lastTrade.MDEntryPx} {lastTrade.MDEntrySize} {lastTrade.MDEntryTimestamp}");
             }
         }
         //public Dictionary<ulong, int> orderBookStatistics = new Dictionary<ulong, int>();
@@ -97,19 +97,18 @@ namespace PcapSbePocConsole
             //    }
             //}
             //return;
-            const int bookDepth = 30;
-            if (orderBook.Security.Definition.Symbol == "WINJ24"
-                && index <= bookDepth)
+            const int bookDepth = 10;
+            if (orderBook.Security.Definition.Symbol == "WINJ24")
             {
                 Console.SetCursorPosition(0, 1);
                 Console.WriteLine($"{"Bid",17} {" Offer",-17}");
                 Console.WriteLine($"{"Qty",5} {"Price ",12} {"Price",-12}{"Qty",-5}");
-                if (orderBook.Bids.Count > bookDepth && orderBook.Offers.Count > bookDepth)
+                if (orderBook.AggregatedBids.Count > bookDepth && orderBook.AggregatedOffers.Count > bookDepth)
                 {
                     for (int i = 0; i < bookDepth; i++)
                     {
-                        var bid = orderBook.Bids[i];
-                        var offer = orderBook.Offers[i];
+                        var bid = orderBook.AggregatedBids[i];
+                        var offer = orderBook.AggregatedOffers[i];
                         Console.WriteLine($"{bid.Quantity,5} {bid.Price,-12}{offer.Price,12} {offer.Quantity,-5}");
                     }
                 }

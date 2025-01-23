@@ -9,26 +9,22 @@ namespace PcapSbePocConsole.Handlers
         {
             message.ConsumeVariableLengthSegments(variablePart, entry =>
             {
-                var entries = orderBook.EntriesByType(entry.MDEntryType);
-                entries.Insert((int)entry.MDEntryPositionNo.Value - 1,
-                    new OrderBookEntry
-                    {
-                        EnteringFirm = entry.EnteringFirm.Value,
-                        Timestamp = entry.MDInsertTimestamp.Value,
-                        Price = entry.MDEntryPx.Value,
-                        Quantity = entry.MDEntrySize.Value,
-                    });
+                orderBook.Add(
+                    entry.MDEntryType,
+                    (int)entry.MDEntryPositionNo.Value,
+                    entry.EnteringFirm.Value,
+                    entry.MDInsertTimestamp.Value,
+                    entry.MDEntryPx.Value,
+                    entry.MDEntrySize.Value);
             });
         }
         public static void Handle(this DeleteOrder_MBO_51Data message, OrderBook orderBook)
         {
-            var entries = orderBook.EntriesByType(message.MDEntryType);
-            entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
+            orderBook.Remove(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
         }
         public static void Handle(this EmptyBook_9Data message, OrderBook orderBook)
         {
-            orderBook.Offers.Clear();
-            orderBook.Bids.Clear();
+            orderBook.Clear();
         }
         public static void Handle(this MassDeleteOrders_MBO_52Data message, OrderBook orderBook)
         {
@@ -36,10 +32,10 @@ namespace PcapSbePocConsole.Handlers
             switch (message.MDUpdateAction)
             {
                 case MDUpdateAction.DELETE_THRU:
-                    entries.RemoveRange((int)message.MDEntryPositionNo.Value - 1, entries.Count - (int)message.MDEntryPositionNo.Value);
+                    orderBook.DeleteThru(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
                     break;
                 case MDUpdateAction.DELETE_FROM:
-                    entries.RemoveRange(0, (int)message.MDEntryPositionNo.Value);
+                    orderBook.DeleteFrom(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
                     break;
                 default:
                     throw new ArgumentException("Not expected", nameof(message.MDUpdateAction));
@@ -51,26 +47,25 @@ namespace PcapSbePocConsole.Handlers
             switch (message.MDUpdateAction)
             {
                 case MDUpdateAction.NEW:
-                    entries.Insert(
-                        (int)message.MDEntryPositionNo.Value - 1,
-                        new OrderBookEntry
-                        {
-                            Price = message.MDEntryPx?.Value,
-                            Quantity = message.MDEntrySize.Value,
-                            EnteringFirm = message.EnteringFirm.Value,
-                            Timestamp = message.MDInsertTimestamp.Value
-                        }
-                    );
+                    orderBook.Add(
+                        message.MDEntryType,
+                        (int)message.MDEntryPositionNo.Value,
+                        message.EnteringFirm.Value,
+                        message.MDInsertTimestamp.Value,
+                        message.MDEntryPx?.Value,
+                        message.MDEntrySize.Value);
                     break;
                 case MDUpdateAction.CHANGE:
-                    var entry = entries[(int)message.MDEntryPositionNo.Value - 1];
-                    entry.Price = message.MDEntryPx?.Value;
-                    entry.Quantity = message.MDEntrySize.Value;
-                    entry.EnteringFirm = message.EnteringFirm.Value;
-                    entry.Timestamp = message.MDInsertTimestamp.Value;
+                    orderBook.Update(
+                        message.MDEntryType,
+                        (int)message.MDEntryPositionNo.Value,
+                        message.EnteringFirm.Value,
+                        message.MDInsertTimestamp.Value,
+                        message.MDEntryPx?.Value,
+                        message.MDEntrySize.Value);
                     break;
                 case MDUpdateAction.DELETE:
-                    entries.RemoveAt((int)message.MDEntryPositionNo.Value - 1);
+                    orderBook.Remove(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
                     break;
                 case MDUpdateAction.OVERLAY:
                     break;
