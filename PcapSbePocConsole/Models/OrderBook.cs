@@ -1,5 +1,4 @@
 ﻿using B3.Market.Data.Messages;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole.Models
@@ -98,7 +97,7 @@ namespace PcapSbePocConsole.Models
             entry.Quantity = entrySize;
             entry.EnteringFirm = enteringFirm;
             entry.Timestamp = insertTimestamp;
-            
+
             UpdateAggregatedEntry(type, entryPx, entrySize, originalQuantity);
         }
 
@@ -161,14 +160,14 @@ namespace PcapSbePocConsole.Models
             foreach (var entry in removedEntries)
             {
                 aggregatedEntry.Price = entry.Price;
-                aggregatedEntry.Quantity= entry.Quantity;
+                aggregatedEntry.Quantity = entry.Quantity;
 
                 var index = aggregatedEntries.BinarySearch(aggregatedEntry, AggregatedEntriesComparerByType(type));
                 if (index >= 0)
                 {
                     var currentEntry = aggregatedEntries[index];
                     currentEntry.Quantity -= aggregatedEntry.Quantity;
-                    if(currentEntry.Quantity == 0)
+                    if (currentEntry.Quantity == 0)
                         aggregatedEntries.RemoveAt(index);
                 }
             }

@@ -3,7 +3,6 @@ using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
 using PcapSbePocConsole.Models;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole
 {
