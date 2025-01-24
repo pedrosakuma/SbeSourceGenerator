@@ -1,10 +1,14 @@
 ﻿using B3.Market.Data.Messages;
+using Microsoft.Extensions.ObjectPool;
 using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole.Models
 {
     public record OrderBook
     {
+        private static readonly ObjectPool<OrderBookEntry> orderBookEntryPool = ObjectPool.Create<OrderBookEntry>();
+        private static readonly ObjectPool<AggregatedOrderBookEntry> aggregatedOrderBookEntryPool = ObjectPool.Create<AggregatedOrderBookEntry>();
+
         private static readonly IComparer<AggregatedOrderBookEntry> BidsComparer = new BidAggregatedOrderBookEntryComparer();
         private static readonly IComparer<AggregatedOrderBookEntry> OffersComparer = new OfferAggregatedOrderBookEntryComparer();
         public OrderBook(Security security, int capacity)
@@ -12,8 +16,8 @@ namespace PcapSbePocConsole.Models
             Security = security;
             Bids = new List<OrderBookEntry>(capacity);
             Offers = new List<OrderBookEntry>(capacity);
-            AggregatedBids = new List<AggregatedOrderBookEntry>(capacity);
-            AggregatedOffers = new List<AggregatedOrderBookEntry>(capacity);
+            AggregatedBids = new List<AggregatedOrderBookEntry>(capacity / 2);
+            AggregatedOffers = new List<AggregatedOrderBookEntry>(capacity / 2);
         }
 
         public Security Security { get; }
@@ -62,30 +66,29 @@ namespace PcapSbePocConsole.Models
         public void Add(MDEntryType type, int position, uint? enteringFirm, DateTime? insertTimestamp, decimal? entryPx, long entrySize)
         {
             var entries = EntriesByType(type);
-            entries.Insert(position - 1,
-                new OrderBookEntry
-                {
-                    EnteringFirm = enteringFirm,
-                    Timestamp = insertTimestamp,
-                    Price = entryPx,
-                    Quantity = entrySize,
-                });
+            var entry = orderBookEntryPool.Get();
+            entry.EnteringFirm = enteringFirm;
+            entry.Timestamp = insertTimestamp;
+            entry.Price = entryPx;
+            entry.Quantity = entrySize;
+            entries.Insert(position - 1, entry);
             AddAggregatedEntry(type, entryPx, entrySize);
         }
 
         private void AddAggregatedEntry(MDEntryType type, decimal? entryPx, long entrySize)
         {
             var aggregatedEntries = AggregatedEntriesByType(type);
-            var aggregatedEntry = new AggregatedOrderBookEntry
-            {
-                Quantity = entrySize,
-                Price = entryPx
-            };
+            var aggregatedEntry = aggregatedOrderBookEntryPool.Get();
+            aggregatedEntry.Quantity = entrySize;
+            aggregatedEntry.Price = entryPx;
             var index = aggregatedEntries.BinarySearch(aggregatedEntry, AggregatedEntriesComparerByType(type));
             if (index < 0)
                 aggregatedEntries.Insert(~index, aggregatedEntry);
             else
+            {
                 aggregatedEntries[index].Quantity += aggregatedEntry.Quantity;
+                aggregatedOrderBookEntryPool.Return(aggregatedEntry);
+            }
         }
 
         public void Update(MDEntryType type, int position, uint? enteringFirm, DateTime? insertTimestamp, decimal? entryPx, long entrySize)
@@ -104,13 +107,12 @@ namespace PcapSbePocConsole.Models
         private void UpdateAggregatedEntry(MDEntryType type, decimal? entryPx, long entrySize, long originalQuantity)
         {
             var aggregatedEntries = AggregatedEntriesByType(type);
-            var aggregatedEntry = new AggregatedOrderBookEntry
-            {
-                Price = entryPx
-            };
+            var aggregatedEntry = aggregatedOrderBookEntryPool.Get();
+            aggregatedEntry.Price = entryPx;
             var index = aggregatedEntries.BinarySearch(aggregatedEntry, AggregatedEntriesComparerByType(type));
             if (index >= 0)
                 aggregatedEntries[index].Quantity += entrySize - originalQuantity;
+            aggregatedOrderBookEntryPool.Return(aggregatedEntry);
         }
 
         public void Remove(MDEntryType type, int position)
@@ -119,22 +121,26 @@ namespace PcapSbePocConsole.Models
             var entry = entries[position - 1];
             entries.RemoveAt(position - 1);
             RemoveAggregatedEntry(type, entry.Price, entry.Quantity);
+            orderBookEntryPool.Return(entry);
         }
 
         private void RemoveAggregatedEntry(MDEntryType type, decimal? price, long quantity)
         {
             var aggregatedEntries = AggregatedEntriesByType(type);
-            var aggregatedEntry = new AggregatedOrderBookEntry
-            {
-                Price = price
-            };
+            var aggregatedEntry = aggregatedOrderBookEntryPool.Get();
+            aggregatedEntry.Price = price;
             var index = aggregatedEntries.BinarySearch(aggregatedEntry, AggregatedEntriesComparerByType(type));
+            aggregatedOrderBookEntryPool.Return(aggregatedEntry);
             if (index >= 0)
             {
                 var currentEntry = aggregatedEntries[index];
                 currentEntry.Quantity -= quantity;
                 if (currentEntry.Quantity == 0)
+                {
+                    var removedEntry = aggregatedEntries[index];
                     aggregatedEntries.RemoveAt(index);
+                    aggregatedOrderBookEntryPool.Return(removedEntry);
+                }
             }
         }
 
@@ -149,14 +155,17 @@ namespace PcapSbePocConsole.Models
         public void DeleteThru(MDEntryType type, int position)
         {
             var entries = EntriesByType(type);
-            RemoveAggregatedEntries(type, CollectionsMarshal.AsSpan(entries).Slice(position - 1, entries.Count - position));
+            var toBeRemovedEntries = CollectionsMarshal.AsSpan(entries).Slice(position - 1, entries.Count - position);
+            RemoveAggregatedEntries(type, toBeRemovedEntries);
+            foreach (var entry in toBeRemovedEntries)
+                orderBookEntryPool.Return(entry);
             entries.RemoveRange(position - 1, entries.Count - position);
         }
 
         private void RemoveAggregatedEntries(MDEntryType type, ReadOnlySpan<OrderBookEntry> removedEntries)
         {
             var aggregatedEntries = AggregatedEntriesByType(type);
-            var aggregatedEntry = new AggregatedOrderBookEntry();
+            var aggregatedEntry = aggregatedOrderBookEntryPool.Get();
             foreach (var entry in removedEntries)
             {
                 aggregatedEntry.Price = entry.Price;
@@ -168,15 +177,22 @@ namespace PcapSbePocConsole.Models
                     var currentEntry = aggregatedEntries[index];
                     currentEntry.Quantity -= aggregatedEntry.Quantity;
                     if (currentEntry.Quantity == 0)
+                    {
                         aggregatedEntries.RemoveAt(index);
+                        aggregatedOrderBookEntryPool.Return(currentEntry);
+                    }
                 }
             }
+            aggregatedOrderBookEntryPool.Return(aggregatedEntry);
         }
 
         public void DeleteFrom(MDEntryType type, int position)
         {
             var entries = EntriesByType(type);
-            RemoveAggregatedEntries(type, CollectionsMarshal.AsSpan(entries).Slice(0, position));
+            var toBeRemovedEntries = CollectionsMarshal.AsSpan(entries).Slice(0, position);
+            RemoveAggregatedEntries(type, toBeRemovedEntries);
+            foreach (var entry in toBeRemovedEntries)
+                orderBookEntryPool.Return(entry);
             entries.RemoveRange(0, position);
         }
     }

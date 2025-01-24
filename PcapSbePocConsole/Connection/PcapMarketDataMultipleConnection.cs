@@ -15,7 +15,7 @@ namespace PcapSbePocConsole.Connection
         private readonly UdpClient[] clients;
         private readonly AddressConfig[] configs;
         private readonly Task[] consumer;
-        private readonly BlockingCollection<(IMemoryOwner<byte>, int)> channel;
+        private readonly BlockingCollection<(byte[], int)> channel;
 
         public bool IsConnected
         {
@@ -32,7 +32,7 @@ namespace PcapSbePocConsole.Connection
 
         public PcapMarketDataMultipleConnection(AddressConfig[] configs)
         {
-            this.channel = new BlockingCollection<(IMemoryOwner<byte>, int)>();
+            this.channel = new BlockingCollection<(byte[], int)>();
             this.configs = configs;
             replayers = new PcapReplayer[configs.Length];
             clients = new UdpClient[configs.Length];
@@ -57,8 +57,8 @@ namespace PcapSbePocConsole.Connection
         {
             if (channel.TryTake(out var data, 500))
             {
-                data.Item1.Memory.Span.Slice(0, data.Item2).CopyTo(buffer);
-                data.Item1.Dispose();
+                data.Item1.AsSpan(0, data.Item2).CopyTo(buffer);
+                ArrayPool<byte>.Shared.Return(data.Item1);
                 return data.Item2;
             }
             return 0;
@@ -84,16 +84,16 @@ namespace PcapSbePocConsole.Connection
 
         private void Consume(UdpClient udpClient, EndPoint socketEndpoint)
         {
-            var memory = MemoryPool<byte>.Shared.Rent(2048);
+            var buffer = ArrayPool<byte>.Shared.Rent(2048);
             while (IsConnected)
             {
-                int length = udpClient.Client.Receive(memory.Memory.Span);
+                int length = udpClient.Client.Receive(buffer);
                 if (length > 0)
                 {
-                    if (ShouldReturn(memory.Memory.Span.Slice(0, length)))
+                    if (ShouldReturn(buffer.AsSpan(0, length)))
                     {
-                        channel.Add((memory, length));
-                        memory = MemoryPool<byte>.Shared.Rent(2048);
+                        channel.Add((buffer, length));
+                        buffer = ArrayPool<byte>.Shared.Rent(2048);
                     }
                 }
             }

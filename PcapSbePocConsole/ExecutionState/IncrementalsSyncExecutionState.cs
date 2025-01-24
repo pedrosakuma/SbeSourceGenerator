@@ -70,11 +70,11 @@ namespace PcapSbePocConsole
         }
         private void LastTradeUpdated(LastTradePrice lastTrade)
         {
-            if (lastTrade.Security.Definition.Symbol == "WINJ24")
-            {
-                Console.SetCursorPosition(0, 0);
-                Console.WriteLine($"{lastTrade.Security.Definition.Symbol} {lastTrade.MDEntryPx} {lastTrade.MDEntrySize} {lastTrade.MDEntryTimestamp}");
-            }
+            //if (lastTrade.Security.Definition.Symbol == "WINJ24")
+            //{
+            //    Console.SetCursorPosition(0, 0);
+            //    Console.WriteLine($"{lastTrade.Security.Definition.Symbol} {lastTrade.MDEntryPx} {lastTrade.MDEntrySize} {lastTrade.MDEntryTimestamp}");
+            //}
         }
         //public Dictionary<ulong, int> orderBookStatistics = new Dictionary<ulong, int>();
         //int totalCount = 0;
@@ -96,22 +96,22 @@ namespace PcapSbePocConsole
             //    }
             //}
             //return;
-            const int bookDepth = 10;
-            if (orderBook.Security.Definition.Symbol == "WINJ24")
-            {
-                Console.SetCursorPosition(0, 1);
-                Console.WriteLine($"{"Bid",17} {" Offer",-17}");
-                Console.WriteLine($"{"Qty",5} {"Price ",12} {"Price",-12}{"Qty",-5}");
-                if (orderBook.AggregatedBids.Count > bookDepth && orderBook.AggregatedOffers.Count > bookDepth)
-                {
-                    for (int i = 0; i < bookDepth; i++)
-                    {
-                        var bid = orderBook.AggregatedBids[i];
-                        var offer = orderBook.AggregatedOffers[i];
-                        Console.WriteLine($"{bid.Quantity,5} {bid.Price,-12}{offer.Price,12} {offer.Quantity,-5}");
-                    }
-                }
-            }
+            //const int bookDepth = 10;
+            //if (orderBook.Security.Definition.Symbol == "WINJ24")
+            //{
+            //    Console.SetCursorPosition(0, 1);
+            //    Console.WriteLine($"{"Bid",17} {" Offer",-17}");
+            //    Console.WriteLine($"{"Qty",5} {"Price ",12} {"Price",-12}{"Qty",-5}");
+            //    if (orderBook.AggregatedBids.Count > bookDepth && orderBook.AggregatedOffers.Count > bookDepth)
+            //    {
+            //        for (int i = 0; i < bookDepth; i++)
+            //        {
+            //            var bid = orderBook.AggregatedBids[i];
+            //            var offer = orderBook.AggregatedOffers[i];
+            //            Console.WriteLine($"{bid.Quantity,5} {bid.Price,-12}{offer.Price,12} {offer.Quantity,-5}");
+            //        }
+            //    }
+            //}
         }
 
 
@@ -328,7 +328,8 @@ namespace PcapSbePocConsole
             if (packet.SequenceNumber <= channelState.LastSequence)
                 return false;
             if (packet.SequenceNumber != channelState.LastSequence + 1)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException(
+                    $"packet.SequenceNumber: {packet.SequenceNumber}, channelState.LastSequence: {channelState.LastSequence}");
             channelState.LastSequence = packet.SequenceNumber;
             return true;
         }

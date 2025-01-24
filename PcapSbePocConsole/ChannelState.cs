@@ -23,7 +23,7 @@ namespace PcapSbePocConsole
 
         public void Add(Definition definition)
         {
-            var security = new Security(definition, 1024);
+            var security = new Security(definition, 512);
             instrumentsById.Add(definition.SecurityID, security);
             instrumentsBySymbol.Add(definition.Symbol, security);
             if (!instrumentsBySecurityGroup.TryGetValue(definition.SecurityGroup, out var group))

@@ -44,6 +44,7 @@ namespace PcapSbePocConsole
             this.channelState = new ChannelState(this.instruments.Count);
             foreach (var instrumentData in instruments)
                 parser.Parse(instrumentData);
+            Console.WriteLine("InstrumentDefinition Finished");
             return channelState;
         }
 
