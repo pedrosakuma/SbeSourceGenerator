@@ -41,6 +41,10 @@ namespace PcapSbePocConsole.Connection
             {
                 replayers[i] = new PcapReplayer(configs[i]);
                 clients[i] = new UdpClient(configs[i].MulticastEndpoint.Port);
+                var index = i;
+                consumer[i] = new Task(
+                    () => Consume(clients[index], configs[index].MulticastEndpoint),
+                    TaskCreationOptions.LongRunning);
             }
         }
 
@@ -55,7 +59,7 @@ namespace PcapSbePocConsole.Connection
 
         public int Receive(byte[] buffer)
         {
-            if (channel.TryTake(out var data, 500))
+            if (channel.TryTake(out var data))
             {
                 data.Item1.AsSpan(0, data.Item2).CopyTo(buffer);
                 ArrayPool<byte>.Shared.Return(data.Item1);
@@ -77,7 +81,7 @@ namespace PcapSbePocConsole.Connection
             {
                 var index = i;
                 clients[index].JoinMulticastGroup(configs[index].MulticastEndpoint.Address);
-                consumer[index] = Task.Run(() => Consume(clients[index], configs[index].MulticastEndpoint));
+                consumer[index].Start();
                 replayers[index].Start();
             }
         }

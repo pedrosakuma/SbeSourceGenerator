@@ -14,6 +14,7 @@ namespace PcapSbePocConsole.Connection
         private readonly CaptureFileReaderDevice device;
         private readonly UdpClient client;
         private readonly AddressConfig config;
+        private readonly Task consumer;
 
         public bool Connected => device.Opened;
 
@@ -25,10 +26,12 @@ namespace PcapSbePocConsole.Connection
                 BufferSize = 524288,
                 Immediate = true,
             });
-            device.OnPacketArrival += Device_OnPacketArrival;
-            device.OnCaptureStopped += Device_OnCaptureStopped;
+            //device.OnPacketArrival += Device_OnPacketArrival;
+            //device.OnCaptureStopped += Device_OnCaptureStopped;
+            consumer = new Task(Consume, TaskCreationOptions.LongRunning);
 
             client = new UdpClient(AddressFamily.InterNetwork);
+            client.Client.SendBufferSize = 524288;
             client.MulticastLoopback = true;
             this.config = config;
         }
@@ -41,15 +44,16 @@ namespace PcapSbePocConsole.Connection
         private void Device_OnPacketArrival(object sender, PacketCapture e)
         {
             client.Client.SendTo(
-                GetPayloadSpan(e), 
+                GetPayloadSpan(e.Data), 
                 SocketFlags.None, 
                 config.MulticastSocketAddressEndpoint);
         }
 
-        private unsafe static ReadOnlySpan<byte> GetPayloadSpan(PacketCapture e)
+        private unsafe static ReadOnlySpan<byte> GetPayloadSpan(ReadOnlySpan<byte> raw)
         {
-            ref readonly var eth = ref MemoryMarshal.AsRef<EthernetPacketData>(e.Data);
-            var remainderData = e.Data.Slice(sizeof(EthernetPacketData));
+            var remainderData = raw;
+            ref readonly var eth = ref MemoryMarshal.AsRef<EthernetPacketData>(remainderData);
+            remainderData = remainderData.Slice(sizeof(EthernetPacketData));
             var type = eth.Type;
             while (true)
             {
@@ -88,7 +92,26 @@ namespace PcapSbePocConsole.Connection
         public void Start()
         {
             client.JoinMulticastGroup(config.MulticastEndpoint.Address, IPAddress.Loopback);
-            device.StartCapture();
+            consumer.Start();
+            //device.StartCapture();
+        }
+        
+        private unsafe void Consume()
+        {
+            nint header = IntPtr.Zero;
+            nint data = IntPtr.Zero;
+            while (Connected)
+            {
+                device.GetNextPacketPointers(ref header, ref data);
+                var dataSpan = new Span<byte>(
+                    data.ToPointer(), 
+                    Marshal.ReadInt32(header + Header.CaptureLengthOffset));
+
+                client.Client.SendTo(
+                    GetPayloadSpan(dataSpan),
+                    SocketFlags.None,
+                    config.MulticastSocketAddressEndpoint);
+            }
         }
     }
 }

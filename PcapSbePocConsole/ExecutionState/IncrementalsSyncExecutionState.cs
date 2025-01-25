@@ -73,7 +73,7 @@ namespace PcapSbePocConsole
             //if (lastTrade.Security.Definition.Symbol == "WINJ24")
             //{
             //    Console.SetCursorPosition(0, 0);
-            //    Console.WriteLine($"{lastTrade.Security.Definition.Symbol} {lastTrade.MDEntryPx} {lastTrade.MDEntrySize} {lastTrade.MDEntryTimestamp}");
+            //    Console.WriteLine($"{lastTrade.Security.Definition.Symbol,-12} {lastTrade.MDEntryPx,-15} {lastTrade.MDEntrySize,-5} {lastTrade.MDEntryTimestamp,-15}");
             //}
         }
         //public Dictionary<ulong, int> orderBookStatistics = new Dictionary<ulong, int>();
@@ -318,7 +318,7 @@ namespace PcapSbePocConsole
         public void Sync(ChannelState channelState)
         {
             this.channelState = channelState;
-            while (enqueuedMessages.TryTake(out var message, 0))
+            while (enqueuedMessages.TryTake(out var message, 10))
                 parser.Parse(message);
             state = CyclicalSyncState.Synced;
         }
