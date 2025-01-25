@@ -15,9 +15,9 @@ namespace PcapSbePocConsole.Handlers
             bands.PriceBandType = message.PriceBandType;
             bands.PriceLimitType = message.PriceLimitType;
             bands.PriceBandMidpointPriceType = message.PriceBandMidpointPriceType;
-            bands.LowLimitPrice = message.LowLimitPrice?.Value;
-            bands.HighLimitPrice = message.HighLimitPrice?.Value;
-            bands.TradingReferencePrice = message.TradingReferencePrice?.Value;
+            bands.LowLimitPrice = message.LowLimitPrice.Value;
+            bands.HighLimitPrice = message.HighLimitPrice.Value;
+            bands.TradingReferencePrice = message.TradingReferencePrice.Value;
         }
     }
 }

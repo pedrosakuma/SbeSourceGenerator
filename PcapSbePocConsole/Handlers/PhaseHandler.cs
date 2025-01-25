@@ -11,7 +11,7 @@ namespace PcapSbePocConsole.Handlers
             phase.TradingSessionSubID = message.TradingSessionSubID;
             phase.SecurityTradingEvent = message.SecurityTradingEvent;
             phase.TradeDate = message.TradeDate.Date;
-            phase.TradSesOpenTime = message.TradSesOpenTime?.Value;
+            phase.TradSesOpenTime = message.TradSesOpenTime.Value;
         }
     }
 }

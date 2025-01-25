@@ -27,11 +27,15 @@ namespace SbeSourceGenerator
         {
             sb.AppendSummary(Description, tabs, nameof(OptionalMessageFieldDefinition));
             sb.AppendLine($"[FieldOffset({Offset})]", tabs);
-            sb.AppendLine($"private {Type} {Name.FirstCharToLower()};", tabs);
             if (PrimitiveType != null)
+            {
+                sb.AppendLine($"private {Type} {Name.FirstCharToLower()};", tabs);
                 sb.AppendLine($"public {Type}? {Name} => ({PrimitiveType}){Name.FirstCharToLower()} == {TypesCatalog.NullValueByType[PrimitiveType]} ? null : {Name.FirstCharToLower()};", tabs);
+            }
             else
-                sb.AppendLine($"public {Type}? {Name} => {Name.FirstCharToLower()};", tabs);
+            {
+                sb.AppendLine($"public {Type} {Name};", tabs);
+            }
         }
     }
 }

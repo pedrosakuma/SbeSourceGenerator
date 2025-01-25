@@ -10,7 +10,7 @@ namespace PcapSbePocConsole.Handlers
             theoreticalOpeningPrice.MatchEventIndicator = message.MatchEventIndicator;
             theoreticalOpeningPrice.MDUpdateAction = message.MDUpdateAction;
             theoreticalOpeningPrice.TradeDate = message.TradeDate.Date;
-            theoreticalOpeningPrice.MDEntryPx = message.MDEntryPx?.Value;
+            theoreticalOpeningPrice.MDEntryPx = message.MDEntryPx.Value;
             theoreticalOpeningPrice.MDEntrySize = message.MDEntrySize.Value;
             theoreticalOpeningPrice.MDEntryTimestamp = message.MDEntryTimestamp.Value;
         }

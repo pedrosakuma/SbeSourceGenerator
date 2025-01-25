@@ -11,8 +11,8 @@ namespace PcapSbePocConsole.Handlers
             executionStatistics.TradingSessionID = message.TradingSessionID;
             executionStatistics.TradeDate = message.TradeDate.Date;
             executionStatistics.TradeVolume = message.TradeVolume.Value;
-            executionStatistics.VwapPx = message.VwapPx?.Value;
-            executionStatistics.NetChgPrevDay = message.NetChgPrevDay?.Value;
+            executionStatistics.VwapPx = message.VwapPx.Value;
+            executionStatistics.NetChgPrevDay = message.NetChgPrevDay.Value;
             executionStatistics.NumberOfTrades = message.NumberOfTrades.Value;
             executionStatistics.MDEntryTimestamp = message.MDEntryTimestamp.Value;
         }

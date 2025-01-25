@@ -8,7 +8,7 @@ namespace PcapSbePocConsole.Handlers
         public static void Handle(this OpeningPrice_15Data message, Summary summary)
         {
             summary.OpeningPrice = message.MDEntryPx.Value;
-            summary.OpeningPriceNetChange = message.NetChgPrevDay?.Value;
+            summary.OpeningPriceNetChange = message.NetChgPrevDay.Value;
             summary.OpeningTradeDate = message.TradeDate.Date;
         }
         public static void Handle(this ClosingPrice_17Data message, Summary summary)

@@ -3,7 +3,6 @@ using PcapSbePocConsole.Configs;
 using PcapSbePocConsole.Connection.Packets;
 using SharpPcap;
 using SharpPcap.LibPcap;
-using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
@@ -26,27 +25,11 @@ namespace PcapSbePocConsole.Connection
                 BufferSize = 524288,
                 Immediate = true,
             });
-            //device.OnPacketArrival += Device_OnPacketArrival;
-            //device.OnCaptureStopped += Device_OnCaptureStopped;
             consumer = new Task(Consume, TaskCreationOptions.LongRunning);
 
             client = new UdpClient(AddressFamily.InterNetwork);
-            client.Client.SendBufferSize = 524288;
             client.MulticastLoopback = true;
             this.config = config;
-        }
-
-        private void Device_OnCaptureStopped(object sender, CaptureStoppedEventStatus status)
-        {
-            client.DropMulticastGroup(config.MulticastEndpoint.Address);
-        }
-        
-        private void Device_OnPacketArrival(object sender, PacketCapture e)
-        {
-            client.Client.SendTo(
-                GetPayloadSpan(e.Data), 
-                SocketFlags.None, 
-                config.MulticastSocketAddressEndpoint);
         }
 
         private unsafe static ReadOnlySpan<byte> GetPayloadSpan(ReadOnlySpan<byte> raw)
@@ -91,11 +74,10 @@ namespace PcapSbePocConsole.Connection
 
         public void Start()
         {
-            client.JoinMulticastGroup(config.MulticastEndpoint.Address, IPAddress.Loopback);
+            client.Connect(config.MulticastEndpoint.Address, config.MulticastEndpoint.Port);
             consumer.Start();
-            //device.StartCapture();
         }
-        
+
         private unsafe void Consume()
         {
             nint header = IntPtr.Zero;
@@ -104,13 +86,12 @@ namespace PcapSbePocConsole.Connection
             {
                 device.GetNextPacketPointers(ref header, ref data);
                 var dataSpan = new Span<byte>(
-                    data.ToPointer(), 
+                    data.ToPointer(),
                     Marshal.ReadInt32(header + Header.CaptureLengthOffset));
 
-                client.Client.SendTo(
+                client.Client.Send(
                     GetPayloadSpan(dataSpan),
-                    SocketFlags.None,
-                    config.MulticastSocketAddressEndpoint);
+                    SocketFlags.None);
             }
         }
     }

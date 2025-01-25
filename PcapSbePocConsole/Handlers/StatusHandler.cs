@@ -11,7 +11,7 @@ namespace PcapSbePocConsole.Handlers
             status.SecurityTradingStatus = message.SecurityTradingStatus;
             status.SecurityTradingEvent = message.SecurityTradingEvent;
             status.TradeDate = message.TradeDate.Date;
-            status.TradSesOpenTime = message.TradSesOpenTime?.Value;
+            status.TradSesOpenTime = message.TradSesOpenTime.Value;
         }
     }
 }
