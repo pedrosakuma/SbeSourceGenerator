@@ -18,50 +18,62 @@ namespace PcapSbePocConsole.Handlers
                     entry.MDEntrySize.Value);
             });
         }
-        public static int Handle(this DeleteOrder_MBO_51Data message, OrderBook orderBook)
+        public static void Handle(this DeleteOrder_MBO_51Data message, OrderBook orderBook)
         {
-            return -orderBook.Remove(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
+            orderBook.Remove(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
         }
         public static void Handle(this EmptyBook_9Data message, OrderBook orderBook)
         {
             orderBook.Clear();
         }
-        public static int Handle(this MassDeleteOrders_MBO_52Data message, OrderBook orderBook)
+        public static void Handle(this MassDeleteOrders_MBO_52Data message, OrderBook orderBook)
         {
             var entries = orderBook.EntriesByType(message.MDEntryType);
-            return message.MDUpdateAction switch
+            switch (message.MDUpdateAction)
             {
-                MDUpdateAction.DELETE_THRU => -orderBook.DeleteThru(message.MDEntryType, (int)message.MDEntryPositionNo.Value),
-                MDUpdateAction.DELETE_FROM => -orderBook.DeleteFrom(message.MDEntryType, (int)message.MDEntryPositionNo.Value),
-                _ => throw new ArgumentException("Not expected", nameof(message.MDUpdateAction)),
+                case MDUpdateAction.DELETE_THRU:
+                    orderBook.DeleteThru(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
+                    break;
+                case MDUpdateAction.DELETE_FROM:
+                    orderBook.DeleteFrom(message.MDEntryType, (int)message.MDEntryPositionNo.Value);
+                    break;
+                default:
+                    throw new ArgumentException("Not expected", nameof(message.MDUpdateAction));
             };
         }
-        public static int Handle(this Order_MBO_50Data message, OrderBook orderBook)
+        public static void Handle(this Order_MBO_50Data message, OrderBook orderBook)
         {
             var entries = orderBook.EntriesByType(message.MDEntryType);
-            return message.MDUpdateAction switch
+            switch (message.MDUpdateAction)
             {
-                MDUpdateAction.NEW => -orderBook.Add(
-                    message.MDEntryType,
-                    (int)message.MDEntryPositionNo.Value,
-                    message.EnteringFirm.Value,
-                    message.MDInsertTimestamp.Value,
-                    message.MDEntryPx.Value,
-                    message.MDEntrySize.Value
-                ),
-                MDUpdateAction.CHANGE => orderBook.Update(
-                    message.MDEntryType,
-                    (int)message.MDEntryPositionNo.Value,
-                    message.EnteringFirm.Value,
-                    message.MDInsertTimestamp.Value,
-                    message.MDEntryPx.Value,
-                    message.MDEntrySize.Value
-                ),
-                MDUpdateAction.DELETE => -orderBook.Remove(
-                    message.MDEntryType,
-                    (int)message.MDEntryPositionNo.Value
-                ),
-                _ => 0,
+                case MDUpdateAction.NEW:
+                    orderBook.Add(
+                        message.MDEntryType,
+                        (int)message.MDEntryPositionNo.Value,
+                        message.EnteringFirm.Value,
+                        message.MDInsertTimestamp.Value,
+                        message.MDEntryPx.Value,
+                        message.MDEntrySize.Value
+                    );
+                    break;
+                case MDUpdateAction.CHANGE:
+                    orderBook.Update(
+                        message.MDEntryType,
+                        (int)message.MDEntryPositionNo.Value,
+                        message.EnteringFirm.Value,
+                        message.MDInsertTimestamp.Value,
+                        message.MDEntryPx.Value,
+                        message.MDEntrySize.Value
+                    );
+                    break;
+                case MDUpdateAction.DELETE:
+                    orderBook.Remove(
+                        message.MDEntryType,
+                        (int)message.MDEntryPositionNo.Value
+                    );
+                    break;
+                default:
+                    break;
             };
         }
     }
