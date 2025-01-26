@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace PcapSbePocConsole.Connection.Packets
+namespace PcapMarketReplayConsole.Packets
 {
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct IPv4Data

@@ -1,28 +1,32 @@
 ﻿using PacketDotNet;
-using PcapSbePocConsole.Configs;
-using PcapSbePocConsole.Connection.Packets;
+using PcapMarketReplayConsole.Packets;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-namespace PcapSbePocConsole.Connection
+namespace PcapMarketReplayConsole
 {
     public class PcapReplayer
     {
         private readonly CaptureFileReaderDevice device;
         private readonly UdpClient client;
-        private readonly AddressConfig config;
+        private readonly PcapReplayConfig config;
         private readonly Task consumer;
+        public int MessagesConsumed;
+        public DateTime LastConsumed;
 
         public bool Connected => device.Opened;
+        public string Path => device.FileName;
 
-        public PcapReplayer(AddressConfig config)
+        public PcapReplayer(PcapReplayConfig config)
         {
             device = new CaptureFileReaderDevice(config.Address);
             device.Open(new DeviceConfiguration
             {
                 BufferSize = 524288,
+                KernelBufferSize = 524288,
+                TimestampType = TimestampType.Adapter,
                 Immediate = true,
             });
             consumer = new Task(Consume, TaskCreationOptions.LongRunning);
@@ -74,24 +78,32 @@ namespace PcapSbePocConsole.Connection
 
         public void Start()
         {
-            client.Connect(config.MulticastEndpoint.Address, config.MulticastEndpoint.Port);
+            client.Connect(config.MulticastEndpoint);
             consumer.Start();
         }
 
+        public bool written;
         private unsafe void Consume()
         {
+            MessagesConsumed = 0;
             nint header = IntPtr.Zero;
             nint data = IntPtr.Zero;
             while (Connected)
             {
                 device.GetNextPacketPointers(ref header, ref data);
+                var (date, length) =Header.DateTimeFromHeader(header);
+                LastConsumed = date;
                 var dataSpan = new Span<byte>(
-                    data.ToPointer(),
-                    Marshal.ReadInt32(header + Header.CaptureLengthOffset));
-
+                    data.ToPointer(), length);
+                if (!written)
+                {
+                    written = true;
+                    Console.WriteLine("{1} - {0}", Path, date);
+                }
                 client.Client.Send(
                     GetPayloadSpan(dataSpan),
                     SocketFlags.None);
+                MessagesConsumed++;
             }
         }
     }

@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "PcapMarketReplayConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "environmentVariables": {
+        "EQT__instrumentDefinition": "%userprofile%\\Downloads\\MBO_EQT\\20240909_MBO_084_EQT_InstrumentDefinition.pcap",
+        "EQT__snapshot": "%userprofile%\\Downloads\\MBO_EQT\\20240909_MBO_084_EQT_SnapshotRecovery.pcap",
+        "EQT__incrementalsA": "%userprofile%\\Downloads\\MBO_EQT\\20240909_MBO_084_EQT_Incremental_FeedA.pcap",
+        "EQT__incrementalsB": "%userprofile%\\Downloads\\MBO_EQT\\20240909_MBO_084_EQT_Incremental_FeedB.pcap",
+        "DRV__instrumentDefinition": "%userprofile%\\Downloads\\MBO_DRV\\20240906_MBO_072_DRV_InstrumentDefinition.pcap",
+        "DRV__snapshot": "%userprofile%\\Downloads\\MBO_DRV\\20240906_MBO_072_DRV_SnapshotRecovery.pcap",
+        "DRV__incrementalsA": "%userprofile%\\Downloads\\MBO_DRV\\20240906_MBO_072_DRV_Incremental_FeedA.pcap",
+        "DRV__incrementalsB": "%userprofile%\\Downloads\\MBO_DRV\\20240906_MBO_072_DRV_Incremental_FeedB.pcap"
+      }
+    }
+  }
+}

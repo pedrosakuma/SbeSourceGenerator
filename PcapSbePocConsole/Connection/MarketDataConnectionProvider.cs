@@ -2,11 +2,11 @@
 
 namespace PcapSbePocConsole.Connection
 {
-    internal class PcapMarketDataConnectionProvider : IMarketDataConnectionProvider
+    internal class MarketDataConnectionProvider : IMarketDataConnectionProvider
     {
         private readonly MarketConfig config;
 
-        public PcapMarketDataConnectionProvider(MarketConfig config)
+        public MarketDataConnectionProvider(MarketConfig config)
         {
             this.config = config;
         }
@@ -23,21 +23,21 @@ namespace PcapSbePocConsole.Connection
                 addresses[addressesIndex++] = c.Incrementals.FeedB;
             if (feeds.HasFlag(Feeds.FeedC))
                 addresses[addressesIndex++] = c.Incrementals.FeedC;
-            return new PcapMarketDataMultipleConnection(addresses);
+            return new MarketDataMultipleConnection(addresses);
         }
 
         public IMarketDataConnection ConnectInstrumentDefinition(byte channel)
         {
             if (!config.Channels.TryGetValue(channel, out var c))
                 throw new ArgumentException("Channel not found");
-            return new PcapMarketDataConnection(c.InstrumentDefinition);
+            return new MarketDataConnection(c.InstrumentDefinition);
         }
 
         public IMarketDataConnection ConnectSnapshot(byte channel)
         {
             if (!config.Channels.TryGetValue(channel, out var c))
                 throw new ArgumentException("Channel not found");
-            return new PcapMarketDataConnection(c.Snapshot);
+            return new MarketDataConnection(c.Snapshot);
         }
     }
 }

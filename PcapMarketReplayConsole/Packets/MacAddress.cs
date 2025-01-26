@@ -1,4 +1,4 @@
-﻿namespace PcapSbePocConsole.Connection.Packets
+﻿namespace PcapMarketReplayConsole.Packets
 {
     [System.Runtime.CompilerServices.InlineArray(6)]
     public unsafe struct MacAddress

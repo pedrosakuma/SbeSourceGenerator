@@ -15,61 +15,29 @@ namespace PcapSbePocConsole
             (
                 new Dictionary<byte, ChannelConfig>
                 {
-                    { channelEqt, new ChannelConfig
-                        (
-                            channelEqt,
-                            new AddressConfig
-                            (
-                                Environment.GetEnvironmentVariable("Eqt__instrumentDefinition")!,
-                                IPEndPoint.Parse("224.100.0.1:10101")
-                            ),
-                            new AddressConfig
-                            (
-                                Environment.GetEnvironmentVariable("Eqt__snapshot")!,
-                                IPEndPoint.Parse("224.100.0.2:10102")
-                            ),
-                            new IncrementalsConfig
-                            {
-                                FeedA = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("Eqt__incrementalsA")!,
-                                    IPEndPoint.Parse("224.100.0.3:10103")
-                                ),
-                                FeedB = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("Eqt__incrementalsB")!,
-                                    IPEndPoint.Parse("224.100.0.4:10104")
-                                )
-                            }
-                        )
-                    },
-                    { channelDrv, new ChannelConfig
-                        (
-                            channelDrv,
-                            new AddressConfig
-                            (
-                                Environment.GetEnvironmentVariable("Drv__instrumentDefinition")!,
-                                IPEndPoint.Parse("224.200.0.1:10201")
-                            ),
-                            new AddressConfig
-                            (
-                                Environment.GetEnvironmentVariable("Drv__snapshot")!,
-                                IPEndPoint.Parse("224.200.0.2:10202")
-                            ),
-                            new IncrementalsConfig
-                            {
-                                FeedA = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("Drv__incrementalsA")!,
-                                    IPEndPoint.Parse("224.200.0.3:10203")
-                                ),
-                                FeedB = new AddressConfig(
-                                    Environment.GetEnvironmentVariable("Drv__incrementalsB")!,
-                                    IPEndPoint.Parse("224.200.0.4:10204")
-                                )
-                            }
-                        )
+                    { channelEqt, new ChannelConfig(
+                        channelEqt,
+                        new (IPEndPoint.Parse("224.100.0.1:10101")),
+                        new (IPEndPoint.Parse("224.100.0.2:10102")),
+                        new IncrementalsConfig
+                        {
+                            FeedA = new (IPEndPoint.Parse("224.100.0.3:10103")),
+                            FeedB = new (IPEndPoint.Parse("224.100.0.4:10104"))
+                        }
+                    )},
+                    { channelDrv, new ChannelConfig(
+                        channelDrv,
+                        new (IPEndPoint.Parse("224.200.0.1:10201")),
+                        new (IPEndPoint.Parse("224.200.0.2:10202")),
+                        new IncrementalsConfig
+                        {
+                            FeedA = new (IPEndPoint.Parse("224.200.0.3:10203")),
+                            FeedB = new (IPEndPoint.Parse("224.200.0.4:10204"))
+                        })
                     }
                 }
             );
-            var p = new PcapMarketDataConnectionProvider(c);
+            var p = new MarketDataConnectionProvider(c);
 
             CancellationTokenSource source = new CancellationTokenSource();
 

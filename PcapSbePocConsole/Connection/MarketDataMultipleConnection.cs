@@ -8,38 +8,24 @@ using System.Runtime.InteropServices;
 
 namespace PcapSbePocConsole.Connection
 {
-    public class PcapMarketDataMultipleConnection : IMarketDataConnection
+    public class MarketDataMultipleConnection : IMarketDataConnection
     {
         private uint lastConsumed;
-        private readonly PcapReplayer[] replayers;
         private readonly UdpClient[] clients;
         private readonly AddressConfig[] configs;
         private readonly Task[] consumer;
         private readonly BlockingCollection<(byte[], int)> channel;
 
-        public bool IsConnected
-        {
-            get
-            {
-                foreach (var replayer in replayers)
-                {
-                    if (!replayer.Connected)
-                        return false;
-                }
-                return true;
-            }
-        }
+        public bool IsConnected => true;
 
-        public PcapMarketDataMultipleConnection(AddressConfig[] configs)
+        public MarketDataMultipleConnection(AddressConfig[] configs)
         {
             this.channel = new BlockingCollection<(byte[], int)>();
             this.configs = configs;
-            replayers = new PcapReplayer[configs.Length];
             clients = new UdpClient[configs.Length];
             consumer = new Task[configs.Length];
             for (int i = 0; i < configs.Length; i++)
             {
-                replayers[i] = new PcapReplayer(configs[i]);
                 clients[i] = new UdpClient(configs[i].MulticastEndpoint.Port);
                 var index = i;
                 consumer[i] = new Task(
@@ -50,11 +36,8 @@ namespace PcapSbePocConsole.Connection
 
         public void Dispose()
         {
-            for (int i = 0; i < replayers.Length; i++)
-            {
-                replayers[i].Dispose();
-                clients[i].Dispose();
-            }
+            foreach (var client in clients)
+                client.Dispose();
         }
 
         public int Receive(byte[] buffer)
@@ -82,7 +65,6 @@ namespace PcapSbePocConsole.Connection
                 var index = i;
                 clients[index].JoinMulticastGroup(configs[index].MulticastEndpoint.Address);
                 consumer[index].Start();
-                replayers[index].Start();
             }
         }
 

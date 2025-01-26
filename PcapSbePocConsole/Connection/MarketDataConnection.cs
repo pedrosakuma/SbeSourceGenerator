@@ -4,24 +4,21 @@ using System.Net.Sockets;
 
 namespace PcapSbePocConsole.Connection
 {
-    public class PcapMarketDataConnection : IMarketDataConnection
+    public class MarketDataConnection : IMarketDataConnection
     {
         private readonly AddressConfig config;
-        private readonly PcapReplayer replayer;
         private readonly UdpClient client;
 
         public bool IsConnected => client.Client.IsBound;
 
-        public PcapMarketDataConnection(AddressConfig config)
+        public MarketDataConnection(AddressConfig config)
         {
             this.config = config;
-            replayer = new PcapReplayer(config);
             client = new UdpClient(config.MulticastEndpoint.Port);
         }
 
         public void Dispose()
         {
-            replayer.Dispose();
             client.Dispose();
         }
 
@@ -34,7 +31,6 @@ namespace PcapSbePocConsole.Connection
         public void Connect()
         {
             client.JoinMulticastGroup(config.MulticastEndpoint.Address);
-            replayer.Start();
         }
     }
 }

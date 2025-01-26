@@ -1,6 +1,7 @@
 ﻿using B3.Market.Data.Messages;
 using PcapSbePocConsole.Connection;
 using PcapSbePocConsole.Handlers;
+using System.Collections.Concurrent;
 namespace PcapSbePocConsole
 {
     public class SnapshotSyncExecutionState
@@ -8,14 +9,14 @@ namespace PcapSbePocConsole
         private readonly MessageParser parser;
         private readonly IMarketDataConnectionProvider connectionProvider;
         private readonly byte channel;
-        private readonly List<byte[]> enqueuedMessages;
+        private readonly BlockingCollection<byte[]> enqueuedMessages;
 
         private CyclicalSyncState state;
         private ChannelState channelState;
 
         public SnapshotSyncExecutionState(IMarketDataConnectionProvider connectionProvider, byte channel)
         {
-            this.enqueuedMessages = new List<byte[]>();
+            this.enqueuedMessages = new BlockingCollection<byte[]>();
             this.parser = new MessageParser(ShouldConsume)
             {
                 SequenceReset_1MessageReceived = SequenceReset_1MessageReceived,
@@ -45,12 +46,12 @@ namespace PcapSbePocConsole
             switch (state)
             {
                 case CyclicalSyncState.SeekingStart:
-                    Console.WriteLine("Snapshot Syncing");
                     state = CyclicalSyncState.Syncing;
+                    Console.WriteLine("Snapshot Syncing");
                     break;
                 case CyclicalSyncState.Syncing:
-                    Console.WriteLine("Snapshot Synced");
                     state = CyclicalSyncState.Synced;
+                    Console.WriteLine("Snapshot Synced");
                     break;
             }
         }
@@ -211,7 +212,6 @@ namespace PcapSbePocConsole
         private void PrepareInternal()
         {
             Console.WriteLine("Snapshot SeekingStart");
-            enqueuedMessages.Clear();
             var buffer = new byte[1024 * 2];
             using (var connection = connectionProvider.ConnectSnapshot(channel))
             {
@@ -222,6 +222,7 @@ namespace PcapSbePocConsole
                     int length = connection.Receive(buffer);
                     parser.Parse(buffer.AsSpan(0, length));
                 }
+                enqueuedMessages.CompleteAdding();
             }
         }
 
@@ -229,7 +230,7 @@ namespace PcapSbePocConsole
         {
             Console.WriteLine("Snapshot Consuming");
             this.channelState = channelState;
-            foreach (var message in enqueuedMessages)
+            foreach (var message in enqueuedMessages.GetConsumingEnumerable())
                 parser.Parse(message);
             Console.WriteLine("Snapshot Consumed");
         }

@@ -1,15 +1,18 @@
 ﻿using System.Net;
 
-namespace PcapSbePocConsole.Configs
+namespace PcapMarketReplayConsole
 {
-    public record AddressConfig
+    public record PcapReplayConfig
     {
-        public AddressConfig(IPEndPoint multicastEndpoint)
+
+        public PcapReplayConfig(string address, IPEndPoint multicastEndpoint)
         {
+            this.Address = address;
             this.MulticastEndpoint = multicastEndpoint;
             this.MulticastSocketAddressEndpoint = multicastEndpoint.Serialize();
         }
 
+        public string Address { get; }
         public IPEndPoint MulticastEndpoint { get; }
         public SocketAddress MulticastSocketAddressEndpoint { get; }
     }
