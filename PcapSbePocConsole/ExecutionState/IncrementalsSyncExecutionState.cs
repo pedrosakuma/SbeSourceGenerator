@@ -294,32 +294,32 @@ namespace PcapSbePocConsole
             {
                 connection.Connect();
                 state = CyclicalSyncState.SeekingStart;
-                while (state != CyclicalSyncState.Synced)
-                {
-                    int length = connection.Receive(buffer);
-                    if (length != 0)
-                        enqueuedMessages.Add(buffer.AsSpan(0, length).ToArray());
-                }
-                Console.WriteLine("Incrementals Consuming enqueued");
-                enqueuedMessages.CompleteAdding();
-                foreach (var message in enqueuedMessages.GetConsumingEnumerable())
-                    parser.Parse(message);
-                Console.WriteLine("Incrementals Consumed enqueued");
-                Console.Clear();
                 while (!token.IsCancellationRequested)
                 {
                     int length = connection.Receive(buffer);
-                    if (length != 0)
-                        parser.Parse(buffer.AsSpan(0, length));
+                    if (length != 0) 
+                    {
+                        if (state == CyclicalSyncState.Syncing
+                            && enqueuedMessages.Count == 0) 
+                            enqueuedMessages.CompleteAdding();
+                        
+                        if (enqueuedMessages.IsCompleted)
+                            parser.Parse(buffer.AsSpan(0, length));
+                        else 
+                            enqueuedMessages.Add(buffer.AsSpan(0, length).ToArray());
+                    }
                 }
             }
         }
 
         public void Sync(ChannelState channelState)
         {
+            state = CyclicalSyncState.Syncing;
             this.channelState = channelState;
-            while (enqueuedMessages.TryTake(out var message, 10))
+            Console.WriteLine("Incrementals Syncing");
+            foreach (var message in enqueuedMessages.GetConsumingEnumerable())
                 parser.Parse(message);
+            Console.WriteLine("Incrementals Synced");
             state = CyclicalSyncState.Synced;
         }
 

@@ -17,22 +17,22 @@ namespace PcapSbePocConsole
                 {
                     { channelEqt, new ChannelConfig(
                         channelEqt,
-                        new (IPEndPoint.Parse("224.100.0.1:10101")),
-                        new (IPEndPoint.Parse("224.100.0.2:10102")),
+                        new (IPEndPoint.Parse("224.100.33.1:10101")),
+                        new (IPEndPoint.Parse("224.100.33.2:10102")),
                         new IncrementalsConfig
                         {
-                            FeedA = new (IPEndPoint.Parse("224.100.0.3:10103")),
-                            FeedB = new (IPEndPoint.Parse("224.100.0.4:10104"))
+                            FeedA = new (IPEndPoint.Parse("224.100.33.3:10103")),
+                            FeedB = new (IPEndPoint.Parse("224.100.33.4:10104"))
                         }
                     )},
                     { channelDrv, new ChannelConfig(
                         channelDrv,
-                        new (IPEndPoint.Parse("224.200.0.1:10201")),
-                        new (IPEndPoint.Parse("224.200.0.2:10202")),
+                        new (IPEndPoint.Parse("224.200.33.1:10201")),
+                        new (IPEndPoint.Parse("224.200.33.2:10202")),
                         new IncrementalsConfig
                         {
-                            FeedA = new (IPEndPoint.Parse("224.200.0.3:10203")),
-                            FeedB = new (IPEndPoint.Parse("224.200.0.4:10204"))
+                            FeedA = new (IPEndPoint.Parse("224.200.33.3:10203")),
+                            FeedB = new (IPEndPoint.Parse("224.200.33.4:10204"))
                         })
                     }
                 }

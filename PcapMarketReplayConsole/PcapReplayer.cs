@@ -31,8 +31,10 @@ namespace PcapMarketReplayConsole
             });
             consumer = new Task(Consume, TaskCreationOptions.LongRunning);
 
-            client = new UdpClient(AddressFamily.InterNetwork);
-            client.MulticastLoopback = true;
+            client = new UdpClient(AddressFamily.InterNetwork)
+            {
+                MulticastLoopback = true,
+            };
             this.config = config;
         }
 
@@ -91,7 +93,7 @@ namespace PcapMarketReplayConsole
             while (Connected)
             {
                 device.GetNextPacketPointers(ref header, ref data);
-                var (date, length) =Header.DateTimeFromHeader(header);
+                var (date, length) = Header.DateTimeFromHeader(header);
                 LastConsumed = date;
                 var dataSpan = new Span<byte>(
                     data.ToPointer(), length);
