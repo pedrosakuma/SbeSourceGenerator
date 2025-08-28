@@ -1,5 +1,6 @@
 ﻿using Binance.Stream;
 using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -19,7 +20,7 @@ namespace SbeBinanceConsole
             CancellationTokenSource cts = new CancellationTokenSource();
             await Task.WhenAll(
                 WatchSbeBestBid(key, cts),
-                WatchJsonBestBid(cts),
+                WatchJsonBestBid(key, cts),
                 WatchWinner(cts)
             );
         }
@@ -103,10 +104,10 @@ namespace SbeBinanceConsole
                 }
             }
         }
-        private static async Task WatchJsonBestBid(CancellationTokenSource cts)
+        private static async Task WatchJsonBestBid(string key, CancellationTokenSource cts)
         {
             ClientWebSocket ws = new ClientWebSocket();
-            ws.Options.SetRequestHeader("X-MBX-APIKEY", "ALqcBxuufVcSfB4Q6MuHTRrVqj9ezYeXRCTagm6tW9EA5XDUyxaNdBGdGMS8BBGA");
+            ws.Options.SetRequestHeader("X-MBX-APIKEY", key);
             await ws.ConnectAsync(new Uri("wss://stream.binance.com/ws/btcusdt@bookTicker"), cts.Token);
 
             //Console.WriteLine("Connected to Binance WebSocket");
