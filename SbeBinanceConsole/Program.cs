@@ -1,8 +1,6 @@
 ﻿using Binance.Stream;
 using Microsoft.Extensions.Configuration;
-using System.Diagnostics;
 using System.Net.WebSockets;
-using System.Text;
 using System.Text.Json;
 
 namespace SbeBinanceConsole
@@ -39,11 +37,11 @@ namespace SbeBinanceConsole
                 }
                 else if (bookUpdateIdSbe > bookUpdateIdJson)
                 {
-                    Console.Write("SBE  win");
+                    Console.Write($"SBE  win lag: {bookUpdateIdSbe - bookUpdateIdJson}");
                 }
                 else
                 {
-                    Console.Write("Json win");
+                    Console.Write($"Json win lag: {bookUpdateIdJson - bookUpdateIdSbe}");
                 }
                 await Task.Delay(100);
             }
