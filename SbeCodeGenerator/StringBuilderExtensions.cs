@@ -22,5 +22,10 @@ namespace SbeSourceGenerator
             sb.Append(Tabs[tabs]);
             sb.AppendLine(value);
         }
+        public static void Append(this StringBuilder sb, string value, int tabs = 0)
+        {
+            sb.Append(Tabs[tabs]);
+            sb.Append(value);
+        }
     }
 }

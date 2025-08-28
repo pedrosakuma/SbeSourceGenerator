@@ -1,4 +1,5 @@
 ﻿using SbeSourceGenerator.Generators.Fields;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,17 +27,17 @@ namespace SbeSourceGenerator
         {
             if (Groups.Any() || Datas.Any())
             {
-                sb.AppendLine("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ", tabs++);
+                sb.AppendLine("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ", tabs);
                 foreach (var group in Groups.Cast<GroupDefinition>())
                 {
-                    sb.AppendLine($"Action<{group.Name}Data> callback{group.Name}, ", tabs);
+                    sb.Append($"Action<{group.Name}Data> callback{group.Name}, ", tabs);
                 }
                 foreach (var data in Datas.Cast<DataFieldDefinition>())
                 {
-                    sb.AppendLine($"{data.Type}.Callback callback{data.Name}, ", tabs);
+                    sb.Append($"{data.Type}.Callback callback{data.Name}, ", tabs);
                 }
-                sb.Remove(sb.Length - 4, 4);
-                sb.AppendLine(")", --tabs);
+                sb.Remove(sb.Length - 2, 2);
+                sb.AppendLine(")", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("int offset = 0;", tabs);
                 foreach (var group in Groups.Cast<GroupDefinition>())
