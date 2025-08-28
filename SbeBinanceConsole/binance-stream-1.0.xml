@@ -15,11 +15,6 @@
             <type name="schemaId" primitiveType="uint16"/>
             <type name="version" primitiveType="uint16"/>
         </composite>
-		<composite name="PacketHeader" description="Packet header">
-		</composite>
-		<composite name="FramingHeader" description="Framing Header">
-			<type name="messageLength" primitiveType="uint16" description="Overall message length including headers to support framing."/>
-		</composite>
 
 		<composite name="GroupSizeEncoding" description="Repeating group dimensions.">
             <type name="blockLength" primitiveType="uint16"/>

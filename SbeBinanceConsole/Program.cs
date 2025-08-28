@@ -11,6 +11,7 @@ namespace SbeBinanceConsole
     {
         static long bookUpdateIdSbe;
         static long bookUpdateIdJson;
+
         static async Task Main(string[] args)
         {
             var builder = new ConfigurationBuilder()
@@ -18,6 +19,7 @@ namespace SbeBinanceConsole
                 .Build();
             var key = builder["BinanceApiKey"];
             CancellationTokenSource cts = new CancellationTokenSource();
+            Console.Clear();
             await Task.WhenAll(
                 WatchSbeBestBid(key, cts),
                 WatchJsonBestBid(key, cts),
@@ -27,16 +29,20 @@ namespace SbeBinanceConsole
 
         private static async Task WatchWinner(CancellationTokenSource cts)
         {
-            var (x, _) = Console.GetCursorPosition();
             while (!cts.Token.IsCancellationRequested)
             {
-                Console.SetCursorPosition(x, 0);
-                if (bookUpdateIdSbe > bookUpdateIdJson)
+                Console.SetCursorPosition(0, 0);
+                if (bookUpdateIdSbe == bookUpdateIdJson)
+                {
+                    Console.Write("Tie     ");
+
+                }
+                else if (bookUpdateIdSbe > bookUpdateIdJson)
                 {
                     Console.Write("SBE  win");
                 }
-                else 
-                { 
+                else
+                {
                     Console.Write("Json win");
                 }
                 await Task.Delay(100);
@@ -50,10 +56,7 @@ namespace SbeBinanceConsole
             await ws.ConnectAsync(new Uri("wss://stream-sbe.binance.com/ws/btcusdt@bestBidAsk"), cts.Token);
 
             //Console.WriteLine("Connected to Binance WebSocket");
-            ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[8192 + sizeof(ushort)]);
-            var parser = new MessageParser(
-                (ref readonly PacketHeader header, ReadOnlySpan<byte> data) => true
-            )
+            var parser = new MessageParser()
             {
                 TradesStreamEventMessageReceived = (ref readonly TradesStreamEventData msg, ReadOnlySpan<byte> extra) =>
                 {
@@ -74,22 +77,21 @@ namespace SbeBinanceConsole
                 {
                     bookUpdateIdSbe = msg.BookUpdateId.Value;
                     //Console.WriteLine($"BestBidAskStreamEventMessageReceived: ");
-
+                    //string symbol = "";
                     //decimal qtyMultiplier = (decimal)Math.Pow(10, msg.QtyExponent.Value);
                     //decimal priceMultiplier = (decimal)Math.Pow(10, msg.PriceExponent.Value);
-
-                    //Console.WriteLine($"t: {msg.EventTime.Value}, id:{msg.BookUpdateId.Value}, bq: {msg.BidQty.Value * qtyMultiplier}, bp: {msg.BidPrice.Value * priceMultiplier}, ap: {msg.AskPrice.Value * priceMultiplier}, aq: {msg.AskQty.Value * qtyMultiplier}");
                     //msg.ConsumeVariableLengthSegments(extra,
-                    //    symbol =>
+                    //    s =>
                     //    {
-                    //        Console.WriteLine(Encoding.ASCII.GetString(symbol.VarData));
+                    //        symbol = Encoding.ASCII.GetString(s.VarData);
                     //    });
+                    //Console.WriteLine($"s: {symbol}, t: {msg.EventTime.Value}, id:{msg.BookUpdateId.Value}, bq: {msg.BidQty.Value * qtyMultiplier}, bp: {msg.BidPrice.Value * priceMultiplier}, ap: {msg.AskPrice.Value * priceMultiplier}, aq: {msg.AskQty.Value * qtyMultiplier}");
                 }
             };
-
+            var buffer = new Memory<byte>(new byte[8192]);
             while (!cts.Token.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await ws.ReceiveAsync(buffer.Slice(sizeof(ushort)), cts.Token);
+                var result = await ws.ReceiveAsync(buffer, cts.Token);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -98,9 +100,7 @@ namespace SbeBinanceConsole
                 }
                 else
                 {
-                    // Prepend the length prefix
-                    BitConverter.TryWriteBytes(buffer, (ushort)result.Count + sizeof(ushort));
-                    parser.Parse(buffer.Slice(0, result.Count + sizeof(ushort)));
+                    parser.Parse(buffer.Span.Slice(0, result.Count));
                 }
             }
         }
@@ -111,10 +111,10 @@ namespace SbeBinanceConsole
             await ws.ConnectAsync(new Uri("wss://stream.binance.com/ws/btcusdt@bookTicker"), cts.Token);
 
             //Console.WriteLine("Connected to Binance WebSocket");
-            ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[8192]);
+            var buffer = new Memory<byte>(new byte[8192 + sizeof(ushort)]);
             while (!cts.Token.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await ws.ReceiveAsync(buffer, cts.Token);
+                var result = await ws.ReceiveAsync(buffer, cts.Token);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -123,12 +123,12 @@ namespace SbeBinanceConsole
                 }
                 else
                 {
-                    ParseJsonBookUpdateId(buffer, result);
+                    ParseJsonBookUpdateId(buffer.Span, result);
                 }
             }
         }
 
-        private static void ParseJsonBookUpdateId(ArraySegment<byte> buffer, WebSocketReceiveResult result)
+        private static void ParseJsonBookUpdateId(Span<byte> buffer, ValueWebSocketReceiveResult result)
         {
             var reader = new Utf8JsonReader(buffer.Slice(0, result.Count));
             while (reader.Read())
@@ -137,6 +137,7 @@ namespace SbeBinanceConsole
                 {
                     reader.Read();
                     bookUpdateIdJson = reader.GetInt64();
+                    break;
                 }
             }
         }

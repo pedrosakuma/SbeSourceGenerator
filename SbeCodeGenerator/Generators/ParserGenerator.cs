@@ -20,27 +20,45 @@ namespace SbeSourceGenerator.Generators
             foreach (var type in MessageTypes)
                 sb.AppendLine($"{type.Name}Data.MESSAGE_ID,", tabs);
             sb.AppendLine("};", --tabs);
-            sb.AppendLine("private readonly ShouldConsumePredicate shouldConsume;", tabs);
-            sb.AppendLine("public MessageParser(ShouldConsumePredicate shouldConsume)", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("this.shouldConsume = shouldConsume;", tabs);
-            sb.AppendLine("}", --tabs);
+            bool containsFramingHeader = TypesCatalog.CustomTypeLengths.TryGetValue("FramingHeader", out var framingHeaderMessageSize) && framingHeaderMessageSize > 0;
+            bool containsPacketHeader = TypesCatalog.CustomTypeLengths.TryGetValue("PacketHeader", out var packetHeaderMessageSize) && packetHeaderMessageSize > 0;
+            if (containsPacketHeader)
+            {
+                sb.AppendLine("private readonly ShouldConsumePredicate shouldConsume;", tabs);
+                sb.AppendLine("public MessageParser(ShouldConsumePredicate shouldConsume)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("this.shouldConsume = shouldConsume;", tabs);
+                sb.AppendLine("}", --tabs);
+            }
             sb.AppendLine("public void Parse(ReadOnlySpan<byte> data)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("if(data.Length == 0) { return; }", tabs);
-            sb.AppendLine("ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);", tabs);
-            sb.AppendLine("if(!shouldConsume(in packet, data))", tabs++);
-            sb.AppendLine("return;", tabs--);
-            sb.AppendLine("data = data.Slice(PacketHeader.MESSAGE_SIZE);", tabs);
-            sb.AppendLine("do", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("ref readonly FramingHeader framingHeader = ref MemoryMarshal.AsRef<FramingHeader>(data);", tabs);
-            sb.AppendLine("data = data.Slice(FramingHeader.MESSAGE_SIZE);", tabs);
+            if (containsPacketHeader)
+            {
+                sb.AppendLine("ref readonly PacketHeader packet = ref MemoryMarshal.AsRef<PacketHeader>(data);", tabs);
+                sb.AppendLine("if(!shouldConsume(in packet, data))", tabs++);
+                sb.AppendLine("return;", tabs--);
+                sb.AppendLine("data = data.Slice(PacketHeader.MESSAGE_SIZE);", tabs);
+                sb.AppendLine("do", tabs);
+                sb.AppendLine("{", tabs++);
+            }
+            if (containsFramingHeader)
+            {
+                sb.AppendLine("ref readonly FramingHeader framingHeader = ref MemoryMarshal.AsRef<FramingHeader>(data);", tabs);
+                sb.AppendLine("data = data.Slice(FramingHeader.MESSAGE_SIZE);", tabs);
+            }
             sb.AppendLine("ref readonly MessageHeader messageHeader = ref MemoryMarshal.AsRef<MessageHeader>(data);", tabs);
             sb.AppendLine("data = data.Slice(MessageHeader.MESSAGE_SIZE);", tabs);
-            sb.AppendLine("var length = framingHeader.MessageLength - (FramingHeader.MESSAGE_SIZE + MessageHeader.MESSAGE_SIZE);", tabs);
-            sb.AppendLine("var body = data.Slice(0, length);", tabs);
-            sb.AppendLine("data = data.Slice(length);", tabs);
+            if (containsFramingHeader)
+            {
+                sb.AppendLine("var length = framingHeader.MessageLength - (FramingHeader.MESSAGE_SIZE + MessageHeader.MESSAGE_SIZE);", tabs);
+                sb.AppendLine("var body = data.Slice(0, length);", tabs);
+                sb.AppendLine("data = data.Slice(length);", tabs);
+            }
+            else 
+            {
+                sb.AppendLine("var body = data;", tabs);
+            }
             sb.AppendLine("switch (messageHeader.TemplateId)", tabs);
             sb.AppendLine("{", tabs++);
             foreach (var type in MessageTypes)
@@ -64,11 +82,14 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("Console.WriteLine(messageHeader.TemplateId);", tabs);
             sb.AppendLine("break;", tabs--);
             sb.AppendLine("}", --tabs);
+            if (containsFramingHeader)
+            {
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("while (data.Length != 0);", tabs);
+            }
             sb.AppendLine("}", --tabs);
-            sb.AppendLine("while (data.Length != 0);", tabs);
-            sb.AppendLine("}", --tabs);
-
-            sb.AppendLine($"public delegate bool ShouldConsumePredicate(ref readonly PacketHeader packet, ReadOnlySpan<byte> data);", tabs);
+            if(containsPacketHeader)
+                sb.AppendLine($"public delegate bool ShouldConsumePredicate(ref readonly PacketHeader packet, ReadOnlySpan<byte> data);", tabs);
             foreach (var type in MessageTypes)
             {
                 sb.AppendLine($"public delegate void {type.Name}Message(ref readonly {type.Name}Data message, ReadOnlySpan<byte> variablePart);", tabs);
