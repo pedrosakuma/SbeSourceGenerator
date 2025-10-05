@@ -15,18 +15,47 @@ namespace SbeSourceGenerator
     [Generator]
     public class SBESourceGenerator : IIncrementalGenerator
     {
+        /// <summary>
+        /// Initializes the source generator by defining the execution pipeline.
+        /// Pipeline stages: XML schema collection → schema parsing → code generation → source output registration
+        /// </summary>
         public void Initialize(IncrementalGeneratorInitializationContext initContext)
         {
-            // define the execution pipeline here via a series of transformations:
+            // Stage 1: Collect XML schema files from additional files
+            IncrementalValuesProvider<AdditionalText> xmlSchemaFiles = CollectXmlSchemaFiles(initContext);
 
-            // find all additional files that end with .xml
-            IncrementalValuesProvider<AdditionalText> xmlFiles = initContext.AdditionalTextsProvider.Where(file => file.Path.EndsWith(".xml"));
+            // Stage 2: Build transformation pipeline to parse schemas and generate source code
+            IncrementalValuesProvider<(string name, string content)> generatedSources = BuildTransformationPipeline(xmlSchemaFiles);
 
-            // read their contents and save their name
-            IncrementalValuesProvider<(string name, string content)> namesAndContents = GetNamesAndContents(xmlFiles);
+            // Stage 3: Register generated sources for output
+            RegisterSourceGeneration(initContext, generatedSources);
+        }
 
-            // generate a class that contains their values as const strings
-            initContext.RegisterSourceOutput(namesAndContents, (spc, nameAndContent) =>
+        /// <summary>
+        /// Stage 1: Collects all XML schema files (.xml) from the project's additional files.
+        /// Data flow: AdditionalTextsProvider → filtered XML files
+        /// </summary>
+        private static IncrementalValuesProvider<AdditionalText> CollectXmlSchemaFiles(IncrementalGeneratorInitializationContext initContext)
+        {
+            return initContext.AdditionalTextsProvider.Where(file => file.Path.EndsWith(".xml"));
+        }
+
+        /// <summary>
+        /// Stage 2: Builds the transformation pipeline that parses XML schemas and generates C# source code.
+        /// Data flow: XML files → parsed schema models → generated (name, content) tuples
+        /// </summary>
+        private static IncrementalValuesProvider<(string name, string content)> BuildTransformationPipeline(IncrementalValuesProvider<AdditionalText> xmlFiles)
+        {
+            return GetNamesAndContents(xmlFiles);
+        }
+
+        /// <summary>
+        /// Stage 3: Registers the generated source files for output to the compilation.
+        /// Data flow: (name, content) tuples → added to SourceProductionContext
+        /// </summary>
+        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValuesProvider<(string name, string content)> generatedSources)
+        {
+            initContext.RegisterSourceOutput(generatedSources, (spc, nameAndContent) =>
             {
                 spc.AddSource(nameAndContent.name, nameAndContent.content);
             });
