@@ -71,7 +71,7 @@ namespace SbeSourceGenerator
                             .Cast<XmlElement>()
                             .Where(x => x.Name == "field")
                             .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
-                            .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
+                            .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttribute("type")))
                             .Select(node =>
                                 node.GetAttribute("presence") switch
                                 {
@@ -122,14 +122,14 @@ namespace SbeSourceGenerator
                                         .Cast<XmlElement>()
                                         .Where(x => x.Name == "field")
                                         .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
-                                        .Where(x => !TypesCatalog.CustomConstantTypes.Contains(x.GetAttribute("type")))
+                                        .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttribute("type")))
                                         .Select(field => (IFileContentGenerator)
                                             new MessageFieldDefinition(
                                                 field.GetAttribute("name").FirstCharToUpper(),
                                                 field.GetAttribute("id"),
                                                 ToNativeType(field.GetAttribute("type")),
                                                 field.GetAttribute("description"),
-                                                field.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
+                                                field.GetAttribute("offset") == "" ? null : int.Parse(field.GetAttribute("offset")),
                                                 GetTypeLength(field.GetAttribute("type"))
                                             )
                                         ).ToList(),
@@ -283,7 +283,7 @@ namespace SbeSourceGenerator
                         )
                     };
                 if (generator is ConstantTypeDefinition constantType)
-                    TypesCatalog.CustomConstantTypes.Add(constantType.Name);
+                    TypesCatalog.CustomConstantTypes.TryAdd(constantType.Name, 0);
                 if (generator is IBlittable blittableType)
                     TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();

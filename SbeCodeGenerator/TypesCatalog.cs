@@ -15,7 +15,7 @@ namespace SbeSourceGenerator
             { "char", "'\\0'" },
 
             { "byte", "255" },
-            { "ushort", "65335" },
+            { "ushort", "65535" },
             { "uint", "4294967295" },
             { "ulong", "18446744073709551615UL" },
         };
@@ -37,6 +37,6 @@ namespace SbeSourceGenerator
 
         public static readonly ConcurrentDictionary<string, string> EnumPrimitiveTypes = new ConcurrentDictionary<string, string>();
         public static readonly ConcurrentDictionary<string, int> CustomTypeLengths = new ConcurrentDictionary<string, int>();
-        public static readonly HashSet<string> CustomConstantTypes = new HashSet<string>();
+        public static readonly ConcurrentDictionary<string, byte> CustomConstantTypes = new ConcurrentDictionary<string, byte>();
     }
 }
