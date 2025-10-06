@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SbeCodeGenerator\SbeSourceGenerator.csproj" />
+    <ProjectReference Include="..\..\src\SbeCodeGenerator\SbeSourceGenerator.csproj" />
   </ItemGroup>
 
   <ItemGroup>
