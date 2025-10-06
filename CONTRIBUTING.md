@@ -33,7 +33,7 @@ This project follows a simple code of conduct:
 2. **Explore the Codebase**
    - Browse the code in `SbeCodeGenerator/`
    - Look at tests in `SbeCodeGenerator.Tests/`
-   - Check out examples in `PcapSbePocConsole/`
+   - Check out examples in `examples/` folder
 
 3. **Find an Issue**
    - Check [open issues](https://github.com/pedrosakuma/PcapSbePocConsole/issues)
@@ -102,7 +102,7 @@ dotnet test SbeCodeGenerator.Tests
 ### IDE Setup
 
 **Visual Studio 2022**:
-1. Open `PcapSbePocConsole.sln`
+1. Open `SbeSourceGenerator.sln`
 2. Restore NuGet packages
 3. Build solution (Ctrl+Shift+B)
 4. Run tests (Ctrl+R, A)
