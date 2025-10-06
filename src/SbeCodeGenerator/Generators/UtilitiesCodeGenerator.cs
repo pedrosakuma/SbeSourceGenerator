@@ -6,15 +6,21 @@ using System.Xml;
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
-    /// Generates utility code (e.g., NumberExtensions).
+    /// Generates utility code (e.g., NumberExtensions, EndianHelpers).
     /// </summary>
     public class UtilitiesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
+            // Generate NumberExtensions
             StringBuilder sb = new StringBuilder();
             new NumberExtensions(ns).AppendFileContent(sb);
             yield return ($"Utilities\\NumberExtensions", sb.ToString());
+
+            // Generate EndianHelpers
+            sb = new StringBuilder();
+            new EndianHelpers(ns).AppendFileContent(sb);
+            yield return ($"Utilities\\EndianHelpers", sb.ToString());
         }
     }
 }
