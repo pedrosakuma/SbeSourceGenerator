@@ -22,9 +22,28 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Single(resultList);
-            Assert.Contains("NumberExtensions", resultList[0].name);
-            Assert.Contains("NumberExtensions", resultList[0].content);
+            Assert.Equal(2, resultList.Count);
+            Assert.Contains(resultList, r => r.name.Contains("NumberExtensions"));
+            Assert.Contains(resultList, r => r.content.Contains("NumberExtensions"));
+        }
+
+        [Fact]
+        public void Generate_ProducesEndianHelpers()
+        {
+            // Arrange
+            var generator = new UtilitiesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            Assert.Equal(2, resultList.Count);
+            Assert.Contains(resultList, r => r.name.Contains("EndianHelpers"));
+            Assert.Contains(resultList, r => r.content.Contains("EndianHelpers"));
         }
 
         [Fact]
@@ -41,8 +60,8 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Single(resultList);
-            Assert.Contains("MyCustomNamespace", resultList[0].content);
+            Assert.Equal(2, resultList.Count);
+            Assert.All(resultList, r => Assert.Contains("MyCustomNamespace", r.content));
         }
     }
 }
