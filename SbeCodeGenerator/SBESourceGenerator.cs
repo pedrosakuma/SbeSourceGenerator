@@ -74,16 +74,20 @@ namespace SbeSourceGenerator
             string ns = GetNamespaceFromPath(path);
             var d = new XmlDocument();
             d.Load(path);
-            foreach (var item in GenerateTypes(ns, d))
+            
+            // Create a per-schema context to hold mutable state
+            var context = new SchemaContext();
+            
+            foreach (var item in GenerateTypes(ns, d, context))
                 yield return item;
-            foreach (var item in GenerateMessages(ns, d))
+            foreach (var item in GenerateMessages(ns, d, context))
                 yield return item;
             StringBuilder sb = new StringBuilder();
             new NumberExtensions(ns).AppendFileContent(sb);
             yield return ($"Utilities\\NumberExtensions", sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateMessages(string ns, XmlDocument d)
+        private static IEnumerable<(string name, string content)> GenerateMessages(string ns, XmlDocument d, SchemaContext context)
         {
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(d.NameTable);
             nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
@@ -91,7 +95,7 @@ namespace SbeSourceGenerator
             var messages = new List<MessageDefinition>();
             foreach (XmlElement messageNode in messageNodes)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode);
+                var messageDto = SchemaParser.ParseMessage(messageNode, context);
                 
                 var generator = new MessageDefinition(
                         ns,
@@ -102,16 +106,16 @@ namespace SbeSourceGenerator
                         messageDto.Deprecated,
                         messageDto.Fields
                             .Select(field =>
-                                field.Presence switch
+                                    field.Presence switch
                                 {
                                     "optional" => new OptionalMessageFieldDefinition(
                                         field.Name.FirstCharToUpper(),
                                         field.Id,
                                         ToNativeType(field.Type),
-                                        GetUnderlyingType(field.Type),
+                                        GetUnderlyingType(field.Type, context),
                                         field.Description,
                                         field.Offset == "" ? null : int.Parse(field.Offset),
-                                        GetTypeLength(field.Type)
+                                        GetTypeLength(field.Type, context)
                                     ),
                                     _ => (IFileContentGenerator)new MessageFieldDefinition(
                                         field.Name.FirstCharToUpper(),
@@ -119,7 +123,7 @@ namespace SbeSourceGenerator
                                         ToNativeType(field.Type),
                                         field.Description,
                                         field.Offset == "" ? null : int.Parse(field.Offset),
-                                        GetTypeLength(field.Type)
+                                        GetTypeLength(field.Type, context)
                                     )
                                 }
                             )
@@ -151,7 +155,7 @@ namespace SbeSourceGenerator
                                                 ToNativeType(field.Type),
                                                 field.Description,
                                                 field.Offset == "" ? null : int.Parse(field.Offset),
-                                                GetTypeLength(field.Type)
+                                                GetTypeLength(field.Type, context)
                                             )
                                         ).ToList(),
                                     group.Constants
@@ -181,27 +185,27 @@ namespace SbeSourceGenerator
                 generator.AppendFileContent(sb);
                 yield return ($"{ns}\\Messages\\{generator.Name}", sb.ToString());
             }
-            foreach (var item in GenerateParser(ns, messages))
+            foreach (var item in GenerateParser(ns, messages, context))
                 yield return item;
         }
 
-        private static IEnumerable<(string name, string content)> GenerateParser(string ns, List<MessageDefinition> messages)
+        private static IEnumerable<(string name, string content)> GenerateParser(string ns, List<MessageDefinition> messages, SchemaContext context)
         {
             StringBuilder sb = new StringBuilder();
-            new ParserGenerator(ns, "", messages).AppendFileContent(sb);
+            new ParserGenerator(ns, "", messages, context).AppendFileContent(sb);
             yield return ($"{ns}\\MessageParser", sb.ToString());
         }
 
-        private static string? GetUnderlyingType(string type)
+        private static string? GetUnderlyingType(string type, SchemaContext context)
         {
-            TypesCatalog.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType);
+            context.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType);
             return underlyingType;
         }
-        private static int GetTypeLength(string type)
+        private static int GetTypeLength(string type, SchemaContext context)
         {
             int length;
             if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(ToNativeType(type), out length)
-                && !TypesCatalog.CustomTypeLengths.TryGetValue(type, out length))
+                && !context.CustomTypeLengths.TryGetValue(type, out length))
                 throw new ArgumentException($"Could not get type {type} length");
             return length;
         }
@@ -215,17 +219,17 @@ namespace SbeSourceGenerator
             );
         }
 
-        private static IEnumerable<(string name, string content)> GenerateTypes(string ns, XmlDocument d)
+        private static IEnumerable<(string name, string content)> GenerateTypes(string ns, XmlDocument d, SchemaContext context)
         {
             var typeNodes = d.SelectNodes("//types/*");
             foreach (XmlElement typeNode in typeNodes)
             {
                 var generatedType = typeNode.Name switch
                 {
-                    "composite" => GenerateComposite(ns, typeNode),
-                    "enum" => GenerateEnum(ns, typeNode),
-                    "type" => GenerateType(ns, typeNode),
-                    "set" => GenerateSet(ns, typeNode),
+                    "composite" => GenerateComposite(ns, typeNode, context),
+                    "enum" => GenerateEnum(ns, typeNode, context),
+                    "type" => GenerateType(ns, typeNode, context),
+                    "set" => GenerateSet(ns, typeNode, context),
                     _ => Enumerable.Empty<(string name, string content)>()
                 };
                 foreach (var item in generatedType)
@@ -233,7 +237,7 @@ namespace SbeSourceGenerator
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode)
+        private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
             
@@ -242,7 +246,7 @@ namespace SbeSourceGenerator
                 enumDto.Name.FirstCharToUpper(),
                 enumDto.Description,
                 ToNativeType(enumDto.EncodingType),
-                GetTypeLength(ToNativeType(enumDto.EncodingType)),
+                GetTypeLength(ToNativeType(enumDto.EncodingType), context),
                 enumDto.Choices
                     .Select(choice => new EnumFieldDefinition(
                         choice.Name,
@@ -252,13 +256,13 @@ namespace SbeSourceGenerator
                     .ToList()
             );
             if (generator is IBlittable blittableType)
-                TypesCatalog.CustomTypeLengths[enumDto.Name] = blittableType.Length;
+                context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Sets\\{enumDto.Name}", sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode)
+        private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context)
         {
             var typeDto = SchemaParser.ParseType(typeNode);
             
@@ -291,7 +295,7 @@ namespace SbeSourceGenerator
                             ToNativeType(typeDto.PrimitiveType),
                             typeDto.SemanticType,
                             typeDto.NullValue,
-                            GetTypeLength(typeDto.PrimitiveType)
+                            GetTypeLength(typeDto.PrimitiveType, context)
                         ),
                         (_, _) => new TypeDefinition(
                             ns,
@@ -299,13 +303,13 @@ namespace SbeSourceGenerator
                             typeDto.Description,
                             ToNativeType(typeDto.PrimitiveType),
                             typeDto.SemanticType,
-                            GetTypeLength(typeDto.PrimitiveType)
+                            GetTypeLength(typeDto.PrimitiveType, context)
                         )
                     };
                 if (generator is ConstantTypeDefinition constantType)
-                    TypesCatalog.CustomConstantTypes.TryAdd(constantType.Name, 0);
+                    context.CustomConstantTypes[constantType.Name] = 0;
                 if (generator is IBlittable blittableType)
-                    TypesCatalog.CustomTypeLengths[typeDto.Name] = blittableType.Length;
+                    context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
                 yield return ($"{ns}\\Types\\{typeDto.Name}", sb.ToString());
@@ -336,7 +340,7 @@ namespace SbeSourceGenerator
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode)
+        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
             
@@ -374,15 +378,15 @@ namespace SbeSourceGenerator
                     )
             };
             if (generator is IBlittable blittableType)
-                TypesCatalog.CustomTypeLengths[enumDto.Name] = blittableType.Length;
+                context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             if (generator is EnumDefinition enumDefinition)
-                TypesCatalog.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
+                context.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Enums\\{enumDto.Name.FirstCharToUpper()}", sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode)
+        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context)
         {
             var compositeDto = SchemaParser.ParseComposite(typeNode);
             
@@ -405,7 +409,7 @@ namespace SbeSourceGenerator
                             field.Name.FirstCharToUpper(),
                             field.Description,
                             ToNativeType(field.PrimitiveType),
-                            GetTypeLength(ToNativeType(field.PrimitiveType)),
+                            GetTypeLength(ToNativeType(field.PrimitiveType), context),
                             field.NullValue == "" ? null : field.NullValue
                         ),
                         ("", "0") => new ArrayFieldDefinition(
@@ -417,14 +421,14 @@ namespace SbeSourceGenerator
                             field.Name.FirstCharToUpper(),
                             field.Description,
                             ToNativeType(field.PrimitiveType),
-                            GetTypeLength(ToNativeType(field.PrimitiveType))
+                            GetTypeLength(ToNativeType(field.PrimitiveType), context)
                         )
                     }
                     ))
                     .ToList()
             );
             if (generator.Fields.All(f => f is IBlittable))
-                TypesCatalog.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
+                context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Composites\\{generator.Name}", sb.ToString());
