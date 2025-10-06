@@ -1,0 +1,44 @@
+﻿using System.Runtime.InteropServices;
+namespace TestNamespace;
+/// <summary>
+/// Trade message
+/// (MessageDefinition)
+/// </summary>
+[StructLayout(LayoutKind.Explicit, Pack = 1)]
+public partial struct TradeData
+{
+	/// <summary>
+	/// Message Id
+	/// (ConstantMessageFieldDefinition)
+	/// </summary>
+	public const int MESSAGE_ID = 1;
+	/// <summary>
+	/// Message Size
+	/// (ConstantMessageFieldDefinition)
+	/// </summary>
+	public const int MESSAGE_SIZE = 25;
+	/// <summary>
+	/// 
+	/// (MessageFieldDefinition)
+	/// </summary>
+	[FieldOffset(0)]
+	public long TradeId;
+	/// <summary>
+	/// 
+	/// (MessageFieldDefinition)
+	/// </summary>
+	[FieldOffset(8)]
+	public long Price;
+	/// <summary>
+	/// 
+	/// (MessageFieldDefinition)
+	/// </summary>
+	[FieldOffset(16)]
+	public long Quantity;
+	/// <summary>
+	/// 
+	/// (MessageFieldDefinition)
+	/// </summary>
+	[FieldOffset(24)]
+	public Side Side;
+}
