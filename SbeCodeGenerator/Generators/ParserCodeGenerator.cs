@@ -9,7 +9,7 @@ namespace SbeSourceGenerator.Generators
     /// Generates code for SBE message parsers.
     /// Wraps the existing ParserGenerator to fit the ICodeGenerator interface.
     /// </summary>
-    internal class ParserCodeGenerator : ICodeGenerator
+    public class ParserCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
         {

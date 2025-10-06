@@ -7,7 +7,7 @@ namespace SbeSourceGenerator.Generators
     /// <summary>
     /// Generates utility code (e.g., NumberExtensions).
     /// </summary>
-    internal class UtilitiesCodeGenerator : ICodeGenerator
+    public class UtilitiesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
         {

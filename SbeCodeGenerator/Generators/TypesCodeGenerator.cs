@@ -12,7 +12,7 @@ namespace SbeSourceGenerator.Generators
     /// <summary>
     /// Generates code for SBE type definitions (types, enums, sets, composites).
     /// </summary>
-    internal class TypesCodeGenerator : ICodeGenerator
+    public class TypesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
         {
