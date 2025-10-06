@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Xml;
 
@@ -15,7 +16,8 @@ namespace SbeSourceGenerator.Generators
         /// <param name="ns">The namespace for the generated code</param>
         /// <param name="xmlDocument">The XML schema document to process</param>
         /// <param name="context">The schema context for tracking types and metadata</param>
+        /// <param name="sourceContext">The source production context for reporting diagnostics</param>
         /// <returns>An enumerable of tuples containing the file name and content</returns>
-        IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context);
+        IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext);
     }
 }
