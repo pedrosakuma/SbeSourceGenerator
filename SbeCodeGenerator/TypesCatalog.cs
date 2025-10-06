@@ -1,8 +1,11 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace SbeSourceGenerator
 {
+    /// <summary>
+    /// Catalog of static, immutable primitive type mappings.
+    /// Per-schema mutable state has been moved to SchemaContext.
+    /// </summary>
     internal class TypesCatalog
     {
         public static readonly Dictionary<string, string> NullValueByType = new Dictionary<string, string>
@@ -34,9 +37,5 @@ namespace SbeSourceGenerator
             { "uint", sizeof(uint) },
             { "ulong", sizeof(ulong) },
         };
-
-        public static readonly ConcurrentDictionary<string, string> EnumPrimitiveTypes = new ConcurrentDictionary<string, string>();
-        public static readonly ConcurrentDictionary<string, int> CustomTypeLengths = new ConcurrentDictionary<string, int>();
-        public static readonly ConcurrentDictionary<string, byte> CustomConstantTypes = new ConcurrentDictionary<string, byte>();
     }
 }
