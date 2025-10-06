@@ -200,7 +200,7 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
 ## Project Structure
 
 ```
-PcapSbePocConsole/
+SbeSourceGenerator/
 ├── SbeCodeGenerator/              # Source generator implementation
 │   ├── Diagnostics/              # Diagnostic descriptors
 │   ├── Generators/               # Code generators
@@ -210,17 +210,18 @@ PcapSbePocConsole/
 │   └── Schema/                  # DTOs and parsing
 ├── SbeCodeGenerator.Tests/       # Unit tests
 ├── SbeCodeGenerator.IntegrationTests/  # Integration tests
-├── PcapSbePocConsole/           # Example console app
-├── PcapMarketReplayConsole/     # Market replay example
-└── SbeBinanceConsole/           # Binance example
+└── examples/                     # Example applications
+    ├── PcapSbePocConsole/       # Basic SBE encoding/decoding
+    ├── PcapMarketReplayConsole/ # Market data replay
+    └── SbeBinanceConsole/       # Binance market data processing
 ```
 
 ## Examples
 
-The repository includes several example projects:
+The repository includes several example projects in the `examples/` folder:
 
-1. **PcapSbePocConsole** - Basic SBE encoding/decoding
-2. **PcapMarketReplayConsole** - Market data replay
+1. **PcapSbePocConsole** - Basic SBE encoding/decoding with B3 market data
+2. **PcapMarketReplayConsole** - PCAP-based market data replay
 3. **SbeBinanceConsole** - Binance market data processing
 
 ## Performance
@@ -259,7 +260,7 @@ See [Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) for more opportuni
 ### Development Setup
 
 1. Clone the repository
-2. Open `PcapSbePocConsole.sln` in Visual Studio 2022+ or VS Code
+2. Open `SbeSourceGenerator.sln` in Visual Studio 2022+ or VS Code
 3. Build the solution: `dotnet build`
 4. Run tests: `dotnet test`
 
