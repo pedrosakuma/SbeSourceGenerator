@@ -2,6 +2,8 @@
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Generators.Types;
+using SbeSourceGenerator.Helpers;
+using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -89,102 +91,88 @@ namespace SbeSourceGenerator
             var messages = new List<MessageDefinition>();
             foreach (XmlElement messageNode in messageNodes)
             {
+                var messageDto = SchemaParser.ParseMessage(messageNode);
+                
                 var generator = new MessageDefinition(
                         ns,
-                        messageNode.GetAttribute("name").FirstCharToUpper(),
-                        messageNode.GetAttribute("id"),
-                        messageNode.GetAttribute("description"),
-                        messageNode.GetAttribute("semanticType"),
-                        messageNode.GetAttribute("deprecated"),
-                        messageNode.ChildNodes
-                            .Cast<XmlElement>()
-                            .Where(x => x.Name == "field")
-                            .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
-                            .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttribute("type")))
-                            .Select(node =>
-                                node.GetAttribute("presence") switch
+                        messageDto.Name.FirstCharToUpper(),
+                        messageDto.Id,
+                        messageDto.Description,
+                        messageDto.SemanticType,
+                        messageDto.Deprecated,
+                        messageDto.Fields
+                            .Select(field =>
+                                field.Presence switch
                                 {
                                     "optional" => new OptionalMessageFieldDefinition(
-                                        node.GetAttribute("name").FirstCharToUpper(),
-                                        node.GetAttribute("id"),
-                                        ToNativeType(node.GetAttribute("type")),
-                                        GetUnderlyingType(node.GetAttribute("type")),
-                                        node.GetAttribute("description"),
-                                        node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
-                                        GetTypeLength(node.GetAttribute("type"))
+                                        field.Name.FirstCharToUpper(),
+                                        field.Id,
+                                        ToNativeType(field.Type),
+                                        GetUnderlyingType(field.Type),
+                                        field.Description,
+                                        field.Offset == "" ? null : int.Parse(field.Offset),
+                                        GetTypeLength(field.Type)
                                     ),
                                     _ => (IFileContentGenerator)new MessageFieldDefinition(
-                                        node.GetAttribute("name").FirstCharToUpper(),
-                                        node.GetAttribute("id"),
-                                        ToNativeType(node.GetAttribute("type")),
-                                        node.GetAttribute("description"),
-                                        node.GetAttribute("offset") == "" ? null : int.Parse(node.GetAttribute("offset")),
-                                        GetTypeLength(node.GetAttribute("type"))
+                                        field.Name.FirstCharToUpper(),
+                                        field.Id,
+                                        ToNativeType(field.Type),
+                                        field.Description,
+                                        field.Offset == "" ? null : int.Parse(field.Offset),
+                                        GetTypeLength(field.Type)
                                     )
                                 }
                             )
                             .ToList(),
-                        messageNode.ChildNodes
-                            .Cast<XmlElement>()
-                            .Where(x => x.Name == "field" && x.GetAttribute("presence") == "constant" && x.GetAttribute("valueRef") != "")
-                            .Select(node => (IFileContentGenerator)
+                        messageDto.Constants
+                            .Select(constant => (IFileContentGenerator)
                                 new ConstantMessageFieldDefinition(
-                                    node.GetAttribute("name").FirstCharToUpper(),
-                                    node.GetAttribute("id"),
-                                    node.GetAttribute("type"),
-                                    node.GetAttribute("description") != "" ? node.GetAttribute("description") : node.GetAttribute("type"),
-                                    node.GetAttribute("valueRef")
+                                    constant.Name.FirstCharToUpper(),
+                                    constant.Id,
+                                    constant.Type,
+                                    constant.Description != "" ? constant.Description : constant.Type,
+                                    constant.ValueRef
                                 )
                             )
                             .ToList(),
-                        messageNode.ChildNodes
-                            .Cast<XmlElement>()
-                            .Where(x => x.Name == "group")
-                            .Select(node => (IFileContentGenerator)
+                        messageDto.Groups
+                            .Select(group => (IFileContentGenerator)
                                 new GroupDefinition(
                                     ns,
-                                    node.GetAttribute("name").FirstCharToUpper(),
-                                    node.GetAttribute("id"),
-                                    node.GetAttribute("dimensionType"),
-                                    node.GetAttribute("description"),
-                                    node.ChildNodes
-                                        .Cast<XmlElement>()
-                                        .Where(x => x.Name == "field")
-                                        .Where(x => x.GetAttribute("presence") == "" || x.GetAttribute("presence") == "optional")
-                                        .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttribute("type")))
+                                    group.Name.FirstCharToUpper(),
+                                    group.Id,
+                                    group.DimensionType,
+                                    group.Description,
+                                    group.Fields
                                         .Select(field => (IFileContentGenerator)
                                             new MessageFieldDefinition(
-                                                field.GetAttribute("name").FirstCharToUpper(),
-                                                field.GetAttribute("id"),
-                                                ToNativeType(field.GetAttribute("type")),
-                                                field.GetAttribute("description"),
-                                                field.GetAttribute("offset") == "" ? null : int.Parse(field.GetAttribute("offset")),
-                                                GetTypeLength(field.GetAttribute("type"))
+                                                field.Name.FirstCharToUpper(),
+                                                field.Id,
+                                                ToNativeType(field.Type),
+                                                field.Description,
+                                                field.Offset == "" ? null : int.Parse(field.Offset),
+                                                GetTypeLength(field.Type)
                                             )
                                         ).ToList(),
-                                    node.ChildNodes
-                                        .Cast<XmlElement>()
-                                        .Where(x => x.Name == "field" && x.GetAttribute("presence") == "constant")
-                                        .Select(field => (IFileContentGenerator)
+                                    group.Constants
+                                        .Select(constant => (IFileContentGenerator)
                                             new ConstantMessageFieldDefinition(
-                                                field.GetAttribute("name").FirstCharToUpper(),
-                                                field.GetAttribute("id"),
-                                                field.GetAttribute("type"),
-                                                field.GetAttribute("description"),
-                                                field.GetAttribute("valueRef")
+                                                constant.Name.FirstCharToUpper(),
+                                                constant.Id,
+                                                constant.Type,
+                                                constant.Description,
+                                                constant.ValueRef
                                             )
                                         ).ToList()
                                 )
                             ).ToList(),
-                        messageNode.ChildNodes
-                            .Cast<XmlElement>()
-                            .Where(x => x.Name == "data")
-                            .Select(node => (IFileContentGenerator)
+                        messageDto.Data
+                            .Select(data => (IFileContentGenerator)
                                 new DataFieldDefinition(
-                                    node.GetAttribute("name").FirstCharToUpper(),
-                                    node.GetAttribute("id"),
-                                    node.GetAttribute("type"),
-                                    node.GetAttribute("description")
+                                    data.Name.FirstCharToUpper(),
+                                    data.Id,
+                                    data.Type,
+                                    data.Description
                                 )
                             ).ToList()
                     );
@@ -247,77 +235,80 @@ namespace SbeSourceGenerator
 
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode)
         {
+            var enumDto = SchemaParser.ParseEnum(typeNode);
+            
             var generator = new EnumFlagsDefinition(
                 ns,
-                typeNode.GetAttribute("name").FirstCharToUpper(),
-                typeNode.GetAttribute("description"),
-                ToNativeType(typeNode.GetAttribute("encodingType")),
-                GetTypeLength(ToNativeType(typeNode.GetAttribute("encodingType"))),
-                typeNode.ChildNodes
-                    .Cast<XmlElement>()
-                    .Select(node => new EnumFieldDefinition(
-                        node.GetAttribute("name"),
-                        node.GetAttribute("description"),
-                        node.InnerText
+                enumDto.Name.FirstCharToUpper(),
+                enumDto.Description,
+                ToNativeType(enumDto.EncodingType),
+                GetTypeLength(ToNativeType(enumDto.EncodingType)),
+                enumDto.Choices
+                    .Select(choice => new EnumFieldDefinition(
+                        choice.Name,
+                        choice.Description,
+                        choice.InnerText
                     ))
                     .ToList()
             );
             if (generator is IBlittable blittableType)
-                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
+                TypesCatalog.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Sets\\{typeNode.GetAttribute("name")}", sb.ToString());
+            yield return ($"{ns}\\Sets\\{enumDto.Name}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode)
         {
-            if (!IsPrimitiveType(typeNode.GetAttribute("name")))
+            var typeDto = SchemaParser.ParseType(typeNode);
+            
+            if (!IsPrimitiveType(typeDto.Name))
             {
                 var generator =
-                    (typeNode.GetAttribute("primitiveType"), typeNode.GetAttribute("presence")) switch
+                    (typeDto.PrimitiveType, typeDto.Presence) switch
                     {
 
                         (_, "constant") => new ConstantTypeDefinition(
                             ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            ToNativeType(typeNode.GetAttribute("primitiveType")),
-                            typeNode.GetAttribute("semanticType"),
-                            typeNode.GetAttribute("length"),
-                            typeNode.InnerText
+                            typeDto.Name,
+                            typeDto.Description,
+                            ToNativeType(typeDto.PrimitiveType),
+                            typeDto.SemanticType,
+                            typeDto.Length,
+                            typeDto.InnerText
                         ),
                         ("char", _) => (IFileContentGenerator)new FixedSizeCharTypeDefinition
                         (
                             ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            typeNode.GetAttribute("length") == "" ? 0 : int.Parse(typeNode.GetAttribute("length"))
+                            typeDto.Name,
+                            typeDto.Description,
+                            typeDto.Length == "" ? 0 : int.Parse(typeDto.Length)
                         ),
                         (_, "optional") => new OptionalTypeDefinition(
                             ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            ToNativeType(typeNode.GetAttribute("primitiveType")),
-                            typeNode.GetAttribute("semanticType"),
-                            typeNode.GetAttribute("nullValue"),
-                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
+                            typeDto.Name,
+                            typeDto.Description,
+                            ToNativeType(typeDto.PrimitiveType),
+                            typeDto.SemanticType,
+                            typeDto.NullValue,
+                            GetTypeLength(typeDto.PrimitiveType)
                         ),
                         (_, _) => new TypeDefinition(
                             ns,
-                            typeNode.GetAttribute("name"),
-                            typeNode.GetAttribute("description"),
-                            ToNativeType(typeNode.GetAttribute("primitiveType")),
-                            typeNode.GetAttribute("semanticType"),
-                            GetTypeLength(typeNode.GetAttribute("primitiveType"))
+                            typeDto.Name,
+                            typeDto.Description,
+                            ToNativeType(typeDto.PrimitiveType),
+                            typeDto.SemanticType,
+                            GetTypeLength(typeDto.PrimitiveType)
                         )
                     };
                 if (generator is ConstantTypeDefinition constantType)
                     TypesCatalog.CustomConstantTypes.TryAdd(constantType.Name, 0);
                 if (generator is IBlittable blittableType)
-                    TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
+                    TypesCatalog.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
-                yield return ($"{ns}\\Types\\{typeNode.GetAttribute("name")}", sb.ToString());
+                yield return ($"{ns}\\Types\\{typeDto.Name}", sb.ToString());
                 if (generator is TypeDefinition typeDefinition)
                 {
                     var semanticGenerator = (typeDefinition.SemanticType) switch
@@ -347,92 +338,93 @@ namespace SbeSourceGenerator
 
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode)
         {
-            var generator = IsNullable(typeNode.GetAttribute("encodingType")) switch
+            var enumDto = SchemaParser.ParseEnum(typeNode);
+            
+            var generator = IsNullable(enumDto.EncodingType) switch
             {
                 true => new NullableEnumDefinition(
                     ns,
-                    typeNode.GetAttribute("name").FirstCharToUpper(),
-                    typeNode.GetAttribute("description"),
-                    ToNativeType(typeNode.GetAttribute("encodingType")),
-                    typeNode.GetAttribute("semanticType"),
-                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(typeNode.GetAttribute("encodingType"))],
-                    typeNode.ChildNodes
-                        .Cast<XmlElement>()
-                        .Select(node => new EnumFieldDefinition(
-                            node.GetAttribute("name"),
-                            node.GetAttribute("description"),
-                            node.InnerText
+                    enumDto.Name.FirstCharToUpper(),
+                    enumDto.Description,
+                    ToNativeType(enumDto.EncodingType),
+                    enumDto.SemanticType,
+                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(enumDto.EncodingType)],
+                    enumDto.Choices
+                        .Select(choice => new EnumFieldDefinition(
+                            choice.Name,
+                            choice.Description,
+                            choice.InnerText
                         ))
                         .ToList()
                 ),
                 false => new EnumDefinition(
                     ns,
-                    typeNode.GetAttribute("name").FirstCharToUpper(),
-                    typeNode.GetAttribute("description"),
-                    ToNativeType(typeNode.GetAttribute("encodingType")),
-                    typeNode.GetAttribute("semanticType"),
-                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(typeNode.GetAttribute("encodingType"))],
-                    typeNode.ChildNodes
-                        .Cast<XmlElement>()
-                        .Select(node => new EnumFieldDefinition(
-                            node.GetAttribute("name"),
-                            node.GetAttribute("description"),
-                            node.InnerText
+                    enumDto.Name.FirstCharToUpper(),
+                    enumDto.Description,
+                    ToNativeType(enumDto.EncodingType),
+                    enumDto.SemanticType,
+                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(enumDto.EncodingType)],
+                    enumDto.Choices
+                        .Select(choice => new EnumFieldDefinition(
+                            choice.Name,
+                            choice.Description,
+                            choice.InnerText
                         ))
                         .ToList()
                     )
             };
             if (generator is IBlittable blittableType)
-                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = blittableType.Length;
+                TypesCatalog.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             if (generator is EnumDefinition enumDefinition)
                 TypesCatalog.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Enums\\{typeNode.GetAttribute("name").FirstCharToUpper()}", sb.ToString());
+            yield return ($"{ns}\\Enums\\{enumDto.Name.FirstCharToUpper()}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode)
         {
+            var compositeDto = SchemaParser.ParseComposite(typeNode);
+            
             var generator = new CompositeDefinition(
                 ns,
-                typeNode.GetAttribute("name").FirstCharToUpper(),
-                typeNode.GetAttribute("description"),
-                typeNode.GetAttribute("semanticType"),
-                typeNode.ChildNodes
-                    .Cast<XmlElement>()
-                    .Select(node => (IFileContentGenerator)((node.GetAttribute("presence"), node.GetAttribute("length")) switch
+                compositeDto.Name.FirstCharToUpper(),
+                compositeDto.Description,
+                compositeDto.SemanticType,
+                compositeDto.Fields
+                    .Select(field => (IFileContentGenerator)((field.Presence, field.Length) switch
                     {
                         ("constant", _) => new ConstantTypeFieldDefinition(
-                            node.GetAttribute("name").FirstCharToUpper(),
-                            node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType")),
-                            InsertQuotationsIfNeeded(node.InnerText, node.GetAttribute("primitiveType"), node.GetAttribute("length")),
-                            node.GetAttribute("valueRef")
+                            field.Name.FirstCharToUpper(),
+                            field.Description,
+                            ToNativeType(field.PrimitiveType),
+                            InsertQuotationsIfNeeded(field.InnerText, field.PrimitiveType, field.Length),
+                            field.ValueRef
                         ),
                         ("optional", _) => new NullableValueFieldDefinition(
-                            node.GetAttribute("name").FirstCharToUpper(),
-                            node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType")),
-                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType"))),
-                            node.GetAttribute("nullValue") == "" ? null : node.GetAttribute("nullValue")
+                            field.Name.FirstCharToUpper(),
+                            field.Description,
+                            ToNativeType(field.PrimitiveType),
+                            GetTypeLength(ToNativeType(field.PrimitiveType)),
+                            field.NullValue == "" ? null : field.NullValue
                         ),
                         ("", "0") => new ArrayFieldDefinition(
-                            node.GetAttribute("name").FirstCharToUpper(),
-                            node.GetAttribute("description"),
+                            field.Name.FirstCharToUpper(),
+                            field.Description,
                             "byte"
                         ),
                         (_, _) => new ValueFieldDefinition(
-                            node.GetAttribute("name").FirstCharToUpper(),
-                            node.GetAttribute("description"),
-                            ToNativeType(node.GetAttribute("primitiveType")),
-                            GetTypeLength(ToNativeType(node.GetAttribute("primitiveType")))
+                            field.Name.FirstCharToUpper(),
+                            field.Description,
+                            ToNativeType(field.PrimitiveType),
+                            GetTypeLength(ToNativeType(field.PrimitiveType))
                         )
                     }
                     ))
                     .ToList()
             );
             if (generator.Fields.All(f => f is IBlittable))
-                TypesCatalog.CustomTypeLengths[typeNode.GetAttribute("name")] = generator.Fields.SumFieldLength();
+                TypesCatalog.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
             yield return ($"{ns}\\Composites\\{generator.Name}", sb.ToString());
