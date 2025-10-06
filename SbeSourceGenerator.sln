@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34723.18
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PcapSbePocConsole", "PcapSbePocConsole\PcapSbePocConsole.csproj", "{807481C8-6E34-49FB-8C7D-3320D267D095}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SbeSourceGenerator", "SbeCodeGenerator\SbeSourceGenerator.csproj", "{B18869DA-FC5E-4970-9292-61A32B89623A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PcapMarketReplayConsole", "PcapMarketReplayConsole\PcapMarketReplayConsole.csproj", "{4B3471D9-CDBA-42F1-BC0B-CD8A4AF8D02A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PcapSbePocConsole", "examples\PcapSbePocConsole\PcapSbePocConsole.csproj", "{807481C8-6E34-49FB-8C7D-3320D267D095}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SbeBinanceConsole", "SbeBinanceConsole\SbeBinanceConsole.csproj", "{C694A196-7F3E-4C3D-8A6E-FF7B64827F02}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PcapMarketReplayConsole", "examples\PcapMarketReplayConsole\PcapMarketReplayConsole.csproj", "{4B3471D9-CDBA-42F1-BC0B-CD8A4AF8D02A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SbeBinanceConsole", "examples\SbeBinanceConsole\SbeBinanceConsole.csproj", "{C694A196-7F3E-4C3D-8A6E-FF7B64827F02}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SbeCodeGenerator.Tests", "SbeCodeGenerator.Tests\SbeCodeGenerator.Tests.csproj", "{FA86CBBC-2212-458C-9B64-70751822D32D}"
 EndProject
