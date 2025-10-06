@@ -1,0 +1,11 @@
+﻿namespace TestNamespace;
+/// <summary>
+/// 
+/// (EnumFlagsDefinition)
+/// </summary>
+[System.Flags]
+public enum Flags : byte
+{
+	Active = 1,
+	Cancelled = 2,
+}
