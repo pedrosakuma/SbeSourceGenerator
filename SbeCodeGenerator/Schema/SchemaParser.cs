@@ -88,13 +88,13 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a group into a SchemaGroupDto.
         /// </summary>
-        public static SchemaGroupDto ParseGroup(XmlElement groupElement)
+        public static SchemaGroupDto ParseGroup(XmlElement groupElement, SchemaContext context)
         {
             var fields = groupElement.ChildNodes
                 .Cast<XmlElement>()
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
-                .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
+                .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
                 .Select(ParseField)
                 .ToList();
 
@@ -130,13 +130,13 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a message into a SchemaMessageDto.
         /// </summary>
-        public static SchemaMessageDto ParseMessage(XmlElement messageElement)
+        public static SchemaMessageDto ParseMessage(XmlElement messageElement, SchemaContext context)
         {
             var fields = messageElement.ChildNodes
                 .Cast<XmlElement>()
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
-                .Where(x => !TypesCatalog.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
+                .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
                 .Select(ParseField)
                 .ToList();
 
@@ -149,7 +149,7 @@ namespace SbeSourceGenerator.Schema
             var groups = messageElement.ChildNodes
                 .Cast<XmlElement>()
                 .Where(x => x.Name == "group")
-                .Select(ParseGroup)
+                .Select(x => ParseGroup(x, context))
                 .ToList();
 
             var data = messageElement.ChildNodes

@@ -3,7 +3,7 @@ using System.Text;
 
 namespace SbeSourceGenerator.Generators
 {
-    internal record ParserGenerator(string Namespace, string Description, List<MessageDefinition> MessageTypes) : IFileContentGenerator
+    internal record ParserGenerator(string Namespace, string Description, List<MessageDefinition> MessageTypes, SchemaContext Context) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
@@ -20,8 +20,8 @@ namespace SbeSourceGenerator.Generators
             foreach (var type in MessageTypes)
                 sb.AppendLine($"{type.Name}Data.MESSAGE_ID,", tabs);
             sb.AppendLine("};", --tabs);
-            bool containsFramingHeader = TypesCatalog.CustomTypeLengths.TryGetValue("FramingHeader", out var framingHeaderMessageSize) && framingHeaderMessageSize > 0;
-            bool containsPacketHeader = TypesCatalog.CustomTypeLengths.TryGetValue("PacketHeader", out var packetHeaderMessageSize) && packetHeaderMessageSize > 0;
+            bool containsFramingHeader = Context.CustomTypeLengths.TryGetValue("FramingHeader", out var framingHeaderMessageSize) && framingHeaderMessageSize > 0;
+            bool containsPacketHeader = Context.CustomTypeLengths.TryGetValue("PacketHeader", out var packetHeaderMessageSize) && packetHeaderMessageSize > 0;
             if (containsPacketHeader)
             {
                 sb.AppendLine("private readonly ShouldConsumePredicate shouldConsume;", tabs);
