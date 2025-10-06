@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Generators.Types;
 using System.Collections.Generic;
 using System.Text;
@@ -11,7 +12,7 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     public class ParserCodeGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
+        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
             // This method is not used directly by ParserCodeGenerator since it needs messages list
             // Instead, use GenerateParser method which is called by MessagesCodeGenerator

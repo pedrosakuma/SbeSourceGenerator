@@ -1,6 +1,7 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using System.Xml;
+using Microsoft.CodeAnalysis;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
@@ -25,7 +26,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -52,7 +53,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -80,7 +81,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -108,7 +109,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();

@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using System;
 using System.Xml;
 
@@ -104,6 +106,121 @@ namespace SbeSourceGenerator.Helpers
                 return string.Empty;
             
             return element.InnerText ?? string.Empty;
+        }
+
+        // ========== Diagnostic-aware methods ==========
+
+        /// <summary>
+        /// Gets an integer attribute value from an XmlElement. Returns null if attribute doesn't exist or is empty.
+        /// Emits a diagnostic if the value cannot be parsed as an integer.
+        /// </summary>
+        public static int? GetIntAttributeOrNull(this XmlElement element, string attributeName, SourceProductionContext context)
+        {
+            if (element == null)
+                throw new ArgumentNullException(nameof(element));
+            
+            var value = element.GetAttribute(attributeName);
+            if (string.IsNullOrEmpty(value))
+                return null;
+            
+            if (int.TryParse(value, out int result))
+                return result;
+            
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidIntegerAttribute,
+                    Location.None,
+                    attributeName,
+                    value,
+                    element.Name));
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Gets an integer attribute value from an XmlElement with a fallback default value.
+        /// Emits a diagnostic if the value cannot be parsed as an integer.
+        /// </summary>
+        public static int GetIntAttributeOrDefault(this XmlElement element, string attributeName, int defaultValue, SourceProductionContext context)
+        {
+            if (element == null)
+                throw new ArgumentNullException(nameof(element));
+            
+            var value = element.GetAttribute(attributeName);
+            if (string.IsNullOrEmpty(value))
+                return defaultValue;
+            
+            if (int.TryParse(value, out int result))
+                return result;
+            
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidIntegerAttribute,
+                    Location.None,
+                    attributeName,
+                    value,
+                    element.Name));
+            }
+            
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Gets an attribute value from an XmlElement and validates it's not empty.
+        /// Emits a diagnostic if the attribute is missing or empty.
+        /// </summary>
+        public static string GetRequiredAttribute(this XmlElement element, string attributeName, SourceProductionContext context)
+        {
+            if (element == null)
+                throw new ArgumentNullException(nameof(element));
+            
+            var value = element.GetAttribute(attributeName);
+            if (string.IsNullOrEmpty(value))
+            {
+                // Only report diagnostic if context has a valid CancellationToken (not default)
+                if (context.CancellationToken != default)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.MissingRequiredAttribute,
+                        Location.None,
+                        attributeName,
+                        element.Name));
+                }
+                
+                return string.Empty;
+            }
+            
+            return value;
+        }
+
+        /// <summary>
+        /// Safely parses an integer value for enum flag bit-shifting operations.
+        /// Emits a diagnostic if the value cannot be parsed.
+        /// </summary>
+        public static int? ParseEnumFlagValue(string value, string fieldName, SourceProductionContext context)
+        {
+            if (string.IsNullOrEmpty(value))
+                return null;
+
+            if (int.TryParse(value, out int result))
+                return result;
+
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidEnumFlagValue,
+                    Location.None,
+                    fieldName,
+                    value));
+            }
+
+            return null;
         }
     }
 }

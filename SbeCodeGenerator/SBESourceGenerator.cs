@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,11 +22,8 @@ namespace SbeSourceGenerator
             // Stage 1: Collect XML schema files from additional files
             IncrementalValuesProvider<AdditionalText> xmlSchemaFiles = CollectXmlSchemaFiles(initContext);
 
-            // Stage 2: Build transformation pipeline to parse schemas and generate source code
-            IncrementalValuesProvider<(string name, string content)> generatedSources = BuildTransformationPipeline(xmlSchemaFiles);
-
-            // Stage 3: Register generated sources for output
-            RegisterSourceGeneration(initContext, generatedSources);
+            // Stage 2 & 3: Register source generation with diagnostic support
+            RegisterSourceGeneration(initContext, xmlSchemaFiles);
         }
 
         /// <summary>
@@ -37,53 +36,50 @@ namespace SbeSourceGenerator
         }
 
         /// <summary>
-        /// Stage 2: Builds the transformation pipeline that parses XML schemas and generates C# source code.
-        /// Data flow: XML files → parsed schema models → generated (name, content) tuples
+        /// Stage 2 & 3: Registers the generated source files for output to the compilation with diagnostic support.
+        /// Data flow: XML files → parsing & code generation → added to SourceProductionContext with diagnostics
         /// </summary>
-        private static IncrementalValuesProvider<(string name, string content)> BuildTransformationPipeline(IncrementalValuesProvider<AdditionalText> xmlFiles)
+        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValuesProvider<AdditionalText> xmlFiles)
         {
-            return GetNamesAndContents(xmlFiles);
-        }
-
-        /// <summary>
-        /// Stage 3: Registers the generated source files for output to the compilation.
-        /// Data flow: (name, content) tuples → added to SourceProductionContext
-        /// </summary>
-        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValuesProvider<(string name, string content)> generatedSources)
-        {
-            initContext.RegisterSourceOutput(generatedSources, (spc, nameAndContent) =>
+            initContext.RegisterSourceOutput(xmlFiles, (sourceContext, text) =>
             {
-                spc.AddSource(nameAndContent.name, nameAndContent.content);
+                try
+                {
+                    string path = text.Path;
+                    string ns = GetNamespaceFromPath(path);
+                    var d = new XmlDocument();
+                    d.Load(path);
+                    
+                    // Create a per-schema context to hold mutable state
+                    var context = new SchemaContext();
+                    
+                    // Use specialized generators to handle different categories
+                    var typesGenerator = new TypesCodeGenerator();
+                    var messagesGenerator = new MessagesCodeGenerator();
+                    var utilitiesGenerator = new UtilitiesCodeGenerator();
+                    
+                    foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
+                        sourceContext.AddSource(item.name, item.content);
+                    foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
+                        sourceContext.AddSource(item.name, item.content);
+                    foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
+                        sourceContext.AddSource(item.name, item.content);
+                }
+                catch (Exception ex)
+                {
+                    // Only report diagnostic if context has a valid CancellationToken (not default)
+                    if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.MalformedSchema,
+                            Location.None,
+                            text.Path,
+                            ex.Message));
+                    }
+                }
             });
         }
 
-        private static IncrementalValuesProvider<(string name, string content)> GetNamesAndContents(IncrementalValuesProvider<AdditionalText> textFiles)
-        {
-            return textFiles.SelectMany((text, cancellationToken) => GetNameAndContent(text, cancellationToken));
-        }
-
-        private static IEnumerable<(string name, string content)> GetNameAndContent(AdditionalText text, CancellationToken cancellationToken)
-        {
-            string path = text.Path;
-            string ns = GetNamespaceFromPath(path);
-            var d = new XmlDocument();
-            d.Load(path);
-            
-            // Create a per-schema context to hold mutable state
-            var context = new SchemaContext();
-            
-            // Use specialized generators to handle different categories
-            var typesGenerator = new TypesCodeGenerator();
-            var messagesGenerator = new MessagesCodeGenerator();
-            var utilitiesGenerator = new UtilitiesCodeGenerator();
-            
-            foreach (var item in typesGenerator.Generate(ns, d, context))
-                yield return item;
-            foreach (var item in messagesGenerator.Generate(ns, d, context))
-                yield return item;
-            foreach (var item in utilitiesGenerator.Generate(ns, d, context))
-                yield return item;
-        }
 
         private static string GetNamespaceFromPath(string path)
         {
