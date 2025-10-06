@@ -29,6 +29,7 @@ This project follows a simple code of conduct:
    - [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) - Current feature status
    - [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
    - [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) - System design
+   - [sbe-generator.md](./docs/sbe-generator.md) - Generator architecture and extension guide ⭐ **Start here for development**
 
 2. **Explore the Codebase**
    - Browse the code in `src/SbeCodeGenerator/`
@@ -146,13 +147,149 @@ dotnet test --filter "FullyQualifiedName~TypesCodeGeneratorTests"
 dotnet test --logger "console;verbosity=detailed"
 ```
 
+### Local Testing Workflow
+
+When making changes to the generator, follow this workflow to validate your changes:
+
+#### 1. Build the Generator
+
+```bash
+# Build the generator project
+dotnet build src/SbeCodeGenerator/SbeSourceGenerator.csproj
+
+# Or build the entire solution
+dotnet build
+```
+
+#### 2. Run Unit Tests
+
+```bash
+# Run all unit tests
+dotnet test tests/SbeCodeGenerator.Tests/
+
+# Run specific test class
+dotnet test --filter "FullyQualifiedName~TypesCodeGeneratorTests"
+
+# Run specific test method
+dotnet test --filter "FullyQualifiedName~TypesCodeGeneratorTests.Generate_WithSimpleEnum_ProducesEnumCode"
+
+# Run with detailed output
+dotnet test tests/SbeCodeGenerator.Tests/ --logger "console;verbosity=detailed"
+```
+
+#### 3. Run Integration Tests
+
+```bash
+# Run integration tests (these compile generated code)
+dotnet test tests/SbeCodeGenerator.IntegrationTests/
+
+# Clean and rebuild integration tests to ensure fresh generation
+dotnet clean tests/SbeCodeGenerator.IntegrationTests/
+dotnet build tests/SbeCodeGenerator.IntegrationTests/
+dotnet test tests/SbeCodeGenerator.IntegrationTests/
+```
+
+#### 4. Test with Example Projects
+
+Test your changes against real-world schemas:
+
+```bash
+# Clean and rebuild an example project
+dotnet clean examples/PcapSbePocConsole/
+dotnet build examples/PcapSbePocConsole/
+
+# Inspect generated files
+ls -la examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/
+
+# Run the example
+dotnet run --project examples/PcapSbePocConsole/
+```
+
+#### 5. Validate Generated Code
+
+Enable generated file output to inspect the code:
+
+```xml
+<!-- Add to example project .csproj -->
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+</PropertyGroup>
+```
+
+Then check generated files:
+
+```bash
+# After building with EmitCompilerGeneratedFiles=true
+find examples/PcapSbePocConsole/Generated -name "*.cs" | head -10
+
+# View a generated file
+cat examples/PcapSbePocConsole/Generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/B3.Market.Data.Messages/Enums/SomeEnum.cs
+```
+
+#### 6. Snapshot Testing Workflow
+
+If you're making changes that affect code generation output:
+
+```bash
+# Run snapshot tests
+dotnet test tests/SbeCodeGenerator.Tests/
+
+# If output changed intentionally, review diffs
+ls tests/SbeCodeGenerator.Tests/**/*.received.txt
+
+# Compare received vs verified files
+diff tests/SbeCodeGenerator.Tests/Snapshots/TypesCodeGenerator.Generate_WithSimpleEnum.verified.txt \
+     tests/SbeCodeGenerator.Tests/Snapshots/TypesCodeGenerator.Generate_WithSimpleEnum.received.txt
+
+# If changes are correct, update snapshots by copying .received.txt to .verified.txt
+# Or use the Verify test framework's interactive mode
+```
+
+#### 7. Test Coverage Analysis
+
+```bash
+# Run tests with coverage collection
+dotnet test --collect:"XPlat Code Coverage"
+
+# Coverage reports are in: tests/*/TestResults/*/coverage.cobertura.xml
+
+# To generate HTML report, install ReportGenerator:
+dotnet tool install -g dotnet-reportgenerator-globaltool
+
+# Generate coverage report
+reportgenerator \
+  -reports:"tests/**/coverage.cobertura.xml" \
+  -targetdir:"coverage-report" \
+  -reporttypes:Html
+
+# Open the report
+open coverage-report/index.html  # macOS
+xdg-open coverage-report/index.html  # Linux
+```
+
+### Testing Checklist for Changes
+
+Before submitting a PR, ensure:
+
+- [ ] **Unit tests pass**: `dotnet test tests/SbeCodeGenerator.Tests/`
+- [ ] **Integration tests pass**: `dotnet test tests/SbeCodeGenerator.IntegrationTests/`
+- [ ] **Example projects build**: `dotnet build examples/PcapSbePocConsole/`
+- [ ] **No new warnings**: `dotnet build --no-incremental 2>&1 | grep "warning"`
+- [ ] **Snapshot tests updated**: If generation changed, snapshots are updated
+- [ ] **Generated code compiles**: Integration tests verify this
+- [ ] **Manual testing done**: Run example projects to verify behavior
+
 ### Debugging Source Generators
 
 Source generators can be tricky to debug. Here are some approaches:
 
-**Method 1: Debugger.Launch()**
+#### Method 1: Debugger.Launch()
+
+Attach debugger when generator runs:
+
 ```csharp
-// Add this in your generator code
+// Add this in your generator code (remove before committing)
 #if DEBUG
     if (!System.Diagnostics.Debugger.IsAttached)
     {
@@ -161,19 +298,174 @@ Source generators can be tricky to debug. Here are some approaches:
 #endif
 ```
 
-**Method 2: Build and inspect generated files**
+Then build a project that uses the generator:
+
 ```bash
-# Build and check generated files
-dotnet build
-# Generated files are in: obj/Debug/net9.0/generated/
+dotnet build examples/PcapSbePocConsole/
+# Debugger will prompt to attach
 ```
 
-**Method 3: Unit test the generators**
-```csharp
-// Create unit tests that call generators directly
-var generator = new TypesCodeGenerator();
-var result = generator.Generate(ns, xmlDoc, context, default);
+#### Method 2: Inspect Generated Files
+
+```bash
+# Build with generated file output
+dotnet build examples/PcapSbePocConsole/
+
+# Check generated files location
+ls -la examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/
+
+# View generated content
+cat examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/B3.Market.Data.Messages/Enums/*.cs
 ```
+
+#### Method 3: Unit Test the Generators
+
+Create unit tests that call generators directly:
+
+```csharp
+[Fact]
+public void Debug_MyGeneratorChange()
+{
+    // Arrange
+    var xml = @"<messageSchema>...</messageSchema>";
+    var doc = new XmlDocument();
+    doc.LoadXml(xml);
+    var context = new SchemaContext();
+    var generator = new TypesCodeGenerator();
+    
+    // Act - Set breakpoint here
+    var results = generator.Generate("Test.Namespace", doc, context, default);
+    
+    // Assert
+    var resultList = results.ToList();
+    // Inspect results in debugger
+}
+```
+
+#### Method 4: Add Temporary Logging
+
+```csharp
+// Add to generator code (remove before committing)
+System.IO.File.AppendAllText(
+    "/tmp/generator-debug.log", 
+    $"Processing type: {typeName}\n"
+);
+```
+
+Then check the log:
+
+```bash
+tail -f /tmp/generator-debug.log
+```
+
+### Testing Different Scenarios
+
+#### Testing Edge Cases
+
+```bash
+# Create a test schema with edge cases
+cat > /tmp/test-edge-cases.xml << 'EOF'
+<messageSchema package="test" id="1">
+    <types>
+        <enum name="EmptyEnum" encodingType="uint8">
+            <!-- Empty enum -->
+        </enum>
+        <type name="MaxLengthType" primitiveType="char" length="1000000"/>
+    </types>
+</messageSchema>
+EOF
+
+# Add to a test project and build
+# Monitor for errors or warnings
+```
+
+#### Testing Performance
+
+```bash
+# Time the build with generator
+time dotnet build examples/PcapSbePocConsole/
+
+# Compare before and after changes
+# Significant slowdowns may indicate performance regression
+```
+
+#### Testing Error Handling
+
+Create invalid schemas to verify diagnostics:
+
+```bash
+# Create invalid schema
+cat > /tmp/invalid-schema.xml << 'EOF'
+<messageSchema>
+    <types>
+        <enum name="BadEnum" encodingType="invalidType">
+            <validValue name="Val1">0</validValue>
+        </enum>
+    </types>
+</messageSchema>
+EOF
+
+# Build should report diagnostic
+# Check build output for expected error message
+```
+
+### Common Testing Issues
+
+#### Issue: Tests Pass But Generated Code Doesn't Work
+
+**Solution**: Run integration tests which compile generated code:
+
+```bash
+dotnet test tests/SbeCodeGenerator.IntegrationTests/
+```
+
+#### Issue: Snapshot Tests Failing
+
+**Solution**: Review diffs and update if changes are intentional:
+
+```bash
+# Review what changed
+diff tests/SbeCodeGenerator.Tests/Snapshots/*.verified.txt \
+     tests/SbeCodeGenerator.Tests/Snapshots/*.received.txt
+
+# If correct, copy received to verified
+cp tests/SbeCodeGenerator.Tests/Snapshots/*.received.txt \
+   tests/SbeCodeGenerator.Tests/Snapshots/*.verified.txt
+```
+
+#### Issue: Generated Files Not Updating
+
+**Solution**: Clean and rebuild:
+
+```bash
+# Clean all generated files
+dotnet clean
+
+# Rebuild
+dotnet build
+
+# Or manually delete obj/ and bin/ directories
+rm -rf **/obj **/bin
+dotnet build
+```
+
+#### Issue: Can't See Generated Files
+
+**Solution**: Enable `EmitCompilerGeneratedFiles`:
+
+```xml
+<!-- In .csproj -->
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
+```
+
+### Advanced Testing Topics
+
+For more advanced testing scenarios, see:
+
+- [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) - Comprehensive testing documentation
+- [sbe-generator.md](./docs/sbe-generator.md) - Generator architecture and extension guide
 
 ## Coding Standards
 
