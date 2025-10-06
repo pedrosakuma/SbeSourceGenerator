@@ -12,7 +12,7 @@ namespace SbeSourceGenerator.Generators
     /// <summary>
     /// Generates code for SBE message definitions.
     /// </summary>
-    internal class MessagesCodeGenerator : ICodeGenerator
+    public class MessagesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
         {

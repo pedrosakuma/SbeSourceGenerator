@@ -7,7 +7,7 @@ namespace SbeSourceGenerator.Generators
     /// Interface for specialized code generators that generate source files from XML schemas.
     /// Each implementation handles a specific category of code generation (types, messages, utilities, parser).
     /// </summary>
-    internal interface ICodeGenerator
+    public interface ICodeGenerator
     {
         /// <summary>
         /// Generates source code from an XML document and schema context.
