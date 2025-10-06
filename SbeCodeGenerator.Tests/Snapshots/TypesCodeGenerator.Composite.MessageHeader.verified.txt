@@ -1,0 +1,31 @@
+﻿using System.Runtime.InteropServices;
+namespace TestNamespace;
+/// <summary>
+/// Template ID and length of message root
+/// (CompositeDefinition)
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public partial struct MessageHeader
+{
+	public const int MESSAGE_SIZE = 8;
+	/// <summary>
+	/// 
+	/// (ValueFieldDefinition)
+	/// </summary>
+	public ushort BlockLength;
+	/// <summary>
+	/// 
+	/// (ValueFieldDefinition)
+	/// </summary>
+	public ushort TemplateId;
+	/// <summary>
+	/// 
+	/// (ValueFieldDefinition)
+	/// </summary>
+	public ushort SchemaId;
+	/// <summary>
+	/// 
+	/// (ValueFieldDefinition)
+	/// </summary>
+	public ushort Version;
+}
