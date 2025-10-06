@@ -6,6 +6,7 @@ This folder contains comprehensive documentation for the SBE Code Generator proj
 
 - **[ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md)** - Visual diagrams of the system architecture
 - **[GENERATOR_DECOMPOSITION_SUMMARY.md](./GENERATOR_DECOMPOSITION_SUMMARY.md)** - How the generator is decomposed into modular components
+- **[sbe-generator.md](./sbe-generator.md)** - ⭐ **Developer guide**: Pipeline, data structures, and extension points
 
 ## Implementation Details
 
@@ -16,13 +17,6 @@ This folder contains comprehensive documentation for the SBE Code Generator proj
 ## Testing
 
 - **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - How to test the generator
-- **[AUTOMATED_TESTING_SUMMARY.md](./AUTOMATED_TESTING_SUMMARY.md)** - Overview of the automated testing infrastructure
-
-## Change History
-
-- **[BEFORE_AFTER_COMPARISON.md](./BEFORE_AFTER_COMPARISON.md)** - Comparison of code before and after refactoring
-- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Summary of major implementations
-- **[DIAGNOSTIC_REPORTING_SUMMARY.md](./DIAGNOSTIC_REPORTING_SUMMARY.md)** - Diagnostic system overview
 
 ## Quick Links
 
