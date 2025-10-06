@@ -79,7 +79,7 @@ All example projects reference the SBE Code Generator as an analyzer:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\..\SbeCodeGenerator\SbeSourceGenerator.csproj" 
+  <ProjectReference Include="..\..\src\SbeCodeGenerator\SbeSourceGenerator.csproj" 
                     OutputItemType="Analyzer" 
                     ReferenceOutputAssembly="false" />
 </ItemGroup>
