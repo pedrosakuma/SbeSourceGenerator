@@ -1,5 +1,7 @@
+using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Generators.Types;
+using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
@@ -14,17 +16,17 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     public class TypesCodeGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
+        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
             var typeNodes = xmlDocument.SelectNodes("//types/*");
             foreach (XmlElement typeNode in typeNodes)
             {
                 var generatedType = typeNode.Name switch
                 {
-                    "composite" => GenerateComposite(ns, typeNode, context),
-                    "enum" => GenerateEnum(ns, typeNode, context),
-                    "type" => GenerateType(ns, typeNode, context),
-                    "set" => GenerateSet(ns, typeNode, context),
+                    "composite" => GenerateComposite(ns, typeNode, context, sourceContext),
+                    "enum" => GenerateEnum(ns, typeNode, context, sourceContext),
+                    "type" => GenerateType(ns, typeNode, context, sourceContext),
+                    "set" => GenerateSet(ns, typeNode, context, sourceContext),
                     _ => Enumerable.Empty<(string name, string content)>()
                 };
                 foreach (var item in generatedType)
@@ -32,9 +34,22 @@ namespace SbeSourceGenerator.Generators
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context)
+        private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
+            
+            var validChoices = enumDto.Choices
+                .Select(choice =>
+                {
+                    // Validate that the value can be parsed for bit-shift operations
+                    var parsedValue = XmlParsingHelpers.ParseEnumFlagValue(choice.InnerText, choice.Name, sourceContext);
+                    return new EnumFieldDefinition(
+                        choice.Name,
+                        choice.Description,
+                        parsedValue?.ToString() ?? "0" // Use 0 as fallback if parsing failed
+                    );
+                })
+                .ToList();
             
             var generator = new EnumFlagsDefinition(
                 ns,
@@ -42,13 +57,7 @@ namespace SbeSourceGenerator.Generators
                 enumDto.Description,
                 ToNativeType(enumDto.EncodingType),
                 GetTypeLength(ToNativeType(enumDto.EncodingType), context),
-                enumDto.Choices
-                    .Select(choice => new EnumFieldDefinition(
-                        choice.Name,
-                        choice.Description,
-                        choice.InnerText
-                    ))
-                    .ToList()
+                validChoices
             );
             if (generator is IBlittable blittableType)
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
@@ -57,12 +66,21 @@ namespace SbeSourceGenerator.Generators
             yield return ($"{ns}\\Sets\\{enumDto.Name}", sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context)
+        private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var typeDto = SchemaParser.ParseType(typeNode);
             
             if (!IsPrimitiveType(typeDto.Name))
             {
+                int lengthValue = 0;
+                if (!string.IsNullOrEmpty(typeDto.Length))
+                {
+                    if (!int.TryParse(typeDto.Length, out lengthValue))
+                    {
+                        lengthValue = typeNode.GetIntAttributeOrDefault("length", 0, sourceContext);
+                    }
+                }
+
                 var generator =
                     (typeDto.PrimitiveType, typeDto.Presence) switch
                     {
@@ -81,7 +99,7 @@ namespace SbeSourceGenerator.Generators
                             ns,
                             typeDto.Name,
                             typeDto.Description,
-                            typeDto.Length == "" ? 0 : int.Parse(typeDto.Length)
+                            lengthValue
                         ),
                         (_, "optional") => new OptionalTypeDefinition(
                             ns,
@@ -135,7 +153,7 @@ namespace SbeSourceGenerator.Generators
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context)
+        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
             
@@ -181,7 +199,7 @@ namespace SbeSourceGenerator.Generators
             yield return ($"{ns}\\Enums\\{enumDto.Name.FirstCharToUpper()}", sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context)
+        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var compositeDto = SchemaParser.ParseComposite(typeNode);
             
