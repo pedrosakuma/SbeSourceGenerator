@@ -126,12 +126,16 @@ namespace SbeSourceGenerator.Helpers
             if (int.TryParse(value, out int result))
                 return result;
             
-            context.ReportDiagnostic(Diagnostic.Create(
-                SbeDiagnostics.InvalidIntegerAttribute,
-                Location.None,
-                attributeName,
-                value,
-                element.Name));
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidIntegerAttribute,
+                    Location.None,
+                    attributeName,
+                    value,
+                    element.Name));
+            }
             
             return null;
         }
@@ -152,12 +156,16 @@ namespace SbeSourceGenerator.Helpers
             if (int.TryParse(value, out int result))
                 return result;
             
-            context.ReportDiagnostic(Diagnostic.Create(
-                SbeDiagnostics.InvalidIntegerAttribute,
-                Location.None,
-                attributeName,
-                value,
-                element.Name));
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidIntegerAttribute,
+                    Location.None,
+                    attributeName,
+                    value,
+                    element.Name));
+            }
             
             return defaultValue;
         }
@@ -174,11 +182,15 @@ namespace SbeSourceGenerator.Helpers
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
             {
-                context.ReportDiagnostic(Diagnostic.Create(
-                    SbeDiagnostics.MissingRequiredAttribute,
-                    Location.None,
-                    attributeName,
-                    element.Name));
+                // Only report diagnostic if context has a valid CancellationToken (not default)
+                if (context.CancellationToken != default)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.MissingRequiredAttribute,
+                        Location.None,
+                        attributeName,
+                        element.Name));
+                }
                 
                 return string.Empty;
             }
@@ -198,11 +210,15 @@ namespace SbeSourceGenerator.Helpers
             if (int.TryParse(value, out int result))
                 return result;
 
-            context.ReportDiagnostic(Diagnostic.Create(
-                SbeDiagnostics.InvalidEnumFlagValue,
-                Location.None,
-                fieldName,
-                value));
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (context.CancellationToken != default)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidEnumFlagValue,
+                    Location.None,
+                    fieldName,
+                    value));
+            }
 
             return null;
         }
