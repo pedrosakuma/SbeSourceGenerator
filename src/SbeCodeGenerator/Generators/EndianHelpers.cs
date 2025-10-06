@@ -1,0 +1,137 @@
+using System.Text;
+
+namespace SbeSourceGenerator
+{
+    internal record EndianHelpers(string Namespace) : IFileContentGenerator
+    {
+        public void AppendFileContent(StringBuilder sb, int tabs = 0)
+        {
+            sb.Append($$"""
+                using System;
+                using System.Buffers.Binary;
+                using System.Runtime.CompilerServices;
+                
+                namespace {{Namespace}}; 
+                
+                /// <summary>
+                /// Provides helper methods for byte order (endianness) conversion.
+                /// </summary>
+                public static class EndianHelpers
+                {
+                    /// <summary>
+                    /// Gets whether the current platform is little-endian.
+                    /// </summary>
+                    public static bool IsLittleEndian => BitConverter.IsLittleEndian;
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static short ReverseBytes(short value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ushort ReverseBytes(ushort value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static int ReverseBytes(int value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static uint ReverseBytes(uint value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static long ReverseBytes(long value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ulong ReverseBytes(ulong value)
+                    {
+                        return BinaryPrimitives.ReverseEndianness(value);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static short ReadInt16BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt16BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static short ReadInt16LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt16LittleEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ushort ReadUInt16BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt16BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ushort ReadUInt16LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt16LittleEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static int ReadInt32BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt32BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static int ReadInt32LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt32LittleEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static uint ReadUInt32BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt32BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static uint ReadUInt32LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt32LittleEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static long ReadInt64BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt64BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static long ReadInt64LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadInt64LittleEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ulong ReadUInt64BigEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt64BigEndian(source);
+                    }
+                
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public static ulong ReadUInt64LittleEndian(ReadOnlySpan<byte> source)
+                    {
+                        return BinaryPrimitives.ReadUInt64LittleEndian(source);
+                    }
+                }
+                """);
+        }
+    }
+}

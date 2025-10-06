@@ -172,10 +172,27 @@ namespace SbeCodeGenerator.Tests
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
 
             // Assert
-            var result = results.Single();
+            var result = results.First(r => r.name.Contains("NumberExtensions"));
             return Verifier.Verify(result.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("UtilitiesCodeGenerator.NumberExtensions");
+        }
+
+        [Fact]
+        public Task UtilitiesCodeGenerator_GeneratesConsistentEndianHelpers()
+        {
+            // Arrange
+            var generator = new UtilitiesCodeGenerator();
+            var context = new SchemaContext();
+
+            // Act
+            var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
+
+            // Assert
+            var result = results.First(r => r.name.Contains("EndianHelpers"));
+            return Verifier.Verify(result.content)
+                .UseDirectory("Snapshots")
+                .UseFileName("UtilitiesCodeGenerator.EndianHelpers");
         }
     }
 }
