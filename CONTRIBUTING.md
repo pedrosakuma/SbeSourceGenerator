@@ -28,12 +28,13 @@ This project follows a simple code of conduct:
    - [README.md](./README.md) - Project overview
    - [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) - Current feature status
    - [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
-   - [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) - System design
+   - [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) - System design
 
 2. **Explore the Codebase**
-   - Browse the code in `SbeCodeGenerator/`
-   - Look at tests in `SbeCodeGenerator.Tests/`
+   - Browse the code in `src/SbeCodeGenerator/`
+   - Look at tests in `tests/SbeCodeGenerator.Tests/`
    - Check out examples in `examples/` folder
+   - Read documentation in `docs/`
 
 3. **Find an Issue**
    - Check [open issues](https://github.com/pedrosakuma/PcapSbePocConsole/issues)
@@ -126,7 +127,7 @@ dotnet build --no-incremental
 dotnet build -c Release
 
 # Build specific project
-dotnet build SbeCodeGenerator/SbeSourceGenerator.csproj
+dotnet build src/SbeCodeGenerator/SbeSourceGenerator.csproj
 ```
 
 ### Testing Commands

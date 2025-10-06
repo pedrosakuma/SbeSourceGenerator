@@ -27,7 +27,7 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Byte order (endianness) handling
 - Custom encoding/decoding hooks
 
-See [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
+See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
 
 ## Quick Start
 
@@ -163,7 +163,7 @@ The generator provides comprehensive diagnostics:
 | SBE005 | Warning | Unsupported construct |
 | SBE006 | Error | Invalid type length |
 
-See [Diagnostics README](./SbeCodeGenerator/Diagnostics/README.md) for details.
+See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 
 ## Testing
 
@@ -191,29 +191,32 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
 
 ## Documentation
 
-- **[SBE Feature Completeness](./SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
+- **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
 - **[Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - System architecture
 - **[Testing Guide](./TESTING_GUIDE.md)** - How to test the generator
-- **[Schema DTOs Documentation](./SbeCodeGenerator/Schema/README.md)** - Schema parsing infrastructure
+- **[Schema DTOs Documentation](./src/SbeCodeGenerator/Schema/README.md)** - Schema parsing infrastructure
 
 ## Project Structure
 
 ```
 SbeSourceGenerator/
-├── SbeCodeGenerator/              # Source generator implementation
-│   ├── Diagnostics/              # Diagnostic descriptors
-│   ├── Generators/               # Code generators
-│   │   ├── Fields/              # Field generators
-│   │   └── Types/               # Type generators
-│   ├── Helpers/                 # Helper utilities
-│   └── Schema/                  # DTOs and parsing
-├── SbeCodeGenerator.Tests/       # Unit tests
-├── SbeCodeGenerator.IntegrationTests/  # Integration tests
-└── examples/                     # Example applications
-    ├── PcapSbePocConsole/       # Basic SBE encoding/decoding
-    ├── PcapMarketReplayConsole/ # Market data replay
-    └── SbeBinanceConsole/       # Binance market data processing
+├── src/
+│   └── SbeCodeGenerator/          # Source generator implementation
+│       ├── Diagnostics/          # Diagnostic descriptors
+│       ├── Generators/           # Code generators
+│       │   ├── Fields/          # Field generators
+│       │   └── Types/           # Type generators
+│       ├── Helpers/             # Helper utilities
+│       └── Schema/              # DTOs and parsing
+├── tests/
+│   ├── SbeCodeGenerator.Tests/       # Unit tests
+│   └── SbeCodeGenerator.IntegrationTests/  # Integration tests
+├── examples/                     # Example applications
+│   ├── PcapSbePocConsole/       # Basic SBE encoding/decoding
+│   ├── PcapMarketReplayConsole/ # Market data replay
+│   └── SbeBinanceConsole/       # Binance market data processing
+└── docs/                        # Documentation files
 ```
 
 ## Examples
@@ -239,7 +242,7 @@ The generated code is designed for high performance:
 
 **SBE 1.0 Specification Compliance**: ~70-75%
 
-The generator implements the core SBE features needed for most use cases. See the [Feature Completeness](./SBE_FEATURE_COMPLETENESS.md) document for what's currently supported and what's planned.
+The generator implements the core SBE features needed for most use cases. See the [Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md) document for what's currently supported and what's planned.
 
 ## Contributing
 
