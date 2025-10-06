@@ -1,5 +1,8 @@
+using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Generators.Types;
+using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
@@ -14,7 +17,7 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     public class MessagesCodeGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context)
+        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
             nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
@@ -41,7 +44,7 @@ namespace SbeSourceGenerator.Generators
                                         ToNativeType(field.Type),
                                         GetUnderlyingType(field.Type, context),
                                         field.Description,
-                                        field.Offset == "" ? null : int.Parse(field.Offset),
+                                        ParseOffset(field.Offset, field.Name, sourceContext),
                                         GetTypeLength(field.Type, context)
                                     ),
                                     _ => (IFileContentGenerator)new MessageFieldDefinition(
@@ -49,7 +52,7 @@ namespace SbeSourceGenerator.Generators
                                         field.Id,
                                         ToNativeType(field.Type),
                                         field.Description,
-                                        field.Offset == "" ? null : int.Parse(field.Offset),
+                                        ParseOffset(field.Offset, field.Name, sourceContext),
                                         GetTypeLength(field.Type, context)
                                     )
                                 }
@@ -81,7 +84,7 @@ namespace SbeSourceGenerator.Generators
                                                 field.Id,
                                                 ToNativeType(field.Type),
                                                 field.Description,
-                                                field.Offset == "" ? null : int.Parse(field.Offset),
+                                                ParseOffset(field.Offset, field.Name, sourceContext),
                                                 GetTypeLength(field.Type, context)
                                             )
                                         ).ToList(),
@@ -168,6 +171,25 @@ namespace SbeSourceGenerator.Generators
                 "UInt64NULL" => "ulong",
                 _ => v
             };
+        }
+
+        private static int? ParseOffset(string offset, string fieldName, SourceProductionContext sourceContext)
+        {
+            if (string.IsNullOrEmpty(offset))
+                return null;
+
+            if (int.TryParse(offset, out int result))
+                return result;
+
+            // Report diagnostic for invalid offset
+            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                SbeDiagnostics.InvalidIntegerAttribute,
+                Location.None,
+                "offset",
+                offset,
+                fieldName));
+
+            return null;
         }
     }
 }
