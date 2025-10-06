@@ -1,0 +1,10 @@
+﻿namespace TestNamespace;
+/// <summary>
+/// 
+/// (EnumDefinition)
+/// </summary>
+public enum Side : byte
+{
+	Buy = 0,
+	Sell = 1,
+}
