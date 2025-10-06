@@ -181,13 +181,17 @@ namespace SbeSourceGenerator.Generators
             if (int.TryParse(offset, out int result))
                 return result;
 
-            // Report diagnostic for invalid offset
-            sourceContext.ReportDiagnostic(Diagnostic.Create(
-                SbeDiagnostics.InvalidIntegerAttribute,
-                Location.None,
-                "offset",
-                offset,
-                fieldName));
+            // Only report diagnostic if context has a valid CancellationToken (not default)
+            if (sourceContext.CancellationToken != default)
+            {
+                // Report diagnostic for invalid offset
+                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.InvalidIntegerAttribute,
+                    Location.None,
+                    "offset",
+                    offset,
+                    fieldName));
+            }
 
             return null;
         }

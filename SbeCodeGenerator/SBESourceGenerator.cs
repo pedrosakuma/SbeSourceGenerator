@@ -67,11 +67,15 @@ namespace SbeSourceGenerator
                 }
                 catch (Exception ex)
                 {
-                    sourceContext.ReportDiagnostic(Diagnostic.Create(
-                        SbeDiagnostics.MalformedSchema,
-                        Location.None,
-                        text.Path,
-                        ex.Message));
+                    // Only report diagnostic if context has a valid CancellationToken (not default)
+                    if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.MalformedSchema,
+                            Location.None,
+                            text.Path,
+                            ex.Message));
+                    }
                 }
             });
         }
