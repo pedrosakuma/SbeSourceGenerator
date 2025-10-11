@@ -22,7 +22,7 @@
 
 - Generates blittable structs for SBE composites, messages and groups.
 - Produces helper types for enums, sets, optional values and decimal conversions.
-- Emits a `MessageParser` capable of dispatching messages by template ID.
+- Provides `TryParse` helpers on messages and composites to simplify decoding flows without unsafe casts.
 - Includes diagnostics (`SBE00x`) to highlight malformed schemas or unsupported constructs.
 
 ## Requirements

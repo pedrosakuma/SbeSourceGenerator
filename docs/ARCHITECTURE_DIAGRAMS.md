@@ -52,23 +52,14 @@
         ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
         │   Types      │ │  Messages    │ │  Utilities   │
         │  Generator   │ │  Generator   │ │  Generator   │
-        └──────┬───────┘ └──────┬───────┘ └──────────────┘
-               │                │
-               │                │
-               │                ▼
-               │         ┌──────────────┐
-               │         │   Parser     │
-               │         │  Generator   │
-               │         └──────────────┘
-               │
-               │
-    ┌──────────┴───────────────────┐
-    │                              │
-    ▼                              ▼
-┌───────────┐                  ┌───────────┐
-│   Enums   │                  │   Types   │
-│   Sets    │                  │Composites │
-└───────────┘                  └───────────┘
+        └──────┬───────┘ └──────┬───────┘ └──────┬──────┘
+               │                │               │
+               │                │               │
+               ▼                ▼               ▼
+        ┌───────────┐    ┌──────────────┐  ┌──────────────┐
+        │ Types &   │    │ Messages &   │  │ Shared       │
+        │ Composites│    │ Parsing APIs │  │ Utilities     │
+        └───────────┘    └──────────────┘  └──────────────┘
 ```
 
 ## Component Details
@@ -86,10 +77,10 @@
          ┌──────────┼──────────┬──────────┐
          │          │          │          │
          │          │          │          │
-    ┌────▼────┐┌───▼────┐┌───▼────┐┌───▼────┐
-    │ Types   ││Messages││ Parser ││Utilities│
-    │Generator││Generator││Generator││Generator│
-    └─────────┘└────────┘└────────┘└─────────┘
+       ┌────▼────┐┌───▼────┐┌───▼────┐
+       │ Types   ││Messages││Utilities│
+       │Generator││Generator││Generator│
+       └─────────┘└────────┘└─────────┘
 ```
 
 ### Data Flow
@@ -114,22 +105,21 @@ XML Schema File
     │ • Types          │              │ • Messages       │
     │ • Enums          │              │ • Fields         │
     │ • Sets           │              │ • Groups         │
-    │ • Composites     │              │                  │
+    │ • Composites     │              │ • Parsing helpers│
     └──────┬───────────┘              └─────┬────────────┘
            │                                │
-           │                                ├────────────┐
-           │                                │            │
-           ▼                                ▼            ▼
-    ┌──────────────┐              ┌──────────────┐ ┌──────────────┐
-    │ Type Files   │              │Message Files │ │ParserCodeGen │
-    │ .cs          │              │ .cs          │ │              │
-    └──────────────┘              └──────────────┘ └──────┬───────┘
-                                                          │
-                                                          ▼
-                                                   ┌──────────────┐
-                                                   │ Parser File  │
-                                                   │ .cs          │
-                                                   └──────────────┘
+           │                                │
+           ▼                                ▼
+    ┌──────────────┐              ┌──────────────┐
+    │ Type Files   │              │Message Files │
+    │ .cs          │              │ .cs          │
+    └──────────────┘              └──────┬───────┘
+                                         │
+                                         ▼
+                                 ┌──────────────┐
+                                 │ Utility Files│
+                                 │ .cs          │
+                                 └──────────────┘
 ```
 
 ### Generator Responsibilities
@@ -162,21 +152,12 @@ XML Schema File
 │ • Message constants                                         │
 │ • Message groups                                            │
 │ • Message data fields                                       │
-│ • Delegates to parser generation                           │
+│ • Emits per-message parsing helpers                        │
 │                                                             │
 │ Helper Methods:                                             │
 │ • ToNativeType()                                            │
 │ • GetUnderlyingType()                                       │
 │ • GetTypeLength()                                           │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                  ParserCodeGenerator                        │
-├─────────────────────────────────────────────────────────────┤
-│ Handles:                                                    │
-│ • Wraps existing ParserGenerator                           │
-│ • Provides ICodeGenerator interface                        │
-│ • Special method GenerateParser() for messages             │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -216,11 +197,10 @@ XML Schema File
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  MessagesCodeGeneratorTests (4 tests)          │    │
+│  │  MessagesCodeGeneratorTests (3 tests)          │    │
 │  │  • Generate_WithSimpleMessage_ProducesCode     │    │
 │  │  • Generate_WithConstants_ProducesConstants    │    │
 │  │  • Generate_WithMultiple_ProducesMultiple      │    │
-│  │  • Generate_WithMessages_GeneratesParser       │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
@@ -230,12 +210,12 @@ XML Schema File
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  ParserCodeGeneratorTests (2 tests)            │    │
-│  │  • GenerateParser_WithMessages_ProducesCode    │    │
-│  │  • GenerateParser_WithMultiple_IncludesAll     │    │
+│  │  MessageParsingHelpersTests (2 tests)          │    │
+│  │  • MessagesIncludeTryParseHelper               │    │
+│  │  • CompositesIncludeTryParseHelper             │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
-│                     Total: 12 tests ✅                   │
+│                     Total: 11 tests ✅                   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -252,11 +232,10 @@ After:
 │  SBESourceGenerator:  97 lines │ ← 82% reduction
 │  TypesCodeGenerator: 364 lines │
 │  MessagesCodeGen:    175 lines │
-│  ParserCodeGen:       28 lines │
 │  UtilitiesCodeGen:    17 lines │
 │  ICodeGenerator:      20 lines │
 ├────────────────────────────────┤
-│  Total:              701 lines │ (better organized)
+│  Total:              673 lines │ (better organized)
 └────────────────────────────────┘
 ```
 
@@ -289,15 +268,10 @@ After:
 │      ▼          ▼          ▼                            │
 │  ┌──────┐  ┌────────┐  ┌─────────┐                    │
 │  │Types │  │Messages│  │Utilities│                    │
-│  └──────┘  └────┬───┘  └─────────┘                    │
-│                 │                                       │
-│                 ▼                                       │
-│             ┌────────┐                                 │
-│             │Parser  │                                 │
-│             └────────┘                                 │
+│  └──────┘  └────────┘  └─────────┘                    │
 │                                                         │
 │  ✅ Easy to maintain                                   │
-│  ✅ Fully tested (12 tests)                           │
+│  ✅ Fully tested (11 tests)                           │
 │  ✅ Clear responsibilities                            │
 │  ✅ Modular design                                    │
 │  ✅ High cohesion                                     │

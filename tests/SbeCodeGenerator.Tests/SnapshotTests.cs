@@ -136,32 +136,6 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
-        public Task MessagesCodeGenerator_GeneratesConsistentParser()
-        {
-            // Arrange
-            var context = new SchemaContext();
-            
-            // First run TypesCodeGenerator to populate the context
-            var typesGenerator = new TypesCodeGenerator();
-            _ = typesGenerator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext)).ToList();
-            
-            // Then run MessagesCodeGenerator
-            var generator = new MessagesCodeGenerator();
-
-            // Act
-            var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
-
-            // Find the MessageParser
-            var parserResult = results.FirstOrDefault(r => r.name.Contains("MessageParser"));
-
-            // Assert
-            Assert.NotEqual(default, parserResult);
-            return Verifier.Verify(parserResult.content)
-                .UseDirectory("Snapshots")
-                .UseFileName("MessagesCodeGenerator.MessageParser");
-        }
-
-        [Fact]
         public Task UtilitiesCodeGenerator_GeneratesConsistentNumberExtensions()
         {
             // Arrange

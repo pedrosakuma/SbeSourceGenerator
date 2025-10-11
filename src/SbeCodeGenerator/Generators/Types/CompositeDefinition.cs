@@ -23,7 +23,21 @@ namespace SbeSourceGenerator
 
             sb.AppendLine("{", tabs++);
             if (blittable)
+            {
                 sb.AppendLine($"public const int MESSAGE_SIZE = {Fields.SumFieldLength()};", tabs);
+                sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, out {Name} value, out ReadOnlySpan<byte> remaining)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("value = default;", tabs);
+                sb.AppendLine("remaining = default;", tabs);
+                sb.AppendLine("return false;", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine($"value = MemoryMarshal.Read<{Name}>(buffer);", tabs);
+                sb.AppendLine("remaining = buffer.Slice(MESSAGE_SIZE);", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+            }
 
             foreach (var field in Fields)
                 field.AppendFileContent(sb, tabs);

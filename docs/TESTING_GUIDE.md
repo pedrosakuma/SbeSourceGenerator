@@ -16,7 +16,7 @@ Snapshot tests use [Verify.Xunit](https://github.com/VerifyTests/Verify) to ensu
 ### What Gets Tested
 
 - **TypesCodeGenerator**: Enums, Sets, Composites, and Custom Types
-- **MessagesCodeGenerator**: Message structures and the MessageParser
+- **MessagesCodeGenerator**: Message structures and parsing helpers
 - **UtilitiesCodeGenerator**: Utility classes like NumberExtensions
 
 ### Test Data
@@ -63,9 +63,9 @@ Integration test schemas are located in `SbeCodeGenerator.IntegrationTests/TestS
 ### What Gets Tested
 
 - **Compilation**: Generated code must compile without errors
-- **Type Availability**: All expected types (enums, messages, parsers) are generated
+- **Type Availability**: All expected types (enums, messages, helpers) are generated
 - **Instantiation**: Generated types can be created and used
-- **Message Parsing**: The generated MessageParser can parse binary messages
+- **Message Helpers**: Generated `TryParse` APIs expose decoded views of headers and messages
 - **Namespace Generation**: Correct namespace derivation from file names
 
 ### Running Integration Tests

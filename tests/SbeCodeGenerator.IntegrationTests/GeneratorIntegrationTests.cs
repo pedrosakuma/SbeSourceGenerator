@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace SbeCodeGenerator.IntegrationTests
@@ -24,7 +25,6 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.NotNull(typeof(Integration.Test.MessageHeader));
             Assert.NotNull(typeof(Integration.Test.NewOrderData));
             Assert.NotNull(typeof(Integration.Test.OrderBookData));
-            Assert.NotNull(typeof(Integration.Test.MessageParser));
         }
 
         [Fact]
@@ -80,64 +80,52 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((ushort)0, header.Version);
         }
 
-        [Fact]
-        public void GeneratedParser_CanBeInstantiated()
-        {
-            // Verify the message parser can be created
-            var parser = new Integration.Test.MessageParser();
-            Assert.NotNull(parser);
-            
-            // Verify MessageIds array is populated
-            Assert.NotNull(Integration.Test.MessageParser.MessageIds);
-            Assert.True(Integration.Test.MessageParser.MessageIds.Length > 0);
-            Assert.Contains(Integration.Test.NewOrderData.MESSAGE_ID, Integration.Test.MessageParser.MessageIds);
-            Assert.Contains(Integration.Test.OrderBookData.MESSAGE_ID, Integration.Test.MessageParser.MessageIds);
-        }
 
         [Fact]
-        public unsafe void GeneratedParser_CanParseMessages()
+        public void GeneratedMessage_TryParseReturnsStructCopy()
         {
-            // Create a simple message with header and body
-            Span<byte> buffer = stackalloc byte[1024];
-            
-            // Write header
-            ref Integration.Test.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.MessageHeader>(buffer);
-            header.BlockLength = (ushort)Marshal.SizeOf<Integration.Test.NewOrderData>();
-            header.TemplateId = (ushort)Integration.Test.NewOrderData.MESSAGE_ID;
-            header.SchemaId = 2;
-            header.Version = 0;
-            
-            // Write order data
-            var bodyOffset = Marshal.SizeOf<Integration.Test.MessageHeader>();
-            ref Integration.Test.NewOrderData order = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer.Slice(bodyOffset));
-            order.OrderId = new Integration.Test.OrderId { Value = 999 };
-            order.Price = new Integration.Test.Price { Value = 50000 };
-            order.Quantity = 100;
-            order.Side = Integration.Test.OrderSide.Sell;
-            order.OrderType = Integration.Test.OrderType.Market;
-            
-            // Parse the message
-            bool messageParsed = false;
-            Integration.Test.NewOrderData parsedOrder = default;
-            
-            var parser = new Integration.Test.MessageParser
-            {
-                NewOrderMessageReceived = (ref readonly Integration.Test.NewOrderData msg, ReadOnlySpan<byte> varPart) =>
-                {
-                    messageParsed = true;
-                    parsedOrder = msg;
-                }
-            };
-            
-            var totalSize = bodyOffset + Marshal.SizeOf<Integration.Test.NewOrderData>();
-            parser.Parse(buffer.Slice(0, totalSize));
-            
-            Assert.True(messageParsed);
+            // Prepare a buffer with the raw bytes of NewOrderData
+            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
+            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            orderRef.OrderId = new Integration.Test.OrderId { Value = 999 };
+            orderRef.Price = new Integration.Test.Price { Value = 50000 };
+            orderRef.Quantity = 100;
+            orderRef.Side = Integration.Test.OrderSide.Sell;
+            orderRef.OrderType = Integration.Test.OrderType.Market;
+
+            // Act
+            var success = Integration.Test.NewOrderData.TryParse(buffer, out var parsedOrder, out var variableData);
+
+            // Assert
+            Assert.True(success);
+            Assert.Equal(0, variableData.Length);
             Assert.Equal(999, parsedOrder.OrderId.Value);
             Assert.Equal(50000, parsedOrder.Price.Value);
             Assert.Equal(100, parsedOrder.Quantity);
             Assert.Equal(Integration.Test.OrderSide.Sell, parsedOrder.Side);
             Assert.Equal(Integration.Test.OrderType.Market, parsedOrder.OrderType);
+        }
+
+        [Fact]
+        public void GeneratedMessageHeader_TryParseExposesPayload()
+        {
+            Span<byte> buffer = stackalloc byte[Integration.Test.MessageHeader.MESSAGE_SIZE + Integration.Test.NewOrderData.MESSAGE_SIZE];
+            var bodyOffset = Integration.Test.MessageHeader.MESSAGE_SIZE;
+            ref Integration.Test.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.MessageHeader>(buffer);
+            header.BlockLength = (ushort)Integration.Test.NewOrderData.MESSAGE_SIZE;
+            header.TemplateId = (ushort)Integration.Test.NewOrderData.MESSAGE_ID;
+            header.SchemaId = 2;
+            header.Version = 0;
+            ref Integration.Test.NewOrderData order = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer.Slice(bodyOffset));
+            order.OrderId = new Integration.Test.OrderId { Value = 42 };
+
+            var success = Integration.Test.MessageHeader.TryParse(buffer, out var parsedHeader, out var payload);
+
+            Assert.True(success);
+            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_ID, parsedHeader.TemplateId);
+            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE, parsedHeader.BlockLength);
+            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE, payload.Length);
+            Assert.Equal(42, MemoryMarshal.AsRef<Integration.Test.NewOrderData>(payload).OrderId.Value);
         }
 
         [Fact]

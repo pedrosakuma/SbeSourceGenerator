@@ -51,12 +51,12 @@ This document provides a detailed checklist mapping the requirements from the Gi
 - [x] Block length tracking
 - [x] Blittable struct generation with [StructLayout]
 - [x] [FieldOffset] attributes for explicit layout
-- [ ] Full encoder/decoder classes (partially implemented via parsers)
+- [ ] Full encoder/decoder classes (parsing helpers available, no envelope parser)
 
 **Implementação**:
 - `SbeCodeGenerator/Generators/MessagesCodeGenerator.cs`
 - `SbeCodeGenerator/Generators/Types/MessageDefinition.cs`
-- `SbeCodeGenerator/Generators/ParserCodeGenerator.cs`
+- `SbeCodeGenerator/Generators/Types/CompositeDefinition.cs`
 
 **Testes**:
 - `SbeCodeGenerator.Tests/MessagesCodeGeneratorTests.cs`
@@ -65,7 +65,7 @@ This document provides a detailed checklist mapping the requirements from the Gi
 
 **Observações**:
 - Estruturas geradas são blittable e prontas para serialização binária
-- Parser classes auxiliam na decodificação
+- Estruturas expõem métodos `TryParse` para auxiliar na decodificação
 - Falta: API completa de encoder/decoder de alto nível
 
 ---

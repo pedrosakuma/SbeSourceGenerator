@@ -6,40 +6,5 @@ namespace TestNamespace;
 /// 
 /// (ParserGenerator)
 /// </summary>
-public class MessageParser
+// Deprecated Snapshot: MessageParser generation removed in favour of per-message TryParse helpers.
 {
-	public static int[] MessageIds = new int[]
-	{
-		TradeData.MESSAGE_ID,
-		QuoteData.MESSAGE_ID,
-	};
-	public void Parse(ReadOnlySpan<byte> data)
-	{
-		if(data.Length == 0) { return; }
-		ref readonly MessageHeader messageHeader = ref MemoryMarshal.AsRef<MessageHeader>(data);
-		data = data.Slice(MessageHeader.MESSAGE_SIZE);
-		var body = data;
-		switch (messageHeader.TemplateId)
-		{
-			case TradeData.MESSAGE_ID:
-				TradeMessageReceived?.Invoke(
-					in MemoryMarshal.AsRef<TradeData>(body),
-					body.Slice(TradeData.MESSAGE_SIZE)
-				);
-				break;
-			case QuoteData.MESSAGE_ID:
-				QuoteMessageReceived?.Invoke(
-					in MemoryMarshal.AsRef<QuoteData>(body),
-					body.Slice(QuoteData.MESSAGE_SIZE)
-				);
-				break;
-			default:
-				Console.WriteLine(messageHeader.TemplateId);
-				break;
-		}
-	}
-	public delegate void TradeMessage(ref readonly TradeData message, ReadOnlySpan<byte> variablePart);
-	public TradeMessage? TradeMessageReceived { get; init; }
-	public delegate void QuoteMessage(ref readonly QuoteData message, ReadOnlySpan<byte> variablePart);
-	public QuoteMessage? QuoteMessageReceived { get; init; }
-}
