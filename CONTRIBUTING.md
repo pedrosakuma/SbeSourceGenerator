@@ -104,7 +104,7 @@ dotnet test SbeCodeGenerator.Tests
 ### IDE Setup
 
 **Visual Studio 2022**:
-1. Open `SbeSourceGenerator.sln`
+1. Open `SbeCodeGenerator.sln`
 2. Restore NuGet packages
 3. Build solution (Ctrl+Shift+B)
 4. Run tests (Ctrl+R, A)
