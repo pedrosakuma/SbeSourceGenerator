@@ -10,6 +10,7 @@ namespace SbeSourceGenerator
             var nullValue = NullValue;
             if (NullValue == "")
                 nullValue = TypesCatalog.NullValueByType[PrimitiveType];
+            sb.AppendLine("#pragma warning disable CS0649", tabs);
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(OptionalTypeDefinition));
             sb.AppendLine($"public partial struct {Name}", tabs);
@@ -17,6 +18,7 @@ namespace SbeSourceGenerator
             sb.AppendLine($"private {PrimitiveType} value;", tabs);
             sb.AppendLine($"public {PrimitiveType}? Value => value == {nullValue} ? null : value;", tabs);
             sb.AppendLine("}", --tabs);
+            sb.AppendLine("#pragma warning restore CS0649", tabs);
         }
     }
 }

@@ -32,7 +32,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var enumResult = resultList.FirstOrDefault(r => r.name.Contains("TestEnum"));
-            Assert.NotNull(enumResult);
+            Assert.NotEqual(default, enumResult);
             Assert.Contains("TestEnum", enumResult.content);
             Assert.Contains("Value1", enumResult.content);
             Assert.Contains("Value2", enumResult.content);
@@ -59,7 +59,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var typeResult = resultList.FirstOrDefault(r => r.name.Contains("CustomType"));
-            Assert.NotNull(typeResult);
+            Assert.NotEqual(default, typeResult);
             Assert.Contains("CustomType", typeResult.content);
         }
 
@@ -87,7 +87,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("TestComposite"));
-            Assert.NotNull(compositeResult);
+            Assert.NotEqual(default, compositeResult);
             Assert.Contains("TestComposite", compositeResult.content);
         }
 
@@ -115,7 +115,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var setResult = resultList.FirstOrDefault(r => r.name.Contains("TestSet"));
-            Assert.NotNull(setResult);
+            Assert.NotEqual(default, setResult);
             Assert.Contains("TestSet", setResult.content);
             Assert.Contains("Flag1", setResult.content);
             Assert.Contains("Flag2", setResult.content);
