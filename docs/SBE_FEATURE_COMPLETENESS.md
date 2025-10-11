@@ -416,7 +416,7 @@ See: `SbeCodeGenerator/Diagnostics/` directory
 ### Architecture ✅
 
 Well-structured codebase:
-- Separated generators for Types, Messages, Utilities, Parser
+- Separated generators for Types, Messages, Utilities
 - DTO-based XML parsing (no direct XML access in generators)
 - Helper utilities for common operations
 - Consistent code generation patterns

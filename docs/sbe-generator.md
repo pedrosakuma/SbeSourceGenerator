@@ -57,20 +57,20 @@ Stage 2: Schema Parsing & Context Creation
              │
 Stage 3: Specialized Code Generation
     │
-    ├─────────────────────┬─────────────────┬─────────────────┐
-    │                     │                 │                 │
-    ▼                     ▼                 ▼                 ▼
-┌──────────┐    ┌──────────────┐   ┌──────────┐   ┌──────────┐
-│  Types   │    │   Messages   │   │  Parser  │   │Utilities │
-│Generator │    │  Generator   │   │Generator │   │Generator │
-└────┬─────┘    └──────┬───────┘   └────┬─────┘   └────┬─────┘
-     │                 │                 │              │
-     │  Enums         │  Messages       │  Parser      │  Extensions
-     │  Sets          │  Fields         │              │
-     │  Composites    │  Groups         │              │
-     │  Types         │  Data           │              │
-     │                 │                 │              │
-     └─────────────────┴─────────────────┴──────────────┘
+    ├─────────────────────┬────────────────────────────┐
+    │                     │                            │
+    ▼                     ▼                            ▼
+┌──────────┐    ┌──────────────┐            ┌──────────┐
+│  Types   │    │   Messages   │            │Utilities │
+│Generator │    │  Generator   │            │Generator │
+└────┬─────┘    └──────┬───────┘            └────┬─────┘
+     │                 │                         │
+     │  Enums         │  Messages               │  Extensions
+     │  Sets          │  Fields                 │
+     │  Composites    │  Groups                 │
+     │  Types         │  Variable data helpers  │
+     │                 │  TryParse APIs         │
+     └─────────────────┴────────────────────────┘
                        │
 Stage 4: Source Registration
     │
@@ -347,7 +347,7 @@ public IEnumerable<(string name, string content)> Generate(
 - Message fields (regular, optional, constant)
 - Message groups (repeating groups)
 - Message data fields (variable-length data)
-- Parser delegation
+- Parsing helpers (`TryParse`, variable-length callbacks)
 
 **Example Flow:**
 
@@ -359,12 +359,9 @@ public IEnumerable<(string name, string content)> Generate(
     SourceProductionContext sourceContext)
 {
     var messageNodes = xmlDocument.SelectNodes("//message");
-    var messages = new List<SchemaMessageDto>();
-    
     foreach (XmlElement messageNode in messageNodes)
     {
         var messageDto = SchemaParser.ParseMessage(messageNode, context);
-        messages.Add(messageDto);
         
         // Generate message struct
         StringBuilder sb = new StringBuilder();
@@ -372,46 +369,13 @@ public IEnumerable<(string name, string content)> Generate(
         // ... generate message code ...
         yield return ($"{ns}\\Messages\\{messageDto.Name}", sb.ToString());
     }
-    
-    // Generate parser for all messages
-    if (messages.Count > 0)
-    {
-        var parserGenerator = new ParserCodeGenerator();
-        foreach (var item in parserGenerator.GenerateParser(ns, messages, context, sourceContext))
-            yield return item;
-    }
 }
 ```
 
 **Generated Output Structure:**
 ```
 {namespace}\Messages\{MessageName}.cs
-{namespace}\MessageParser.cs
 ```
-
-### ParserCodeGenerator
-
-**Responsibility**: Generate message parsers for decoding binary data
-
-**Handles:**
-- Message type identification
-- Dispatch logic based on template ID
-- Parser interface generation
-
-**Example:**
-
-```csharp
-public static IEnumerable<(string name, string content)> GenerateParser(
-    string ns,
-    List<SchemaMessageDto> messages,
-    SchemaContext context,
-    SourceProductionContext sourceContext)
-{
-    StringBuilder sb = new StringBuilder();
-    var generator = new ParserGenerator(ns, messages);
-    generator.AppendFileContent(sb);
-    yield return ($"{ns}\\MessageParser", sb.ToString());
-}
 ```
 
 ### UtilitiesCodeGenerator

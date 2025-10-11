@@ -18,8 +18,25 @@ namespace SbeSourceGenerator
             AppendMessageDefinitionConstants(sb, tabs);
             AppendConstantsFileContent(sb, tabs);
             AppendFieldsFileContent(sb, tabs);
+            AppendParseHelpers(sb, tabs);
             AppendGroupsFileContent(sb, tabs);
             AppendConsumeVariable(sb, tabs);
+            sb.AppendLine("}", --tabs);
+        }
+
+        private void AppendParseHelpers(StringBuilder sb, int tabs)
+        {
+            sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("message = default;", tabs);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine($"message = MemoryMarshal.Read<{Name}Data>(buffer);", tabs);
+            sb.AppendLine("variableData = buffer.Slice(MESSAGE_SIZE);", tabs);
+            sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }
 

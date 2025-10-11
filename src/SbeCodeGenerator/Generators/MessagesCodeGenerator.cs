@@ -22,7 +22,6 @@ namespace SbeSourceGenerator.Generators
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
             nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
             var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
-            var messages = new List<MessageDefinition>();
             foreach (XmlElement messageNode in messageNodes)
             {
                 var messageDto = SchemaParser.ParseMessage(messageNode, context);
@@ -110,16 +109,10 @@ namespace SbeSourceGenerator.Generators
                                 )
                             ).ToList()
                     );
-                messages.Add(generator);
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
                 yield return ($"{ns}\\Messages\\{generator.Name}", sb.ToString());
             }
-            
-            // Generate parser for all messages
-            var parserGenerator = new ParserCodeGenerator();
-            foreach (var item in parserGenerator.GenerateParser(ns, messages, context))
-                yield return item;
         }
 
         private static string? GetUnderlyingType(string type, SchemaContext context)

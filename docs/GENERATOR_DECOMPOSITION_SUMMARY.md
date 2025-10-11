@@ -7,7 +7,7 @@ This document summarizes the decomposition of `SBESourceGenerator` into speciali
 The original `SBESourceGenerator` class was approximately 535 lines and handled multiple responsibilities:
 - Type generation (enums, sets, types, composites)
 - Message generation
-- Parser generation
+- Parsing helper generation
 - Utility generation
 - XML schema orchestration
 
@@ -51,17 +51,9 @@ All specialized generators implement this interface, providing a consistent API.
 - Message constants
 - Message groups
 - Message data fields
-- Delegates parser generation
+- Emits per-message parsing helpers
 
-**Integration:** Calls `ParserCodeGenerator.GenerateParser()` to generate the message parser.
-
-#### 3. ParserCodeGenerator
-**Responsibility:** Generates message parsers
-- Wraps the existing `ParserGenerator`
-- Provides `ICodeGenerator` interface
-- Special method `GenerateParser()` for use by `MessagesCodeGenerator`
-
-#### 4. UtilitiesCodeGenerator
+#### 3. UtilitiesCodeGenerator
 **Responsibility:** Generates utility code
 - Currently generates `NumberExtensions`
 - Can be extended for additional utility code
@@ -105,22 +97,21 @@ Created `SbeCodeGenerator.Tests` project with comprehensive unit tests:
 - `Generate_WithComposite_ProducesCompositeCode`
 - `Generate_WithSet_ProducesSetCode`
 
-#### MessagesCodeGeneratorTests (4 tests)
+#### MessagesCodeGeneratorTests (3 tests)
 - `Generate_WithSimpleMessage_ProducesMessageCode`
 - `Generate_WithMessageContainingConstants_ProducesCodeWithConstants`
 - `Generate_WithMultipleMessages_ProducesMultipleFiles`
-- `Generate_WithMessages_GeneratesParser`
 
 #### UtilitiesCodeGeneratorTests (2 tests)
 - `Generate_ProducesNumberExtensions`
 - `Generate_UsesProvidedNamespace`
 
-#### ParserCodeGeneratorTests (2 tests)
-- `GenerateParser_WithMessages_ProducesParserCode`
-- `GenerateParser_WithMultipleMessages_IncludesAllMessages`
+#### MessageParsingHelpersTests (2 tests)
+- `MessagesIncludeTryParseHelper`
+- `CompositesIncludeTryParseHelper`
 
 ### Test Results
-- **Total Tests:** 12
+- **Total Tests:** 11
 - **Passed:** 12 ✅
 - **Failed:** 0
 - **Coverage:** All generators tested in isolation
@@ -131,7 +122,6 @@ Created `SbeCodeGenerator.Tests` project with comprehensive unit tests:
 Each generator has a single, well-defined responsibility:
 - Types → TypesCodeGenerator
 - Messages → MessagesCodeGenerator
-- Parser → ParserCodeGenerator
 - Utilities → UtilitiesCodeGenerator
 
 ### 2. Maintainability
@@ -175,13 +165,12 @@ Full backward compatibility maintained:
 ### Lines of Code
 - **Before:** ~535 lines in SBESourceGenerator
 - **After:** 
-  - SBESourceGenerator: ~97 lines (orchestrator)
-  - TypesCodeGenerator: ~364 lines
-  - MessagesCodeGenerator: ~175 lines
-  - ParserCodeGenerator: ~28 lines
-  - UtilitiesCodeGenerator: ~17 lines
-  - ICodeGenerator: ~20 lines
-  - **Total:** ~701 lines (includes interface and better documentation)
+    - SBESourceGenerator: ~97 lines (orchestrator)
+    - TypesCodeGenerator: ~364 lines
+    - MessagesCodeGenerator: ~175 lines
+    - UtilitiesCodeGenerator: ~17 lines
+    - ICodeGenerator: ~20 lines
+    - **Total:** ~673 lines (includes interface and better documentation)
 
 ### Complexity Reduction
 - Main orchestrator: 82% reduction

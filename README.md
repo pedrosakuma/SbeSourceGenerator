@@ -139,10 +139,7 @@ SBESourceGenerator (Orchestrator)
     │   └── Types
     │
     ├── MessagesCodeGenerator
-    │   └── Messages with Groups
-    │
-    ├── ParserCodeGenerator
-    │   └── Message Parsers
+    │   └── Messages with Groups & parsing helpers
     │
     └── UtilitiesCodeGenerator
         └── Helper Extensions

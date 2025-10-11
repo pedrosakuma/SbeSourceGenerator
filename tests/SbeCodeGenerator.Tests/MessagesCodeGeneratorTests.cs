@@ -1,5 +1,6 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
+using System.Linq;
 using System.Xml;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -89,28 +90,5 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains(resultList, r => r.name.Contains("Message2"));
         }
 
-        [Fact]
-        public void Generate_WithMessages_GeneratesParser()
-        {
-            // Arrange
-            var generator = new MessagesCodeGenerator();
-            var context = new SchemaContext();
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
-                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
-                    <sbe:message name='TestMessage' id='1' description='A test message'>
-                        <field name='field1' id='1' type='uint32'/>
-                    </sbe:message>
-                </sbe:messageSchema>");
-
-            // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
-
-            // Assert
-            var resultList = results.ToList();
-            var parserResult = resultList.FirstOrDefault(r => r.name.Contains("MessageParser"));
-            Assert.NotEqual(default, parserResult);
-            Assert.Contains("MessageParser", parserResult.content);
-        }
     }
 }

@@ -54,38 +54,6 @@ namespace SbeBinanceConsole
             await ws.ConnectAsync(new Uri("wss://stream-sbe.binance.com/ws/btcusdt@bestBidAsk"), cts.Token);
 
             //Console.WriteLine("Connected to Binance WebSocket");
-            var parser = new MessageParser()
-            {
-                TradesStreamEventMessageReceived = (ref readonly TradesStreamEventData msg, ReadOnlySpan<byte> extra) =>
-                {
-                    //decimal qtyMultiplier = (decimal)Math.Pow(10, msg.QtyExponent.Value);
-                    //decimal priceMultiplier = (decimal)Math.Pow(10, msg.PriceExponent.Value);
-                    //Console.WriteLine($"TradesStreamEventMessageReceived: ");
-                    //msg.ConsumeVariableLengthSegments(extra,
-                    //    trade =>
-                    //    {
-                    //        Console.WriteLine($"{trade.Id.Value} - q: {trade.Qty.Value * qtyMultiplier}, p: {trade.Price.Value * priceMultiplier}");
-                    //    },
-                    //    symbol =>
-                    //    {
-                    //        Console.WriteLine(Encoding.ASCII.GetString(symbol.VarData));
-                    //    });
-                },
-                BestBidAskStreamEventMessageReceived = (ref readonly BestBidAskStreamEventData msg, ReadOnlySpan<byte> extra) =>
-                {
-                    bookUpdateIdSbe = msg.BookUpdateId.Value;
-                    //Console.WriteLine($"BestBidAskStreamEventMessageReceived: ");
-                    //string symbol = "";
-                    //decimal qtyMultiplier = (decimal)Math.Pow(10, msg.QtyExponent.Value);
-                    //decimal priceMultiplier = (decimal)Math.Pow(10, msg.PriceExponent.Value);
-                    //msg.ConsumeVariableLengthSegments(extra,
-                    //    s =>
-                    //    {
-                    //        symbol = Encoding.ASCII.GetString(s.VarData);
-                    //    });
-                    //Console.WriteLine($"s: {symbol}, t: {msg.EventTime.Value}, id:{msg.BookUpdateId.Value}, bq: {msg.BidQty.Value * qtyMultiplier}, bp: {msg.BidPrice.Value * priceMultiplier}, ap: {msg.AskPrice.Value * priceMultiplier}, aq: {msg.AskQty.Value * qtyMultiplier}");
-                }
-            };
             var buffer = new Memory<byte>(new byte[8192]);
             while (!cts.Token.IsCancellationRequested)
             {
@@ -96,9 +64,47 @@ namespace SbeBinanceConsole
                     Console.WriteLine("WebSocket closed");
                     break;
                 }
-                else
+                var span = buffer.Span.Slice(0, result.Count);
+                if (!MessageHeader.TryParse(span, out var header, out var body))
                 {
-                    parser.Parse(buffer.Span.Slice(0, result.Count));
+                    continue;
+                }
+
+                switch (header.TemplateId)
+                {
+                    case BestBidAskStreamEventData.MESSAGE_ID:
+                        if (BestBidAskStreamEventData.TryParse(body, out var bestBid, out var bestBidVariableData))
+                        {
+                            bookUpdateIdSbe = bestBid.BookUpdateId.Value;
+                            //Console.WriteLine($"BestBidAskStreamEventMessageReceived: ");
+                            //string symbol = "";
+                            //decimal qtyMultiplier = (decimal)Math.Pow(10, bestBid.QtyExponent.Value);
+                            //decimal priceMultiplier = (decimal)Math.Pow(10, bestBid.PriceExponent.Value);
+                            //bestBid.ConsumeVariableLengthSegments(bestBidVariableData,
+                            //    s =>
+                            //    {
+                            //        symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
+                            //    });
+                            //Console.WriteLine($"s: {symbol}, t: {bestBid.EventTime.Value}, id:{bestBid.BookUpdateId.Value}, bq: {bestBid.BidQty.Value * qtyMultiplier}, bp: {bestBid.BidPrice.Value * priceMultiplier}, ap: {bestBid.AskPrice.Value * priceMultiplier}, aq: {bestBid.AskQty.Value * qtyMultiplier}");
+                        }
+                        break;
+                    case TradesStreamEventData.MESSAGE_ID:
+                        if (TradesStreamEventData.TryParse(body, out var trades, out var tradesVariableData))
+                        {
+                            //decimal qtyMultiplier = (decimal)Math.Pow(10, trades.QtyExponent.Value);
+                            //decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
+                            //Console.WriteLine($"TradesStreamEventMessageReceived: ");
+                            //trades.ConsumeVariableLengthSegments(tradesVariableData,
+                            //    trade =>
+                            //    {
+                            //        Console.WriteLine($"{trade.Id.Value} - q: {trade.Qty.Value * qtyMultiplier}, p: {trade.Price.Value * priceMultiplier}");
+                            //    },
+                            //    symbol =>
+                            //    {
+                            //        Console.WriteLine(Encoding.ASCII.GetString(symbol.VarData[..symbol.Length]));
+                            //    });
+                        }
+                        break;
                 }
             }
         }

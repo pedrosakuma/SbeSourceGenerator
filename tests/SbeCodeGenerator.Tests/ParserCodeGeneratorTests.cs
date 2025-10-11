@@ -1,88 +1,63 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Generators.Types;
-using System.Collections.Generic;
+using System.Linq;
+using System.Xml;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
 {
-    public class ParserCodeGeneratorTests
+    public class MessageParsingHelpersTests
     {
         [Fact]
-        public void GenerateParser_WithMessages_ProducesParserCode()
+        public void MessagesIncludeTryParseHelper()
         {
             // Arrange
-            var generator = new ParserCodeGenerator();
             var context = new SchemaContext();
-            var messages = new List<MessageDefinition>
-            {
-                new MessageDefinition(
-                    "TestNamespace",
-                    "TestMessage",
-                    "1",
-                    "Test message",
-                    "",
-                    "",
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>()
-                )
-            };
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <sbe:message name='TestMessage' id='1' description='A test message'>
+                        <field name='field1' id='1' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var generator = new MessagesCodeGenerator();
 
             // Act
-            var results = generator.GenerateParser("TestNamespace", messages, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default);
 
             // Assert
-            var resultList = results.ToList();
-            Assert.Single(resultList);
-            Assert.Contains("MessageParser", resultList[0].name);
-            Assert.Contains("MessageParser", resultList[0].content);
-            Assert.Contains("TestMessage", resultList[0].content);
+            var messageResult = results.FirstOrDefault(r => r.name.Contains("TestMessage"));
+            Assert.NotEqual(default, messageResult);
+            Assert.Contains("public static bool TryParse", messageResult.content);
         }
 
         [Fact]
-        public void GenerateParser_WithMultipleMessages_IncludesAllMessages()
+        public void CompositesIncludeTryParseHelper()
         {
             // Arrange
-            var generator = new ParserCodeGenerator();
             var context = new SchemaContext();
-            var messages = new List<MessageDefinition>
-            {
-                new MessageDefinition(
-                    "TestNamespace",
-                    "Message1",
-                    "1",
-                    "First message",
-                    "",
-                    "",
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>()
-                ),
-                new MessageDefinition(
-                    "TestNamespace",
-                    "Message2",
-                    "2",
-                    "Second message",
-                    "",
-                    "",
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>(),
-                    new List<IFileContentGenerator>()
-                )
-            };
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='MessageHeader' description='Header'>
+                            <field name='blockLength' id='1' type='uint16'/>
+                            <field name='templateId' id='2' type='uint16'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            var generator = new TypesCodeGenerator();
 
             // Act
-            var results = generator.GenerateParser("TestNamespace", messages, context);
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default);
 
             // Assert
-            var resultList = results.ToList();
-            Assert.Single(resultList);
-            Assert.Contains("Message1", resultList[0].content);
-            Assert.Contains("Message2", resultList[0].content);
+            var compositeResult = results.FirstOrDefault(r => r.name.Contains("MessageHeader"));
+            Assert.NotEqual(default, compositeResult);
+            Assert.Contains("public static bool TryParse", compositeResult.content);
         }
     }
 }
