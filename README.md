@@ -263,7 +263,7 @@ See [Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) for more opportuni
 ### Development Setup
 
 1. Clone the repository
-2. Open `SbeSourceGenerator.sln` in Visual Studio 2022+ or VS Code
+2. Open `SbeCodeGenerator.sln` in Visual Studio 2022+ or VS Code
 3. Build the solution: `dotnet build`
 4. Run tests: `dotnet test`
 
