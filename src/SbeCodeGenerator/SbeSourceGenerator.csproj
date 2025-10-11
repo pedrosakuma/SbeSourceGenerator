@@ -15,7 +15,7 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
-		<PackageReference Include="System.Text.Json" Version="8.0.5" GeneratePathProperty="true" PrivateAssets="all" />
+		<PackageReference Include="System.Text.Json" Version="9.0.0-rc.1.24431.7" GeneratePathProperty="true" PrivateAssets="all" />
 	</ItemGroup>
 	<PropertyGroup>
 		<GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
@@ -29,4 +29,6 @@
 			<TargetPathWithTargetPlatformMoniker Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll" IncludeRuntimeDependency="false" />
 		</ItemGroup>
 	</Target>
+
+	<Import Project="build\AnalyzerReleases.props" />
 </Project>

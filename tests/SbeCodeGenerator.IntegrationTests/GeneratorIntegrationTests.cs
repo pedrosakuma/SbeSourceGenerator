@@ -42,8 +42,6 @@ namespace SbeCodeGenerator.IntegrationTests
         public unsafe void GeneratedMessage_CanBeInstantiatedAndAccessed()
         {
             // Verify we can create and access generated message structures
-            var newOrder = new Integration.Test.NewOrderData();
-            
             // Verify the struct has the expected size (calculated based on fields)
             Assert.True(Marshal.SizeOf<Integration.Test.NewOrderData>() > 0);
             
@@ -161,7 +159,6 @@ namespace SbeCodeGenerator.IntegrationTests
         public unsafe void GeneratedMessageWithGroups_CanBeAccessed()
         {
             // Verify messages with groups are generated (OrderBook has bids/asks groups)
-            var orderBook = new Integration.Test.OrderBookData();
             Assert.True(Marshal.SizeOf<Integration.Test.OrderBookData>() > 0);
             
             Span<byte> buffer = stackalloc byte[1024];

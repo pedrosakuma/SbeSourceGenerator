@@ -30,7 +30,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var messageResult = resultList.FirstOrDefault(r => r.name.Contains("TestMessage"));
-            Assert.NotNull(messageResult);
+            Assert.NotEqual(default, messageResult);
             Assert.Contains("TestMessage", messageResult.content);
             Assert.Contains("Field1", messageResult.content);
             Assert.Contains("Field2", messageResult.content);
@@ -58,7 +58,7 @@ namespace SbeCodeGenerator.Tests
             var resultList = results.ToList();
             Assert.NotEmpty(resultList);
             var messageResult = resultList.FirstOrDefault(r => r.name.Contains("TestMessage"));
-            Assert.NotNull(messageResult);
+            Assert.NotEqual(default, messageResult);
             Assert.Contains("TestMessage", messageResult.content);
         }
 
@@ -109,7 +109,7 @@ namespace SbeCodeGenerator.Tests
             // Assert
             var resultList = results.ToList();
             var parserResult = resultList.FirstOrDefault(r => r.name.Contains("MessageParser"));
-            Assert.NotNull(parserResult);
+            Assert.NotEqual(default, parserResult);
             Assert.Contains("MessageParser", parserResult.content);
         }
     }

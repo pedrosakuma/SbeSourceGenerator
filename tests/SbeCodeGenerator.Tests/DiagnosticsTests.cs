@@ -75,7 +75,7 @@ namespace SbeCodeGenerator.Tests
             // Generator should complete and produce output with fallback value
             Assert.NotEmpty(resultList);
             var setResult = resultList.FirstOrDefault(r => r.name.Contains("BadSet"));
-            Assert.NotNull(setResult);
+            Assert.NotEqual(default, setResult);
         }
 
         [Fact]

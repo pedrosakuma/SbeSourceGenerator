@@ -35,9 +35,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the Side enum
             var enumResult = results.FirstOrDefault(r => r.name.Contains("Side"));
-            
+
             // Assert
-            Assert.NotNull(enumResult);
+            Assert.NotEqual(default, enumResult);
             return Verifier.Verify(enumResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("TypesCodeGenerator.Enum.Side");
@@ -55,9 +55,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the Flags set
             var setResult = results.FirstOrDefault(r => r.name.Contains("Flags"));
-            
+
             // Assert
-            Assert.NotNull(setResult);
+            Assert.NotEqual(default, setResult);
             return Verifier.Verify(setResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("TypesCodeGenerator.Set.Flags");
@@ -75,9 +75,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the MessageHeader composite
             var compositeResult = results.FirstOrDefault(r => r.name.Contains("MessageHeader"));
-            
+
             // Assert
-            Assert.NotNull(compositeResult);
+            Assert.NotEqual(default, compositeResult);
             return Verifier.Verify(compositeResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("TypesCodeGenerator.Composite.MessageHeader");
@@ -101,9 +101,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the Trade message
             var messageResult = results.FirstOrDefault(r => r.name.Contains("Trade") && !r.name.Contains("Parser"));
-            
+
             // Assert
-            Assert.NotNull(messageResult);
+            Assert.NotEqual(default, messageResult);
             return Verifier.Verify(messageResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("MessagesCodeGenerator.Message.Trade");
@@ -127,9 +127,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the Quote message
             var messageResult = results.FirstOrDefault(r => r.name.Contains("Quote") && !r.name.Contains("Parser"));
-            
+
             // Assert
-            Assert.NotNull(messageResult);
+            Assert.NotEqual(default, messageResult);
             return Verifier.Verify(messageResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("MessagesCodeGenerator.Message.Quote");
@@ -153,9 +153,9 @@ namespace SbeCodeGenerator.Tests
 
             // Find the MessageParser
             var parserResult = results.FirstOrDefault(r => r.name.Contains("MessageParser"));
-            
+
             // Assert
-            Assert.NotNull(parserResult);
+            Assert.NotEqual(default, parserResult);
             return Verifier.Verify(parserResult.content)
                 .UseDirectory("Snapshots")
                 .UseFileName("MessagesCodeGenerator.MessageParser");
