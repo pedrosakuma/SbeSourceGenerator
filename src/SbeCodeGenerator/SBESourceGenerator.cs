@@ -13,10 +13,9 @@ namespace SbeSourceGenerator
     [Generator]
     public class SBESourceGenerator : IIncrementalGenerator
     {
-        /// <summary>
-        /// Initializes the source generator by defining the execution pipeline.
-        /// Pipeline stages: XML schema collection → schema parsing → code generation → source output registration
-        /// </summary>
+    /// <summary>
+    /// Initializes the source generator by configuring the incremental pipeline.
+    /// </summary>
         public void Initialize(IncrementalGeneratorInitializationContext initContext)
         {
             // Stage 1: Collect XML schema files from additional files
@@ -26,19 +25,17 @@ namespace SbeSourceGenerator
             RegisterSourceGeneration(initContext, xmlSchemaFiles);
         }
 
-        /// <summary>
-        /// Stage 1: Collects all XML schema files (.xml) from the project's additional files.
-        /// Data flow: AdditionalTextsProvider → filtered XML files
-        /// </summary>
+    /// <summary>
+    /// Collects SBE XML schema files from the project's additional files.
+    /// </summary>
         private static IncrementalValuesProvider<AdditionalText> CollectXmlSchemaFiles(IncrementalGeneratorInitializationContext initContext)
         {
             return initContext.AdditionalTextsProvider.Where(file => file.Path.EndsWith(".xml"));
         }
 
-        /// <summary>
-        /// Stage 2 & 3: Registers the generated source files for output to the compilation with diagnostic support.
-        /// Data flow: XML files → parsing & code generation → added to SourceProductionContext with diagnostics
-        /// </summary>
+    /// <summary>
+    /// Registers source output for each XML schema with diagnostic reporting.
+    /// </summary>
         private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValuesProvider<AdditionalText> xmlFiles)
         {
             initContext.RegisterSourceOutput(xmlFiles, (sourceContext, text) =>
