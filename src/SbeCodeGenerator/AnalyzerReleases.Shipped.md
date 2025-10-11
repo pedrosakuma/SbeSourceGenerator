@@ -1,5 +1,3 @@
-# Analyzer Releases
-
 ## Release 0.1.0
 
 ### New Rules
@@ -15,8 +13,4 @@ SBE006 | SbeSourceGenerator | Error | Invalid type length.
 
 ### Removed Rules
 
-_None_
-
 ### Changed Rules
-
-_None_

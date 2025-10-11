@@ -6,6 +6,23 @@
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<LangVersion>latest</LangVersion>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
+		<PackageId>SbeSourceGenerator</PackageId>
+		<Title>SBE Source Generator</Title>
+		<Version>0.1.0-preview.1</Version>
+		<Authors>Pedro Sakuma</Authors>
+		<Company>Pedro Sakuma</Company>
+		<Product>SBE Source Generator</Product>
+		<Description>Roslyn source generator that produces strongly typed code for Simple Binary Encoding (SBE) schemas.</Description>
+		<PackageTags>SBE;SimpleBinaryEncoding;SourceGenerator;Roslyn;MarketData</PackageTags>
+		<PackageProjectUrl>https://github.com/pedrosakuma/PcapSbePocConsole</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/pedrosakuma/PcapSbePocConsole</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<IncludeSymbols>true</IncludeSymbols>
+		<IncludeSource>true</IncludeSource>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -16,6 +33,9 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
 		<PackageReference Include="System.Text.Json" Version="9.0.0-rc.1.24431.7" GeneratePathProperty="true" PrivateAssets="all" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="/" />
 	</ItemGroup>
 	<PropertyGroup>
 		<GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
