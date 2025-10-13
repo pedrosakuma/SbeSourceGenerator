@@ -40,7 +40,12 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      run: dotnet build --no-restore --configuration Release /p:Version=${{ steps.get_version.outputs.version }}
+      run: dotnet build --no-restore --configuration Release src/SbeCodeGenerator/SbeSourceGenerator.csproj /p:Version=${{ steps.get_version.outputs.version }}
+      
+    - name: Build Tests
+      run: |
+        dotnet build --no-restore --configuration Release tests/SbeCodeGenerator.Tests/SbeCodeGenerator.Tests.csproj
+        dotnet build --no-restore --configuration Release tests/SbeCodeGenerator.IntegrationTests/SbeCodeGenerator.IntegrationTests.csproj
       
     - name: Test
       run: dotnet test --no-build --configuration Release --verbosity normal

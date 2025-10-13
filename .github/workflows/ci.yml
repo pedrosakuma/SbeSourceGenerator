@@ -24,7 +24,12 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --no-restore --configuration Release src/SbeCodeGenerator/SbeSourceGenerator.csproj
+      
+    - name: Build Tests
+      run: |
+        dotnet build --no-restore --configuration Release tests/SbeCodeGenerator.Tests/SbeCodeGenerator.Tests.csproj
+        dotnet build --no-restore --configuration Release tests/SbeCodeGenerator.IntegrationTests/SbeCodeGenerator.IntegrationTests.csproj
       
     - name: Test
       run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
