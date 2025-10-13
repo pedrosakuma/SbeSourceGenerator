@@ -82,10 +82,10 @@ namespace SbeBinanceConsole
                 action(header, body);
             }
         }
-        private static async Task Trade(string? key, string? instrument, CancellationToken token)
+        private static Task Trade(string? key, string? instrument, CancellationToken token)
         {
             var tradesDataBuffer = new TradesStreamEventData.TradesData[256];
-            await SubscribeAsync(key, "trade", instrument,
+            return SubscribeAsync(key, "trade", instrument,
                 (header, body) =>
                 {
                     switch (header.TemplateId)
@@ -116,9 +116,9 @@ namespace SbeBinanceConsole
                     }
                 }, token);
         }
-        private static async Task BestBidAsk(string? key, string? instrument, CancellationToken token)
+        private static Task BestBidAsk(string? key, string? instrument, CancellationToken token)
         {
-            await SubscribeAsync(key, "bestBidAsk", instrument,
+            return SubscribeAsync(key, "bestBidAsk", instrument,
                 (header, body) =>
                 {
                     switch (header.TemplateId)
