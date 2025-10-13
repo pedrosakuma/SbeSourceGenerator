@@ -16,7 +16,7 @@ public partial struct MessageHeader
 			remaining = default;
 			return false;
 		}
-		value = MemoryMarshal.Read<MessageHeader>(buffer);
+		value = MemoryMarshal.AsRef<MessageHeader>(buffer);
 		remaining = buffer.Slice(MESSAGE_SIZE);
 		return true;
 	}

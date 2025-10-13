@@ -33,7 +33,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("remaining = default;", tabs);
                 sb.AppendLine("return false;", tabs);
                 sb.AppendLine("}", --tabs);
-                sb.AppendLine($"value = MemoryMarshal.Read<{Name}>(buffer);", tabs);
+                sb.AppendLine($"value = MemoryMarshal.AsRef<{Name}>(buffer);", tabs);
                 sb.AppendLine("remaining = buffer.Slice(MESSAGE_SIZE);", tabs);
                 sb.AppendLine("return true;", tabs);
                 sb.AppendLine("}", --tabs);
