@@ -8,6 +8,18 @@ namespace TestNamespace;
 public partial struct MessageHeader
 {
 	public const int MESSAGE_SIZE = 8;
+	public static bool TryParse(ReadOnlySpan<byte> buffer, out MessageHeader value, out ReadOnlySpan<byte> remaining)
+	{
+		if (buffer.Length < MESSAGE_SIZE)
+		{
+			value = default;
+			remaining = default;
+			return false;
+		}
+		value = MemoryMarshal.Read<MessageHeader>(buffer);
+		remaining = buffer.Slice(MESSAGE_SIZE);
+		return true;
+	}
 	/// <summary>
 	/// 
 	/// (ValueFieldDefinition)
