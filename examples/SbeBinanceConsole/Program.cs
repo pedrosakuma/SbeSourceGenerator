@@ -84,7 +84,6 @@ namespace SbeBinanceConsole
         }
         private static Task Trade(string? key, string? instrument, CancellationToken token)
         {
-            var tradesDataBuffer = new TradesStreamEventData.TradesData[256];
             return SubscribeAsync(key, "trade", instrument,
                 (header, body) =>
                 {
@@ -93,24 +92,20 @@ namespace SbeBinanceConsole
                         case TradesStreamEventData.MESSAGE_ID:
                             if (TradesStreamEventData.TryParse(body, out var trades, out var tradesVariableData))
                             {
+                                TradesStreamEventData.TradesData lastTrade = default;
                                 decimal qtyMultiplier = (decimal)Math.Pow(10, trades.QtyExponent.Value);
                                 decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
-                                int index = 0;
                                 string? symbol = null;
                                 trades.ConsumeVariableLengthSegments(tradesVariableData,
                                 trade =>
                                 {
-                                    tradesDataBuffer[index++] = trade;
+                                    lastTrade = trade;
                                 },
                                 s =>
                                 {
                                     symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
                                 });
-                                for (int i = 0; i < index; i++)
-                                {
-                                    var t = tradesDataBuffer[i];
-                                    Console.WriteLine($"s:{symbol}, id: {t.Id.Value}, q: {t.Qty.Value * priceMultiplier}, p: {t.Price.Value * priceMultiplier}");
-                                }
+                                Console.WriteLine($"s:{symbol}, id: {lastTrade.Id.Value}, q: {lastTrade.Qty.Value * priceMultiplier}, p: {lastTrade.Price.Value * priceMultiplier}");
                             }
                             break;
                     }
@@ -136,6 +131,9 @@ namespace SbeBinanceConsole
                                    });
                                 Console.WriteLine($"s: {symbol}, t: {bestBid.EventTime.Value}, id:{bestBid.BookUpdateId.Value}, bq: {bestBid.BidQty.Value * qtyMultiplier}, bp: {bestBid.BidPrice.Value * priceMultiplier}, ap: {bestBid.AskPrice.Value * priceMultiplier}, aq: {bestBid.AskQty.Value * qtyMultiplier}");
                             }
+                            break;
+                        default:
+                            Console.WriteLine(header);
                             break;
                     }
                 }, token);
