@@ -59,8 +59,8 @@ namespace SbeSourceGenerator
                 sb.AppendLine("int offset = 0;", tabs);
                 foreach (var group in Groups.Cast<GroupDefinition>())
                 {
-                    sb.AppendLine($"ref readonly GroupSizeEncoding group{group.Name} = ref MemoryMarshal.AsRef<GroupSizeEncoding>(buffer.Slice(offset));", tabs);
-                    sb.AppendLine("offset += GroupSizeEncoding.MESSAGE_SIZE;", tabs);
+                    sb.AppendLine($"ref readonly {group.DimensionType} group{group.Name} = ref MemoryMarshal.AsRef<{group.DimensionType}>(buffer.Slice(offset));", tabs);
+                    sb.AppendLine($"offset += {group.DimensionType}.MESSAGE_SIZE;", tabs);
                     sb.AppendLine($"for (int i = 0; i < group{group.Name}.NumInGroup; i++)", tabs);
                     sb.AppendLine("{", tabs++);
                     sb.AppendLine($"ref readonly var data = ref MemoryMarshal.AsRef<{group.Name}Data>(buffer.Slice(offset));", tabs);

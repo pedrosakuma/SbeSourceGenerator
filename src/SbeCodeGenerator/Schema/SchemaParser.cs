@@ -107,7 +107,7 @@ namespace SbeSourceGenerator.Schema
             return new SchemaGroupDto(
                 Name: groupElement.GetAttributeOrEmpty("name"),
                 Id: groupElement.GetAttributeOrEmpty("id"),
-                DimensionType: groupElement.GetAttributeOrEmpty("dimensionType"),
+                DimensionType: groupElement.GetAttributeOrEmpty("dimensionType") == "" ? "GroupSizeEncoding" : groupElement.GetAttributeOrEmpty("dimensionType"),
                 Description: groupElement.GetAttributeOrEmpty("description"),
                 Fields: fields,
                 Constants: constants
