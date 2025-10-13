@@ -198,6 +198,7 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
 - **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - System architecture
 - **[Testing Guide](./TESTING_GUIDE.md)** - How to test the generator
 - **[Schema DTOs Documentation](./src/SbeCodeGenerator/Schema/README.md)** - Schema parsing infrastructure
+- **[Changelog](./CHANGELOG.md)** - Version history and release notes
 
 ## Project Structure
 
