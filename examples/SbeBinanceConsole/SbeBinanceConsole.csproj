@@ -5,9 +5,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-	<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-	<UserSecretsId>35f73ec9-8ce0-4202-99ac-965276809709</UserSecretsId>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-rc.1.25451.107" />
   </ItemGroup>
 
   <ItemGroup>
