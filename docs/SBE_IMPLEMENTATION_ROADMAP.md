@@ -67,15 +67,15 @@ See [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) for detailed fe
 **Estimated Effort**: Medium-Large (3-4 weeks)
 
 **Tasks**:
-- [ ] Parse `sinceVersion` attribute on fields
-- [ ] Store version info in field DTOs
+- [x] Parse `sinceVersion` attribute on fields
+- [x] Store version info in field DTOs
 - [ ] Generate version checks in decoders
 - [ ] Support optional field skipping for older versions
-- [ ] Implement block length extension for schema evolution
+- [x] Implement block length extension for schema evolution
 - [ ] Add version metadata to message headers
 - [ ] Document versioning best practices
 - [ ] Create migration guide for schema updates
-- [ ] Add tests for version compatibility scenarios
+- [x] Add tests for version compatibility scenarios
 
 **Acceptance Criteria**:
 ```xml

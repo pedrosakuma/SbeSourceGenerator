@@ -155,5 +155,77 @@ namespace SbeCodeGenerator.IntegrationTests
             bookRef.InstrumentId = 42;
             Assert.Equal(42, bookRef.InstrumentId);
         }
+
+        [Fact]
+        public void BlockLengthExtension_AllowsDifferentBlockLengths()
+        {
+            // Test the new TryParse overload that accepts a blockLength parameter
+            // This is the foundation for schema evolution support
+            
+            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 32]; // Extra space
+            ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            
+            message.OrderId = new Integration.Test.OrderId { Value = 123 };
+            message.Price = new Integration.Test.Price { Value = 9950 };
+            message.Quantity = 100;
+            message.Side = Integration.Test.OrderSide.Buy;
+            message.OrderType = Integration.Test.OrderType.Limit;
+            
+            // Test with exact block length (standard case)
+            var success1 = Integration.Test.NewOrderData.TryParse(
+                buffer, 
+                Integration.Test.NewOrderData.MESSAGE_SIZE, 
+                out var parsedMsg1, 
+                out var remaining1);
+            
+            Assert.True(success1);
+            Assert.Equal(123, parsedMsg1.OrderId.Value);
+            Assert.Equal(32, remaining1.Length); // 32 bytes remain for variable data
+            
+            // Test with larger block length (simulates newer schema with additional fields)
+            int extendedBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE + 16;
+            var success2 = Integration.Test.NewOrderData.TryParse(
+                buffer, 
+                extendedBlockLength, 
+                out var parsedMsg2, 
+                out var remaining2);
+            
+            Assert.True(success2);
+            Assert.Equal(123, parsedMsg2.OrderId.Value);
+            Assert.Equal(16, remaining2.Length); // 16 bytes remain for variable data
+            
+            // Test with smaller block length (simulates older schema with fewer fields)
+            int smallerBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE - 2;
+            var success3 = Integration.Test.NewOrderData.TryParse(
+                buffer, 
+                smallerBlockLength, 
+                out var parsedMsg3, 
+                out var remaining3);
+            
+            Assert.True(success3);
+            Assert.Equal(123, parsedMsg3.OrderId.Value);
+            Assert.Equal(34, remaining3.Length); // More bytes remain
+        }
+
+        [Fact]
+        public void BlockLengthExtension_BackwardCompatibleTryParse()
+        {
+            // Verify that the original TryParse (without blockLength) still works
+            // This ensures backward compatibility with existing code
+            
+            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
+            ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            
+            message.OrderId = new Integration.Test.OrderId { Value = 456 };
+            message.Price = new Integration.Test.Price { Value = 10050 };
+            
+            // Use the original TryParse method (calls the new one internally with MESSAGE_SIZE)
+            var success = Integration.Test.NewOrderData.TryParse(buffer, out var parsedMsg, out var remaining);
+            
+            Assert.True(success);
+            Assert.Equal(456, parsedMsg.OrderId.Value);
+            Assert.Equal(10050, parsedMsg.Price.Value);
+            Assert.Equal(0, remaining.Length);
+        }
     }
 }
