@@ -27,7 +27,8 @@ namespace SbeSourceGenerator.Schema
                 InnerText: fieldElement.GetInnerTextOrEmpty(),
                 Id: fieldElement.GetAttributeOrEmpty("id"),
                 Offset: fieldElement.GetAttributeOrEmpty("offset"),
-                Type: fieldElement.GetAttributeOrEmpty("type")
+                Type: fieldElement.GetAttributeOrEmpty("type"),
+                SinceVersion: fieldElement.GetAttributeOrEmpty("sinceVersion")
             );
         }
 

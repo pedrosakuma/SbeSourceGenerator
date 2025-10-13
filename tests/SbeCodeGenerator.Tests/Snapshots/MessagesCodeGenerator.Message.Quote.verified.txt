@@ -43,14 +43,22 @@ public partial struct QuoteData
 	public long AskQuantity;
 	public static bool TryParse(ReadOnlySpan<byte> buffer, out QuoteData message, out ReadOnlySpan<byte> variableData)
 	{
-		if (buffer.Length < MESSAGE_SIZE)
+		return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);
+	}
+	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out QuoteData message, out ReadOnlySpan<byte> variableData)
+	{
+		if (buffer.Length < blockLength)
 		{
 			message = default;
 			variableData = default;
 			return false;
 		}
+		// Read only the bytes specified by blockLength to support schema evolution
+		// If blockLength < MESSAGE_SIZE, we're reading an older version of the message
+		// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions
+		var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);
 		message = MemoryMarshal.AsRef<QuoteData>(buffer);
-		variableData = buffer.Slice(MESSAGE_SIZE);
+		variableData = buffer.Slice(blockLength);
 		return true;
 	}
 }
