@@ -1,0 +1,59 @@
+name: CD - Publish to NuGet
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "release" ]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version from tag: $VERSION"
+        else
+          VERSION="${{ github.event.inputs.version }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version from input: $VERSION"
+        fi
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore --configuration Release /p:Version=${{ steps.get_version.outputs.version }}
+      
+    - name: Test
+      run: dotnet test --no-build --configuration Release --verbosity normal
+      
+    - name: Pack NuGet package
+      run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts /p:PackageVersion=${{ steps.get_version.outputs.version }}
+      
+    - name: Push to NuGet
+      run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package-${{ steps.get_version.outputs.version }}
+        path: ./artifacts/*.nupkg
+        retention-days: 90
