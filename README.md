@@ -1,5 +1,9 @@
 # SBE Code Generator for C#
 
+[![CI](https://github.com/pedrosakuma/SbeSourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/pedrosakuma/SbeSourceGenerator/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/SbeSourceGenerator.svg)](https://www.nuget.org/packages/SbeSourceGenerator/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/SbeSourceGenerator.svg)](https://www.nuget.org/packages/SbeSourceGenerator/)
+
 A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) XML schemas into efficient, type-safe C# code.
 
 ## Features
@@ -188,6 +192,7 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
 
 ## Documentation
 
+- **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
 - **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
 - **[Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - System architecture

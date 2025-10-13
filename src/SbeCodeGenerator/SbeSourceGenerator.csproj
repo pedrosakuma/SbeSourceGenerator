@@ -16,8 +16,8 @@
 		<Product>SBE Source Generator</Product>
 		<Description>Roslyn source generator that produces strongly typed code for Simple Binary Encoding (SBE) schemas.</Description>
 		<PackageTags>SBE;SimpleBinaryEncoding;SourceGenerator;Roslyn;MarketData</PackageTags>
-		<PackageProjectUrl>https://github.com/pedrosakuma/PcapSbePocConsole</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/pedrosakuma/PcapSbePocConsole</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/pedrosakuma/SbeSourceGenerator</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/pedrosakuma/SbeSourceGenerator</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -36,6 +36,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="/" />
+		<None Include="../../LICENSE.txt" Pack="true" PackagePath="/" />
 	</ItemGroup>
 	<PropertyGroup>
 		<GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
