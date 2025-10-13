@@ -41,4 +41,16 @@ public partial struct QuoteData
 	/// </summary>
 	[FieldOffset(24)]
 	public long AskQuantity;
+	public static bool TryParse(ReadOnlySpan<byte> buffer, out QuoteData message, out ReadOnlySpan<byte> variableData)
+	{
+		if (buffer.Length < MESSAGE_SIZE)
+		{
+			message = default;
+			variableData = default;
+			return false;
+		}
+		message = MemoryMarshal.AsRef<QuoteData>(buffer);
+		variableData = buffer.Slice(MESSAGE_SIZE);
+		return true;
+	}
 }

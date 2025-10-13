@@ -43,8 +43,8 @@ namespace SbeCodeGenerator.Tests
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <types>
                         <composite name='MessageHeader' description='Header'>
-                            <field name='blockLength' id='1' type='uint16'/>
-                            <field name='templateId' id='2' type='uint16'/>
+                            <field name='blockLength' id='1' primitiveType='uint16'/>
+                            <field name='templateId' id='2' primitiveType='uint16'/>
                         </composite>
                     </types>
                 </sbe:messageSchema>");
