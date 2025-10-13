@@ -296,9 +296,14 @@ Cross-schema type references are not tested.
 ### ❌ Missing Features
 
 #### 13. Block Length Extension
-**Status**: ❌ **NOT IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-The ability to extend message block lengths for schema evolution is not implemented.
+The ability to extend message block lengths for schema evolution is now implemented.
+
+**Implementation**:
+- TryParse methods now accept an optional `blockLength` parameter
+- Decoders can handle messages with different block lengths
+- Supports both forward and backward compatibility scenarios
 
 **Required for**:
 - Adding optional fields to end of messages

@@ -215,16 +215,17 @@ Ver: [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 2.
 
 ### ⚠️ Extensibilidade de mensagens (schema evolution)
 
-**Status**: ⚠️ **PARCIALMENTE IMPLEMENTADO - 30%**
+**Status**: ⚠️ **PARCIALMENTE IMPLEMENTADO - 60%**
 
 **Implementado**:
 - [x] Schema version attribute parsing
 - [x] Schema ID in generated code
 - [x] Semantic version attribute
+- [x] sinceVersion attribute parsing
+- [x] Block length extension support
+- [x] SinceVersion stored in field DTOs
 
 **Não Implementado**:
-- [ ] sinceVersion attribute on fields
-- [ ] Block length extension support
 - [ ] Version-aware decoders
 - [ ] Backward compatibility validation
 - [ ] Schema migration tools
@@ -232,17 +233,17 @@ Ver: [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 2.
 
 **Impacto**:
 - Evolução de schema requer cuidado manual
-- Sem suporte automático para compatibilidade retroativa
-- sinceVersion é ignorado
+- Block length extension permite compatibilidade básica
+- sinceVersion é parseado mas não gera código específico
 
 **Prioridade**: ALTA  
-**Estimativa**: 3-4 semanas
+**Estimativa**: 2-3 semanas (reduzido com block length extension implementado)
 
 **Próximos Passos**:
-1. Adicionar SinceVersion aos field DTOs
+1. ~~Adicionar SinceVersion aos field DTOs~~ ✅
 2. Gerar verificações de versão em decoders
-3. Implementar block length extension
-4. Criar testes de compatibilidade
+3. ~~Implementar block length extension~~ ✅
+4. ~~Criar testes de compatibilidade~~ ✅
 5. Documentar práticas de evolução de schema
 
 Ver: [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 1.2
