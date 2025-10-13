@@ -15,6 +15,7 @@ namespace SbeSourceGenerator.Schema
         string InnerText,
         string Id,
         string Offset,
-        string Type
+        string Type,
+        string SinceVersion
     );
 }
