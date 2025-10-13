@@ -1,5 +1,7 @@
 ﻿using Binance.Stream;
 using Microsoft.Extensions.Configuration;
+using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -9,56 +11,115 @@ namespace SbeBinanceConsole
 {
     internal class Program
     {
-        static long bookUpdateIdSbe;
-        static long bookUpdateIdJson;
-
         static async Task Main(string[] args)
         {
-            var builder = new ConfigurationBuilder()
-                .AddUserSecrets<Program>() 
-                .Build();
-            var key = builder["BinanceApiKey"];
-            CancellationTokenSource cts = new CancellationTokenSource();
-            Console.Clear();
-            await Task.WhenAll(
-                WatchSbeBestBid(key, cts),
-                WatchJsonBestBid(key, cts),
-                WatchWinner(cts)
-            );
-        }
-
-        private static async Task WatchWinner(CancellationTokenSource cts)
-        {
-            while (!cts.Token.IsCancellationRequested)
+            Argument<string> argumentKey = new("key")
             {
-                // Console.SetCursorPosition(0, 0);
-                // if (bookUpdateIdSbe == bookUpdateIdJson)
-                // {
-                //     Console.Write("Tie     ");
+                Description = "Binance API Key (Ed25519)"
+            };
+            Argument<string> instrument = new("instrument")
+            {
+                Description = "Instrument"
+            };
 
-                // }
-                // else if (bookUpdateIdSbe > bookUpdateIdJson)
-                // {
-                //     Console.Write($"SBE  win lag: {bookUpdateIdSbe - bookUpdateIdJson}");
-                // }
-                // else
-                // {
-                //     Console.Write($"Json win lag: {bookUpdateIdJson - bookUpdateIdSbe}");
-                // }
-                await Task.Delay(100);
-            }
+            RootCommand rootCommand = new("Example app to Binance SBE subscription");
+
+            var bestBidAskCommand = new Command(
+                "bestBidAsk",
+                "Subscribe to BestBidAsk")
+            {
+                argumentKey,
+                instrument
+            };
+            rootCommand.Subcommands.Add(bestBidAskCommand);
+
+            var tradeCommand = new Command(
+                "trade",
+                "Subscribe to Trade")
+            {
+                argumentKey,
+                instrument
+            };
+            rootCommand.Subcommands.Add(tradeCommand);
+
+            CancellationTokenSource source = new CancellationTokenSource();
+            bestBidAskCommand.SetAction(parseResult => BestBidAsk(
+                parseResult.GetValue(argumentKey),
+                parseResult.GetValue(instrument),
+
+                source.Token
+            ));
+
+            tradeCommand.SetAction(parseResult => Trade(
+                parseResult.GetValue(argumentKey),
+                parseResult.GetValue(instrument),
+                source.Token
+            ));
+            await rootCommand.Parse(args).InvokeAsync();
         }
-        private static async Task WatchSbeBestBid(string key, CancellationTokenSource cts)
+
+        private static async Task Trade(string? key, string? instrument, CancellationToken token)
         {
             ClientWebSocket ws = new ClientWebSocket();
             ws.Options.SetRequestHeader("X-MBX-APIKEY", key);
-            await ws.ConnectAsync(new Uri("wss://stream-sbe.binance.com/ws/btcusdt@bestBidAsk"), cts.Token);
-
-            //Console.WriteLine("Connected to Binance WebSocket");
+            Console.WriteLine("Connecting to Binance WebSocket");
+            await ws.ConnectAsync(new Uri("wss://stream-sbe.binance.com/ws/btcusdt@trade"), token);
+            Console.WriteLine("Connected to Binance WebSocket");
             var buffer = new Memory<byte>(new byte[8192]);
-            while (!cts.Token.IsCancellationRequested)
+            while (!token.IsCancellationRequested)
             {
-                var result = await ws.ReceiveAsync(buffer, cts.Token);
+                var result = await ws.ReceiveAsync(buffer, token);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                    Console.WriteLine("WebSocket closed");
+                    break;
+                }
+                var span = buffer.Span.Slice(0, result.Count);
+                if (!MessageHeader.TryParse(span, out var header, out var body))
+                {
+                    continue;
+                }
+                var tradesDataBuffer = new TradesStreamEventData.TradesData[256];
+
+                switch (header.TemplateId)
+                {
+                    case TradesStreamEventData.MESSAGE_ID:
+                        if (TradesStreamEventData.TryParse(body, out var trades, out var tradesVariableData))
+                        {
+                            decimal qtyMultiplier = (decimal)Math.Pow(10, trades.QtyExponent.Value);
+                            decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
+                            int index = 0;
+                            string symbol = null;
+                            trades.ConsumeVariableLengthSegments(tradesVariableData,
+                               trade =>
+                               {
+                                   tradesDataBuffer[index++] = trade;
+                               },
+                               s =>
+                               {
+                                   symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
+                               });
+                            for (int i = 0; i < index; i++)
+                            {
+                                var t = tradesDataBuffer[i];
+                                Console.WriteLine($"s:{symbol}, id: {t.Id.Value}, q: {t.Qty.Value * priceMultiplier}, p: {t.Price.Value * priceMultiplier}");
+                            }
+                        }
+                        break;
+                }
+            }        }
+        private static async Task BestBidAsk(string? key, string? instrument, CancellationToken token)
+        {
+            ClientWebSocket ws = new ClientWebSocket();
+            ws.Options.SetRequestHeader("X-MBX-APIKEY", key);
+            Console.WriteLine("Connecting to Binance WebSocket");
+            await ws.ConnectAsync(new Uri("wss://stream-sbe.binance.com/ws/btcusdt@bestBidAsk"), token);
+            Console.WriteLine("Connected to Binance WebSocket");
+            var buffer = new Memory<byte>(new byte[8192]);
+            while (!token.IsCancellationRequested)
+            {
+                var result = await ws.ReceiveAsync(buffer, token);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -76,8 +137,6 @@ namespace SbeBinanceConsole
                     case BestBidAskStreamEventData.MESSAGE_ID:
                         if (BestBidAskStreamEventData.TryParse(body, out var bestBid, out var bestBidVariableData))
                         {
-                            bookUpdateIdSbe = bestBid.BookUpdateId.Value;
-                            Console.WriteLine($"BestBidAskStreamEventMessageReceived: ");
                             string symbol = "";
                             decimal qtyMultiplier = (decimal)Math.Pow(10, bestBid.QtyExponent.Value);
                             decimal priceMultiplier = (decimal)Math.Pow(10, bestBid.PriceExponent.Value);
@@ -89,60 +148,6 @@ namespace SbeBinanceConsole
                             Console.WriteLine($"s: {symbol}, t: {bestBid.EventTime.Value}, id:{bestBid.BookUpdateId.Value}, bq: {bestBid.BidQty.Value * qtyMultiplier}, bp: {bestBid.BidPrice.Value * priceMultiplier}, ap: {bestBid.AskPrice.Value * priceMultiplier}, aq: {bestBid.AskQty.Value * qtyMultiplier}");
                         }
                         break;
-                    case TradesStreamEventData.MESSAGE_ID:
-                        if (TradesStreamEventData.TryParse(body, out var trades, out var tradesVariableData))
-                        {
-                            decimal qtyMultiplier = (decimal)Math.Pow(10, trades.QtyExponent.Value);
-                            decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
-                            Console.WriteLine($"TradesStreamEventMessageReceived: ");
-                            trades.ConsumeVariableLengthSegments(tradesVariableData,
-                               trade =>
-                               {
-                                   Console.WriteLine($"{trade.Id.Value} - q: {trade.Qty.Value * qtyMultiplier}, p: {trade.Price.Value * priceMultiplier}");
-                               },
-                               symbol =>
-                               {
-                                   Console.WriteLine(Encoding.ASCII.GetString(symbol.VarData[..symbol.Length]));
-                               });
-                        }
-                        break;
-                }
-            }
-        }
-        private static async Task WatchJsonBestBid(string key, CancellationTokenSource cts)
-        {
-            ClientWebSocket ws = new ClientWebSocket();
-            ws.Options.SetRequestHeader("X-MBX-APIKEY", key);
-            await ws.ConnectAsync(new Uri("wss://stream.binance.com/ws/btcusdt@bookTicker"), cts.Token);
-
-            //Console.WriteLine("Connected to Binance WebSocket");
-            var buffer = new Memory<byte>(new byte[8192 + sizeof(ushort)]);
-            while (!cts.Token.IsCancellationRequested)
-            {
-                var result = await ws.ReceiveAsync(buffer, cts.Token);
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
-                    Console.WriteLine("WebSocket closed");
-                    break;
-                }
-                else
-                {
-                    ParseJsonBookUpdateId(buffer.Span, result);
-                }
-            }
-        }
-
-        private static void ParseJsonBookUpdateId(Span<byte> buffer, ValueWebSocketReceiveResult result)
-        {
-            var reader = new Utf8JsonReader(buffer.Slice(0, result.Count));
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonTokenType.PropertyName && reader.GetString() == "u")
-                {
-                    reader.Read();
-                    bookUpdateIdJson = reader.GetInt64();
-                    break;
                 }
             }
         }
