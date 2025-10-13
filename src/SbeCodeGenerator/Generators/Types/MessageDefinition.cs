@@ -26,16 +26,27 @@ namespace SbeSourceGenerator
 
         private void AppendParseHelpers(StringBuilder sb, int tabs)
         {
+            // Original TryParse without blockLength parameter for backward compatibility
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+            sb.AppendLine($"return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // New TryParse with blockLength parameter for schema evolution support
+            sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < blockLength)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("message = default;", tabs);
             sb.AppendLine("variableData = default;", tabs);
             sb.AppendLine("return false;", tabs);
             sb.AppendLine("}", --tabs);
+            sb.AppendLine("// Read only the bytes specified by blockLength to support schema evolution", tabs);
+            sb.AppendLine("// If blockLength < MESSAGE_SIZE, we're reading an older version of the message", tabs);
+            sb.AppendLine("// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions", tabs);
+            sb.AppendLine("var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);", tabs);
             sb.AppendLine($"message = MemoryMarshal.AsRef<{Name}Data>(buffer);", tabs);
-            sb.AppendLine("variableData = buffer.Slice(MESSAGE_SIZE);", tabs);
+            sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }
