@@ -2,7 +2,7 @@
   "profiles": {
     "SbeCodeGenerator_Roslyn": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\SbeBinanceConsole\\SbeBinanceConsole.csproj"
+      "targetProject": "..\\..\\examples\\SbeBinanceConsole\\SbeBinanceConsole.csproj"
     }
   }
 }
