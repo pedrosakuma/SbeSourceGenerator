@@ -63,39 +63,8 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// </summary>");
             sb.AppendLine($"public static class {messageDto.Name.FirstCharToUpper()}Validation");
             sb.AppendLine("{");
-            sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Validates all fields with constraints in {messageDto.Name}.");
-            sb.AppendLine($"    /// </summary>");
-            sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
-            sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when a field value is outside its valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(this {messageDto.Name.FirstCharToUpper()} message)");
-            sb.AppendLine("    {");
-
-            foreach (var field in fieldsWithConstraints)
-            {
-                string fieldName = field.Name.FirstCharToUpper();
-                
-                if (!string.IsNullOrEmpty(field.MinValue) && !string.IsNullOrEmpty(field.MaxValue))
-                {
-                    sb.AppendLine($"        if (message.{fieldName} < {field.MinValue} || message.{fieldName} > {field.MaxValue})");
-                    sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(message.{fieldName}), message.{fieldName}, \"{fieldName} must be between {field.MinValue} and {field.MaxValue}\");");
-                }
-                else if (!string.IsNullOrEmpty(field.MinValue))
-                {
-                    sb.AppendLine($"        if (message.{fieldName} < {field.MinValue})");
-                    sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(message.{fieldName}), message.{fieldName}, \"{fieldName} must be greater than or equal to {field.MinValue}\");");
-                }
-                else if (!string.IsNullOrEmpty(field.MaxValue))
-                {
-                    sb.AppendLine($"        if (message.{fieldName} > {field.MaxValue})");
-                    sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(message.{fieldName}), message.{fieldName}, \"{fieldName} must be less than or equal to {field.MaxValue}\");");
-                }
-            }
-
-            sb.AppendLine("    }");
-            sb.AppendLine();
             
-            // Generate TryValidate method
+            // Generate TryValidate method first (contains the core logic)
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Attempts to validate all fields with constraints in {messageDto.Name}.");
             sb.AppendLine($"    /// </summary>");
@@ -140,6 +109,21 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("    }");
             sb.AppendLine();
             
+            // Generate Validate method that calls TryValidate
+            sb.AppendLine($"    /// <summary>");
+            sb.AppendLine($"    /// Validates all fields with constraints in {messageDto.Name}.");
+            sb.AppendLine($"    /// </summary>");
+            sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
+            sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when a field value is outside its valid range.</exception>");
+            sb.AppendLine($"    public static void Validate(this {messageDto.Name.FirstCharToUpper()} message)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        if (!message.TryValidate(out string? errorMessage))");
+            sb.AppendLine("        {");
+            sb.AppendLine("            throw new ArgumentOutOfRangeException(nameof(message), errorMessage);");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+            
             // Generate factory method
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Creates a validated instance of {messageDto.Name.FirstCharToUpper()}.");
@@ -172,34 +156,8 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// </summary>");
             sb.AppendLine($"public static class {typeDto.Name}Validation");
             sb.AppendLine("{");
-            sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Validates that the value is within the schema-defined constraints.");
-            sb.AppendLine($"    /// </summary>");
-            sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
-            sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when the value is outside the valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(this {typeDto.Name} value)");
-            sb.AppendLine("    {");
-
-            if (!string.IsNullOrEmpty(typeDto.MinValue) && !string.IsNullOrEmpty(typeDto.MaxValue))
-            {
-                sb.AppendLine($"        if (value.Value < {typeDto.MinValue} || value.Value > {typeDto.MaxValue})");
-                sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(value), value.Value, \"{typeDto.Name} must be between {typeDto.MinValue} and {typeDto.MaxValue}\");");
-            }
-            else if (!string.IsNullOrEmpty(typeDto.MinValue))
-            {
-                sb.AppendLine($"        if (value.Value < {typeDto.MinValue})");
-                sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(value), value.Value, \"{typeDto.Name} must be greater than or equal to {typeDto.MinValue}\");");
-            }
-            else if (!string.IsNullOrEmpty(typeDto.MaxValue))
-            {
-                sb.AppendLine($"        if (value.Value > {typeDto.MaxValue})");
-                sb.AppendLine($"            throw new ArgumentOutOfRangeException(nameof(value), value.Value, \"{typeDto.Name} must be less than or equal to {typeDto.MaxValue}\");");
-            }
-
-            sb.AppendLine("    }");
-            sb.AppendLine();
             
-            // Generate TryValidate method
+            // Generate TryValidate method first (contains the core logic)
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Attempts to validate that the value is within the schema-defined constraints.");
             sb.AppendLine($"    /// </summary>");
@@ -236,6 +194,21 @@ namespace SbeSourceGenerator.Generators
 
             sb.AppendLine("        errorMessage = null;");
             sb.AppendLine("        return true;");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+            
+            // Generate Validate method that calls TryValidate
+            sb.AppendLine($"    /// <summary>");
+            sb.AppendLine($"    /// Validates that the value is within the schema-defined constraints.");
+            sb.AppendLine($"    /// </summary>");
+            sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
+            sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when the value is outside the valid range.</exception>");
+            sb.AppendLine($"    public static void Validate(this {typeDto.Name} value)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        if (!value.TryValidate(out string? errorMessage))");
+            sb.AppendLine("        {");
+            sb.AppendLine("            throw new ArgumentOutOfRangeException(nameof(value), errorMessage);");
+            sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine();
             
