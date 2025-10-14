@@ -75,12 +75,11 @@ public partial struct QuoteData
 		
 		return true;
 	}
-	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out QuoteData message, out ReadOnlySpan<byte> variableData)
+	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out QuoteData message)
 	{
 		// Read the message data
 		if (!reader.TryRead<QuoteData>(out message))
 		{
-			variableData = default;
 			return false;
 		}
 		
@@ -88,12 +87,9 @@ public partial struct QuoteData
 		var additionalBytes = blockLength - MESSAGE_SIZE;
 		if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))
 		{
-			variableData = default;
 			return false;
 		}
 		
-		// Return remaining buffer for variable data
-		variableData = reader.Remaining;
 		return true;
 	}
 }
