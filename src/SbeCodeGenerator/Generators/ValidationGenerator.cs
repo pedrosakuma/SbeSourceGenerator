@@ -68,7 +68,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when a field value is outside its valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(ref this {messageDto.Name.FirstCharToUpper()} message)");
+            sb.AppendLine($"    public static void Validate(this {messageDto.Name.FirstCharToUpper()} message)");
             sb.AppendLine("    {");
 
             foreach (var field in fieldsWithConstraints)
@@ -118,7 +118,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when the value is outside the valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(ref this {typeDto.Name} value)");
+            sb.AppendLine($"    public static void Validate(this {typeDto.Name} value)");
             sb.AppendLine("    {");
 
             if (!string.IsNullOrEmpty(typeDto.MinValue) && !string.IsNullOrEmpty(typeDto.MaxValue))
