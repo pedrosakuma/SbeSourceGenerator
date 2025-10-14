@@ -29,6 +29,8 @@ public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out i
 - Delegates provide a flexible, performant alternative
 - Maintains compatibility with existing codebases
 
+> **📖 For a comprehensive analysis of design options, rationale, and tradeoffs, see [SPAN_READER_DESIGN_RATIONALE.md](SPAN_READER_DESIGN_RATIONALE.md)**
+
 ### 2. TryReadWith Method
 
 Added extensibility method to SpanReader:
@@ -300,11 +302,7 @@ reader.TryReadWith(GetParserForVersion(version), out var order);  // Dynamic
 
 ## References
 
-- [SBE Specification - Schema Evolution](https://github.com/real-logic/simple-binary-encoding/wiki/Design-Principles#versioning-and-schema-evolution)
-- [C# ref structs](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/ref-struct)
-
-## References
-
+- [SpanReader Design Rationale](SPAN_READER_DESIGN_RATIONALE.md) - Comprehensive design analysis and tradeoffs
 - [SBE Specification - Schema Evolution](https://github.com/real-logic/simple-binary-encoding/wiki/Design-Principles#versioning-and-schema-evolution)
 - [C# ref structs](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/ref-struct)
 
