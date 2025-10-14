@@ -13,6 +13,15 @@ namespace SbeSourceGenerator.Runtime
     /// <param name="value">When this method returns, contains the parsed value if successful.</param>
     /// <param name="bytesConsumed">When this method returns, contains the number of bytes consumed if successful.</param>
     /// <returns>True if parsing succeeded; otherwise, false.</returns>
+    /// <remarks>
+    /// This delegate enables type-specific parsing strategies for:
+    /// - Schema evolution (version-specific parsing)
+    /// - Non-blittable types (strings, arrays, complex structures)
+    /// - Memory alignment control (custom padding and alignment logic)
+    /// - Variable-length data handling
+    /// 
+    /// For design rationale and pattern examples, see docs/SPAN_READER_DESIGN_RATIONALE.md
+    /// </remarks>
     public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out int bytesConsumed);
 
     /// <summary>
@@ -26,6 +35,17 @@ namespace SbeSourceGenerator.Runtime
     /// Supports extensibility through:
     /// - Custom parsing delegates for schema evolution
     /// - Flexible parsing patterns for non-blittable types
+    /// - Memory alignment control via custom parsers
+    /// 
+    /// Memory Alignment:
+    /// - TryRead{T} uses MemoryMarshal.Read which handles unaligned access on modern platforms
+    /// - Custom parsers (TryReadWith) allow explicit alignment control
+    /// - Use TrySkip for padding bytes to maintain alignment
+    /// - SBE schema defines alignment requirements that parsers can implement
+    /// 
+    /// For comprehensive design rationale and usage patterns, see:
+    /// - docs/SPAN_READER_EXTENSIBILITY.md - Usage examples and patterns
+    /// - docs/SPAN_READER_DESIGN_RATIONALE.md - Design decisions and tradeoffs
     /// </remarks>
     public ref struct SpanReader
     {
@@ -73,6 +93,10 @@ namespace SbeSourceGenerator.Runtime
         /// <typeparam name="T">The type of structure to read. Must be a blittable type.</typeparam>
         /// <param name="value">When this method returns, contains the read value if successful; otherwise, the default value.</param>
         /// <returns>True if the structure was successfully read; otherwise, false.</returns>
+        /// <remarks>
+        /// This method uses MemoryMarshal.Read which handles unaligned memory access safely on modern platforms.
+        /// For types requiring explicit alignment control or non-blittable types, use TryReadWith with a custom parser.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryRead<T>(out T value) where T : struct
         {
@@ -183,7 +207,25 @@ namespace SbeSourceGenerator.Runtime
         /// <remarks>
         /// This method enables type-specific parsing logic including:
         /// - Schema evolution handling (different parsing based on version)
-        /// - Non-blittable type support
+        /// - Non-blittable type support (strings, arrays, complex structures)
+        /// - Memory alignment control (explicit padding and alignment strategies)
+        /// - Variable-length data parsing
+        /// 
+        /// Performance: When using static methods as parsers, there are zero allocations.
+        /// AggressiveInlining allows the JIT to optimize the delegate call in many scenarios.
+        /// 
+        /// Example:
+        /// <code>
+        /// static bool ParseOrder(ReadOnlySpan&lt;byte&gt; buffer, out Order order, out int consumed)
+        /// {
+        ///     var reader = new SpanReader(buffer);
+        ///     // Custom parsing logic here
+        ///     consumed = buffer.Length - reader.RemainingBytes;
+        ///     return true;
+        /// }
+        /// 
+        /// reader.TryReadWith(ParseOrder, out var order);
+        /// </code>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryReadWith<T>(SpanParser<T> parser, out T value)
