@@ -1,11 +1,10 @@
 ﻿using Binance.Stream;
-using Microsoft.Extensions.Configuration;
 using System.CommandLine;
-using System.CommandLine.Parsing;
+using System.Dynamic;
+using System.Net;
+using System.Net.Http.Json;
 using System.Net.WebSockets;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
 
 namespace SbeBinanceConsole
 {
@@ -22,41 +21,50 @@ namespace SbeBinanceConsole
                 Description = "Instrument"
             };
 
+            CancellationTokenSource source = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, _) =>
+            {
+                Console.WriteLine("Cancel requested");
+                source.Cancel();
+            };
             RootCommand rootCommand = new("Example app to Binance SBE subscription");
 
-            var bestBidAskCommand = new Command(
-                "bestBidAsk",
-                "Subscribe to BestBidAsk")
-            {
-                argumentKey,
-                instrument
-            };
-            rootCommand.Subcommands.Add(bestBidAskCommand);
+            AddCommand(rootCommand,
+                "bestBidAsk", "Subscribe to BestBidAsk", BestBidAsk,
+                argumentKey, instrument);
 
-            var tradeCommand = new Command(
-                "trade",
-                "Subscribe to Trade")
-            {
-                argumentKey,
-                instrument
-            };
-            rootCommand.Subcommands.Add(tradeCommand);
+            AddCommand(rootCommand,
+                "trade", "Subscribe to Trade", Trade,
+                argumentKey, instrument);
 
-            CancellationTokenSource source = new CancellationTokenSource();
-            bestBidAskCommand.SetAction(parseResult => BestBidAsk(
-                parseResult.GetValue(argumentKey),
-                parseResult.GetValue(instrument),
+            AddCommand(rootCommand,
+                "depth", "Subscribe to OrderBook", OrderBook,
+                argumentKey, instrument);
 
-                source.Token
-            ));
-
-            tradeCommand.SetAction(parseResult => Trade(
-                parseResult.GetValue(argumentKey),
-                parseResult.GetValue(instrument),
-                source.Token
-            ));
-            await rootCommand.Parse(args).InvokeAsync();
+            await rootCommand.Parse(args).InvokeAsync(cancellationToken: source.Token);
         }
+
+        private static void AddCommand(RootCommand rootCommand,
+            string commandName, string commandDescription,
+            Func<string, string, CancellationToken, Task> func,
+            Argument<string> argumentKey, Argument<string> instrument)
+        {
+            var command = new Command(
+                commandName,
+                commandDescription)
+            {
+                argumentKey,
+                instrument
+            };
+            command.SetAction((parseResult, token) => func(
+                parseResult.GetRequiredValue(argumentKey),
+                parseResult.GetRequiredValue(instrument),
+
+                token
+            ));
+            rootCommand.Subcommands.Add(command);
+        }
+
         private static async Task SubscribeAsync(string? key, string? subscription, string? instrument, Action<MessageHeader, ReadOnlySpan<byte>> action, CancellationToken token)
         {
             ClientWebSocket ws = new ClientWebSocket();
@@ -82,7 +90,7 @@ namespace SbeBinanceConsole
                 action(header, body);
             }
         }
-        private static Task Trade(string? key, string? instrument, CancellationToken token)
+        private static Task Trade(string key, string instrument, CancellationToken token)
         {
             return SubscribeAsync(key, "trade", instrument,
                 (header, body) =>
@@ -111,7 +119,7 @@ namespace SbeBinanceConsole
                     }
                 }, token);
         }
-        private static Task BestBidAsk(string? key, string? instrument, CancellationToken token)
+        private static Task BestBidAsk(string key, string instrument, CancellationToken token)
         {
             return SubscribeAsync(key, "bestBidAsk", instrument,
                 (header, body) =>
@@ -138,5 +146,163 @@ namespace SbeBinanceConsole
                     }
                 }, token);
         }
+
+        private static async Task OrderBook(string key, string instrument, CancellationToken token)
+        {
+            ManualResetEventSlim mres = new ManualResetEventSlim();
+            List<OrderBookEntry> bids = new List<OrderBookEntry>(5000);
+            List<OrderBookEntry> asks = new List<OrderBookEntry>(5000);
+            var bidsComparer = new BidsComparer();
+            var asksComparer = new AsksComparer();
+            long lastUpdateId = 0L;
+            var task = SubscribeAsync(key, "depth", instrument,
+                (header, body) =>
+                {
+                    switch (header.TemplateId)
+                    {
+                        case DepthDiffStreamEventData.MESSAGE_ID:
+                            if (lastUpdateId == 0)
+                            {
+                                mres.Wait();
+                            }
+                            if (DepthDiffStreamEventData.TryParse(body, out var depth, out var depthData))
+                            {
+                                if (depth.FirstBookUpdateId.Value > lastUpdateId)
+                                {
+                                    int minUpdatedIndex = int.MaxValue;
+                                    string symbol = "";
+                                    decimal qtyMultiplier = (decimal)Math.Pow(10, depth.QtyExponent.Value);
+                                    decimal priceMultiplier = (decimal)Math.Pow(10, depth.PriceExponent.Value);
+                                    depth.ConsumeVariableLengthSegments(depthData,
+                                        cb =>
+                                        {
+                                                var entry = new OrderBookEntry
+                                                {
+                                                    Price = cb.Price.Value * priceMultiplier,
+                                                    Quantity = cb.Qty.Value * qtyMultiplier
+                                                };
+                                                int index = bids.BinarySearch(entry, bidsComparer);
+                                                if (index < 0)
+                                                {
+                                                    if (entry.Quantity != 0)
+                                                    {
+                                                        bids.Insert(~index, entry);
+                                                        minUpdatedIndex = int.Min(minUpdatedIndex, ~index);
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if (entry.Quantity == 0)
+                                                        bids.RemoveAt(index);
+                                                    else
+                                                        bids[index].Quantity = entry.Quantity;
+                                                    minUpdatedIndex = int.Min(minUpdatedIndex, index);
+                                                }
+                                        },
+                                        ca =>
+                                        {
+                                            var entry = new OrderBookEntry
+                                            {
+                                                Price = ca.Price.Value * priceMultiplier,
+                                                Quantity = ca.Qty.Value * qtyMultiplier
+                                            };
+                                            int index = asks.BinarySearch(entry, asksComparer);
+                                            if (index < 0)
+                                            {
+                                                if (entry.Quantity != 0)
+                                                {
+                                                    asks.Insert(~index, entry);
+                                                    minUpdatedIndex = int.Min(minUpdatedIndex, ~index);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (entry.Quantity == 0)
+                                                    asks.RemoveAt(index);
+                                                else
+                                                    asks[index].Quantity = entry.Quantity;
+                                                minUpdatedIndex = int.Min(minUpdatedIndex, index);
+                                            }
+                                        },
+                                        s =>
+                                        {
+                                            symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
+                                        });
+                                    lastUpdateId = depth.LastBookUpdateId.Value;
+                                    if (minUpdatedIndex <= 10)
+                                    {
+                                        Console.SetCursorPosition(0, 0);
+                                        for (int i = 0; i < 10; i++)
+                                        {
+                                            Console.WriteLine($"{bids[i].Quantity} {bids[i].Price} - {asks[i].Price} {asks[i].Quantity}");
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            Console.WriteLine(header);
+                            break;
+                    }
+                }, token);
+            var client = new HttpClient();
+            var response = await client.GetAsync($"https://api.binance.com/api/v3/depth?symbol={instrument.ToUpperInvariant()}&limit=5000");
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                var c = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(c);
+            }
+            var content = await response.Content.ReadFromJsonAsync<OrderBookSnapshot>(token);
+            if (content != null)
+            {
+                foreach (var item in content.Bids)
+                {
+                    bids.Add(new OrderBookEntry
+                    {
+                        Price = item[0],
+                        Quantity = item[1]
+                    });
+                }
+                foreach (var item in content.Asks)
+                {
+                    asks.Add(new OrderBookEntry
+                    {
+                        Price = item[0],
+                        Quantity = item[1]
+                    });
+                }
+                Console.WriteLine("snapshot ok");
+                Console.Clear();
+                lastUpdateId = content.LastUpdateId;
+                mres.Set();
+            }
+            await task;
+        }
+
+    }
+    public class BidsComparer : IComparer<OrderBookEntry>
+    {
+        public int Compare(OrderBookEntry? x, OrderBookEntry? y)
+        {
+            return decimal.Compare(y!.Price, x!.Price);
+        }
+    }
+    public class AsksComparer : IComparer<OrderBookEntry>
+    {
+        public int Compare(OrderBookEntry? x, OrderBookEntry? y)
+        {
+            return decimal.Compare(x!.Price, y!.Price);
+        }
+    }
+    public class OrderBookEntry
+    {
+        public decimal Price { get; set; }
+        public decimal Quantity { get; set; }
+    }
+    public class OrderBookSnapshot
+    {
+        public long LastUpdateId { get; set; }
+        public required decimal[][] Bids { get; set; }
+        public required decimal[][] Asks { get; set; }
     }
 }
