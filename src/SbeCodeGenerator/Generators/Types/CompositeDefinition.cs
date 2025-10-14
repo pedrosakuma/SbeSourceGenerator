@@ -19,7 +19,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine($"public partial struct {Name}", tabs);
             }
             else
-                sb.AppendLine($"public ref struct {Name}", tabs);
+                sb.AppendLine($"public readonly ref partial struct {Name}", tabs);
 
             sb.AppendLine("{", tabs++);
             if (blittable)
@@ -39,16 +39,53 @@ namespace SbeSourceGenerator
                 sb.AppendLine("}", --tabs);
             }
 
+            // Append fields with readonly modifier for ref structs
             foreach (var field in Fields)
-                field.AppendFileContent(sb, tabs);
+            {
+                if (!blittable)
+                {
+                    // For ref structs, manually add readonly fields
+                    if (field is ValueFieldDefinition vfd)
+                    {
+                        sb.AppendSummary(vfd.Description, tabs, nameof(ValueFieldDefinition));
+                        sb.AppendLine($"public readonly {vfd.PrimitiveType} {vfd.Name};", tabs);
+                    }
+                    else if (field is ArrayFieldDefinition afd)
+                    {
+                        sb.AppendSummary(afd.Description, tabs, nameof(ArrayFieldDefinition));
+                        sb.AppendLine($"public readonly ReadOnlySpan<{afd.PrimitiveType}> {afd.Name};", tabs);
+                    }
+                    else
+                    {
+                        field.AppendFileContent(sb, tabs);
+                    }
+                }
+                else
+                {
+                    field.AppendFileContent(sb, tabs);
+                }
+            }
+            
             if (!blittable)
             {
                 string varDataType = Fields.Where(f => f is ArrayFieldDefinition)
                     .Select(f => ((ArrayFieldDefinition)f).PrimitiveType)
                     .First();
 
+                // Generate constructor for readonly ref struct
+                var valueField = Fields.Where(f => f is ValueFieldDefinition).Cast<ValueFieldDefinition>().First();
+                var arrayField = Fields.Where(f => f is ArrayFieldDefinition).Cast<ArrayFieldDefinition>().First();
+                
+                sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs, nameof(CompositeDefinition));
+                sb.AppendLine($"public {Name}({valueField.PrimitiveType} {valueField.Name.FirstCharToLower()}, ReadOnlySpan<{arrayField.PrimitiveType}> {arrayField.Name.FirstCharToLower()})", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"{valueField.Name} = {valueField.Name.FirstCharToLower()};", tabs);
+                sb.AppendLine($"{arrayField.Name} = {arrayField.Name.FirstCharToLower()};", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("", tabs);
+
                 sb.AppendSummary("Create instance from buffer", tabs, nameof(CompositeDefinition));
-                sb.AppendLine($"public static {Name} Create(ReadOnlySpan<byte> buffer) => new {Name} {{ Length = MemoryMarshal.AsRef<byte>(buffer), VarData =  buffer.Slice(1) }};", tabs);
+                sb.AppendLine($"public static {Name} Create(ReadOnlySpan<byte> buffer) => new {Name}(MemoryMarshal.AsRef<byte>(buffer), buffer.Slice(1));", tabs);
 
                 sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs, nameof(CompositeDefinition));
                 sb.AppendLine($"public delegate void Callback({Name} data);", tabs);
