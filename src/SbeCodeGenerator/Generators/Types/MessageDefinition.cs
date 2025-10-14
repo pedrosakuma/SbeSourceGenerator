@@ -12,11 +12,8 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            // Add namespace.Runtime using if we have groups or data fields
-            if (Groups.Any() || Datas.Any())
-            {
-                sb.AppendUsings(tabs, $"{Namespace}.Runtime");
-            }
+            // Add namespace.Runtime using for SpanReader (used in TryParse) and groups/data fields
+            sb.AppendUsings(tabs, $"{Namespace}.Runtime");
             
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
@@ -41,18 +38,47 @@ namespace SbeSourceGenerator
             // New TryParse with blockLength parameter for schema evolution support
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("if (buffer.Length < blockLength)", tabs);
+            sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Validate buffer has enough bytes for the specified block length", tabs);
+            sb.AppendLine("if (!reader.CanRead(blockLength))", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("message = default;", tabs);
             sb.AppendLine("variableData = default;", tabs);
             sb.AppendLine("return false;", tabs);
             sb.AppendLine("}", --tabs);
-            sb.AppendLine("// Read only the bytes specified by blockLength to support schema evolution", tabs);
-            sb.AppendLine("// If blockLength < MESSAGE_SIZE, we're reading an older version of the message", tabs);
-            sb.AppendLine("// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions", tabs);
-            sb.AppendLine("var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);", tabs);
-            sb.AppendLine($"message = MemoryMarshal.AsRef<{Name}Data>(buffer);", tabs);
-            sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Read the message data (MESSAGE_SIZE bytes)", tabs);
+            sb.AppendLine("// For schema evolution: the message struct is always MESSAGE_SIZE,", tabs);
+            sb.AppendLine("// but variable data starts at blockLength to skip/include version-specific fields", tabs);
+            sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("message = default;", tabs);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Calculate variable data position based on blockLength for schema evolution", tabs);
+            sb.AppendLine("// If blockLength > MESSAGE_SIZE: skip additional bytes (newer schema)", tabs);
+            sb.AppendLine("// If blockLength < MESSAGE_SIZE: variable data overlaps with message (older schema)", tabs);
+            sb.AppendLine("var variableDataOffset = blockLength;", tabs);
+            sb.AppendLine("var bytesConsumed = MESSAGE_SIZE;", tabs);
+            sb.AppendLine("if (variableDataOffset > bytesConsumed)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// Skip additional bytes for newer schema versions", tabs);
+            sb.AppendLine("if (!reader.TrySkip(variableDataOffset - bytesConsumed))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("variableData = reader.Remaining;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("else", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// Variable data starts at blockLength (may overlap with message for older schemas)", tabs);
+            sb.AppendLine("variableData = buffer.Slice(variableDataOffset);", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }

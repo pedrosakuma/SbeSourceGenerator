@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using TestNamespace.Runtime;
+using System.Runtime.InteropServices;
 namespace TestNamespace;
 /// <summary>
 /// Quote message
@@ -47,18 +48,47 @@ public partial struct QuoteData
 	}
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out QuoteData message, out ReadOnlySpan<byte> variableData)
 	{
-		if (buffer.Length < blockLength)
+		var reader = new SpanReader(buffer);
+		
+		// Validate buffer has enough bytes for the specified block length
+		if (!reader.CanRead(blockLength))
 		{
 			message = default;
 			variableData = default;
 			return false;
 		}
-		// Read only the bytes specified by blockLength to support schema evolution
-		// If blockLength < MESSAGE_SIZE, we're reading an older version of the message
-		// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions
-		var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);
-		message = MemoryMarshal.AsRef<QuoteData>(buffer);
-		variableData = buffer.Slice(blockLength);
+		
+		// Read the message data (MESSAGE_SIZE bytes)
+		// For schema evolution: the message struct is always MESSAGE_SIZE,
+		// but variable data starts at blockLength to skip/include version-specific fields
+		if (!reader.TryRead<QuoteData>(out message))
+		{
+			message = default;
+			variableData = default;
+			return false;
+		}
+		
+		// Calculate variable data position based on blockLength for schema evolution
+		// If blockLength > MESSAGE_SIZE: skip additional bytes (newer schema)
+		// If blockLength < MESSAGE_SIZE: variable data overlaps with message (older schema)
+		var variableDataOffset = blockLength;
+		var bytesConsumed = MESSAGE_SIZE;
+		if (variableDataOffset > bytesConsumed)
+		{
+			// Skip additional bytes for newer schema versions
+			if (!reader.TrySkip(variableDataOffset - bytesConsumed))
+			{
+				variableData = default;
+				return false;
+			}
+			variableData = reader.Remaining;
+		}
+		else
+		{
+			// Variable data starts at blockLength (may overlap with message for older schemas)
+			variableData = buffer.Slice(variableDataOffset);
+		}
+		
 		return true;
 	}
 }
