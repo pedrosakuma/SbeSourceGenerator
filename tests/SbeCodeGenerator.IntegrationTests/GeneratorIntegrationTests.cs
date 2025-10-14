@@ -434,5 +434,37 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(200, askQuantities[0]);
             Assert.Equal(201, askQuantities[1]);
         }
+
+        [Fact]
+        public void ConsumeVariableLengthSegments_WithSpanReader_ParsesDataFieldsCorrectly()
+        {
+            // Arrange - Create buffer with VarString8 data
+            Span<byte> buffer = stackalloc byte[512];
+            int offset = 0;
+            
+            // Write VarString8: length byte + string bytes
+            string testSymbol = "AAPL";
+            buffer[offset++] = (byte)testSymbol.Length;
+            for (int i = 0; i < testSymbol.Length; i++)
+            {
+                buffer[offset++] = (byte)testSymbol[i];
+            }
+            
+            // Act
+            byte symbolLength = 0;
+            string symbolStr = "";
+            var order = new Integration.Test.NewOrderData();
+            order.ConsumeVariableLengthSegments(
+                buffer.Slice(0, offset),
+                symbol => { 
+                    symbolLength = symbol.Length;
+                    symbolStr = System.Text.Encoding.UTF8.GetString(symbol.VarData);
+                }
+            );
+            
+            // Assert
+            Assert.Equal((byte)4, symbolLength);
+            Assert.Equal("AAPL", symbolStr);
+        }
     }
 }
