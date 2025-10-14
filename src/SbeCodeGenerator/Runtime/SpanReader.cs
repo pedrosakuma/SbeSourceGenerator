@@ -25,7 +25,6 @@ namespace SbeSourceGenerator.Runtime
     /// 
     /// Supports extensibility through:
     /// - Custom parsing delegates for schema evolution
-    /// - Memory alignment operations
     /// - Flexible parsing patterns for non-blittable types
     /// </remarks>
     public ref struct SpanReader
@@ -184,7 +183,6 @@ namespace SbeSourceGenerator.Runtime
         /// <remarks>
         /// This method enables type-specific parsing logic including:
         /// - Schema evolution handling (different parsing based on version)
-        /// - Memory alignment adjustments
         /// - Non-blittable type support
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -199,64 +197,5 @@ namespace SbeSourceGenerator.Runtime
             value = default!;
             return false;
         }
-
-        /// <summary>
-        /// Aligns the reader position to the specified byte boundary.
-        /// Useful when parsing data structures with specific alignment requirements.
-        /// </summary>
-        /// <param name="alignment">The alignment boundary in bytes (must be a power of 2).</param>
-        /// <returns>True if alignment was successful; otherwise, false if insufficient bytes remain.</returns>
-        /// <remarks>
-        /// This is useful for handling memory-aligned structures in protocols like SBE
-        /// where certain fields must be aligned to 2, 4, or 8-byte boundaries.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryAlign(int alignment)
-        {
-            // Calculate how many bytes we've consumed (assuming original buffer started at aligned position)
-            // This is a simplified version - in real scenarios, you'd track the absolute position
-            int currentPosition = 0; // This would need to be tracked if we want absolute alignment
-            int padding = (alignment - (currentPosition % alignment)) % alignment;
-            
-            if (padding > 0)
-            {
-                return TrySkip(padding);
-            }
-            
-            return true;
-        }
-
-        /// <summary>
-        /// Skips bytes to align to the specified boundary relative to the start of the original buffer.
-        /// </summary>
-        /// <param name="alignment">The alignment boundary in bytes (must be a power of 2).</param>
-        /// <param name="startOffset">The offset from the start of the original buffer to current position.</param>
-        /// <returns>True if alignment was successful; otherwise, false.</returns>
-        /// <remarks>
-        /// Use this when you need to align based on an absolute position in the original buffer.
-        /// The startOffset parameter should track how many bytes have been consumed from the original buffer.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryAlignFrom(int alignment, int startOffset)
-        {
-            int padding = (alignment - (startOffset % alignment)) % alignment;
-            
-            if (padding > 0)
-            {
-                return TrySkip(padding);
-            }
-            
-            return true;
-        }
-
-        /// <summary>
-        /// Gets the current position if tracking is enabled.
-        /// This is a helper property to support alignment operations.
-        /// </summary>
-        /// <remarks>
-        /// Note: Position tracking is not built-in to keep the struct lightweight.
-        /// For absolute position tracking, maintain a separate counter in your parsing code.
-        /// </remarks>
-        public readonly int Position => 0; // Placeholder - actual position tracking would require additional state
     }
 }

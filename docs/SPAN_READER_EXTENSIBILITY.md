@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the extensibility features added to `SpanReader` to support advanced SBE parsing scenarios including schema evolution, memory alignment, and non-blittable types.
+This document describes the extensibility features added to `SpanReader` to support advanced SBE parsing scenarios including schema evolution and non-blittable types.
 
 ## Issue Requirements
 
@@ -10,7 +10,6 @@ The original issue requested:
 - ✅ Eliminate the need for manual offset management in SBE parsing code
 - ✅ Consider the use of a static interface for type-specific parsing logic
 - ✅ Schema evolution handling
-- ✅ Memory alignment support
 - ✅ Support for non-blittable types
 - ✅ Design for extensibility
 - ✅ Include clear documentation and usage examples
@@ -53,29 +52,6 @@ public bool TryReadWith<T>(SpanParser<T> parser, out T value)
 - Maintains automatic offset management
 - Supports schema evolution scenarios
 - Allows parsing of non-blittable types
-
-### 3. Memory Alignment Support
-
-Added alignment method for protocols with alignment requirements:
-
-```csharp
-public bool TryAlignFrom(int alignment, int startOffset)
-{
-    int padding = (alignment - (startOffset % alignment)) % alignment;
-    
-    if (padding > 0)
-    {
-        return TrySkip(padding);
-    }
-    
-    return true;
-}
-```
-
-**Use Cases:**
-- Protocols requiring 4-byte or 8-byte alignment
-- Hardware-optimized data structures
-- Cross-platform compatibility
 
 ## Usage Examples
 
@@ -129,31 +105,6 @@ var reader = new SpanReader(buffer);
 if (reader.TryReadWith(ParseOrder, out var order))
 {
     Console.WriteLine($"Order V{order.Version}: {order.OrderId}");
-}
-```
-
-### Memory Alignment
-
-Parse protocols with alignment requirements:
-
-```csharp
-var reader = new SpanReader(buffer);
-int position = 0;
-
-// Read unaligned header
-if (reader.TryReadBytes(5, out var header))
-{
-    position += 5;
-    
-    // Align to 8-byte boundary before reading aligned data
-    reader.TryAlignFrom(8, position);
-    position += (8 - (position % 8)) % 8;
-    
-    // Now at aligned position
-    if (reader.TryRead<long>(out var alignedValue))
-    {
-        ProcessValue(alignedValue);
-    }
 }
 ```
 
@@ -257,23 +208,18 @@ static bool ParseMessage(ReadOnlySpan<byte> buffer, out Message msg, out int con
 
 ## Test Coverage
 
-### Unit Tests (8 new tests)
+### Unit Tests (4 new tests)
 - `TryReadWith_CustomParser_ParsesSuccessfully` - Basic custom parsing
 - `TryReadWith_CustomParser_HandlesSchemaEvolution` - Version-specific parsing
 - `TryReadWith_CustomParser_FailsWhenInsufficientData` - Error handling
-- `TryAlignFrom_AlignsToSpecifiedBoundary` - 4-byte alignment
-- `TryAlignFrom_AlignTo8ByteBoundary` - 8-byte alignment
-- `TryAlignFrom_NoAlignmentNeeded_WhenAlreadyAligned` - Edge case
-- `TryAlignFrom_FailsWhenInsufficientBytes` - Error handling
 - `TryReadWith_SupportsNonBlittableTypes` - Non-blittable parsing
 
-### Integration Tests (4 new tests)
+### Integration Tests (3 new tests)
 - `ParseVersionedMessage_WithCustomParser_HandlesSchemaEvolution` - Real-world versioning
-- `ParseAlignedProtocol_WithAlignment_ReadsCorrectly` - Alignment in practice
 - `ParseMixedContent_UsingMultipleExtensibilityFeatures_Works` - Combined features
 - `RealWorldScenario_MarketDataFeed_ParsesEfficiently` - Market data parsing
 
-**Total Test Coverage**: 115 tests (65 unit + 50 integration), all passing
+**Total Test Coverage**: 111 tests (61 unit + 50 integration), all passing
 
 ## Performance Characteristics
 
@@ -356,7 +302,11 @@ reader.TryReadWith(GetParserForVersion(version), out var order);  // Dynamic
 
 - [SBE Specification - Schema Evolution](https://github.com/real-logic/simple-binary-encoding/wiki/Design-Principles#versioning-and-schema-evolution)
 - [C# ref structs](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/ref-struct)
-- [Memory alignment in .NET](https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.structlayoutattribute)
+
+## References
+
+- [SBE Specification - Schema Evolution](https://github.com/real-logic/simple-binary-encoding/wiki/Design-Principles#versioning-and-schema-evolution)
+- [C# ref structs](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/ref-struct)
 
 ## Conclusion
 
@@ -365,7 +315,6 @@ The SpanReader extensibility implementation successfully addresses all issue req
 ✅ **Manual offset management eliminated** - `TryReadWith` maintains automatic offset tracking  
 ✅ **Type-specific parsing** - `SpanParser<T>` delegate enables custom logic  
 ✅ **Schema evolution** - Version-specific parsers demonstrated in examples  
-✅ **Memory alignment** - `TryAlignFrom` handles alignment requirements  
 ✅ **Non-blittable types** - Custom parsers work with any type structure  
 ✅ **Extensibility** - Parser factory and composition patterns supported  
 ✅ **Documentation** - Comprehensive examples and migration guides provided  
