@@ -24,8 +24,8 @@
             <type name="varData" length="0" primitiveType="uint8" characterEncoding="UTF-8"/>
         </composite>
 
-        <type name="OrderId" primitiveType="int64"/>
-        <type name="Price" primitiveType="int64"/>
+        <type name="OrderId" primitiveType="int64" minValue="1"/>
+        <type name="Price" primitiveType="int64" minValue="0"/>
 
         <enum name="OrderSide" encodingType="uint8">
             <validValue name="Buy">1</validValue>
