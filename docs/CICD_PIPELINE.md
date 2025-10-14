@@ -35,13 +35,12 @@ O workflow de CI é executado automaticamente nos seguintes eventos:
 4. **Build**
    - Compila o projeto em modo Release: `dotnet build --configuration Release`
    
-5. **Test**
-   - Executa todos os testes: `dotnet test --configuration Release`
-   - Gera relatórios de testes em formato TRX
+5. **Build Tests**
+   - Compila os projetos de teste
    
-6. **Publish test results**
-   - Publica os resultados dos testes na interface do GitHub
-   - Executado sempre, mesmo se os testes falharem
+6. **Test**
+   - Executa todos os testes: `dotnet test --configuration Release`
+   - Exibe os resultados dos testes no log
    
 7. **Pack NuGet package (dry-run)**
    - Cria o pacote NuGet sem publicá-lo (validação)
