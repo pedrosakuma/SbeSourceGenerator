@@ -26,6 +26,7 @@ This project follows a simple code of conduct:
 
 1. **Read the Documentation**
    - [README.md](./README.md) - Project overview
+   - [CI/CD Pipeline](./docs/CICD_PIPELINE.md) - CI/CD configuration and publishing
    - [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) - Current feature status
    - [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
    - [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) - System design
