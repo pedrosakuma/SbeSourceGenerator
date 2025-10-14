@@ -1,5 +1,10 @@
 # SpanReader Type-Specific Parsing: Design Rationale
 
+> **📋 Quick Links:**  
+> - [SpanReader Extensibility Guide](SPAN_READER_EXTENSIBILITY.md) - Usage examples and patterns  
+> - [SpanReader API Reference](SPAN_READER_README.md) - API documentation  
+> - [SpanReader Integration](SPAN_READER_INTEGRATION.md) - How it's used in SBE parsing  
+
 ## Executive Summary
 
 This document provides a comprehensive analysis of design approaches for implementing type-specific parsing in the SpanReader, addressing schema evolution, memory alignment constraints, and non-blittable types. After evaluating multiple patterns including static interfaces, delegates, strategy pattern, and abstract classes, we chose a **delegate-based approach** for optimal compatibility, performance, and extensibility.
