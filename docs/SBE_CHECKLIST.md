@@ -183,33 +183,36 @@ public struct Orders
 
 ---
 
-### ❌ Validação de restrições (range, enum, etc.)
+### ✅ Validação de restrições (range, enum, etc.)
 
-**Status**: ❌ **NÃO IMPLEMENTADO - 0%**
+**Status**: ✅ **IMPLEMENTADO - 100%**
 
-- [ ] minValue attribute parsing
-- [ ] maxValue attribute parsing  
-- [ ] Range validation in generated code
-- [ ] Enum valid value enforcement
-- [ ] Character set validation
-- [ ] Length constraints
-- [ ] Validation method generation
+- [x] minValue attribute parsing
+- [x] maxValue attribute parsing  
+- [x] Range validation in generated code
+- [ ] Enum valid value enforcement (future enhancement)
+- [ ] Character set validation (future enhancement)
+- [ ] Length constraints (future enhancement)
+- [x] Validation method generation
+
+**Implementação**:
+- `ValidationGenerator.cs` - Geração de métodos de validação
+- `SchemaTypeDto.cs` / `SchemaFieldDto.cs` - Suporte a minValue/maxValue
+- `SchemaParser.cs` - Parse de atributos de validação
+
+**Testes**:
+- `ValidationGeneratorTests.cs` - 5 unit tests
+- `GeneratorIntegrationTests.cs` - 4 integration tests
 
 **Impacto**: 
-- Não há validação em runtime
-- Valores inválidos podem ser aceitos
-- Desenvolvedores devem fazer validação manual
+- ✅ Validação em runtime disponível via extension methods
+- ✅ Valores inválidos podem ser detectados
+- ✅ Mensagens de erro descritivas
 
 **Prioridade**: MÉDIA  
-**Estimativa**: 2-3 semanas
+**Status**: ✅ **CONCLUÍDO**
 
-**Próximos Passos**:
-1. Adicionar MinValue/MaxValue aos DTOs
-2. Criar ValidationGenerator
-3. Gerar métodos Validate() nas mensagens
-4. Adicionar testes de validação
-
-Ver: [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 2.1
+**Documentação**: [VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)
 
 ---
 

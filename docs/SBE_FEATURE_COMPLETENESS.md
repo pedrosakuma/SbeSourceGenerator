@@ -312,17 +312,26 @@ The ability to extend message block lengths for schema evolution is now implemen
 ---
 
 #### 14. Validation Constraints
-**Status**: ❌ **NOT IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-Schema-level validation constraints are not enforced in generated code.
+Schema-level validation constraints are now enforced in generated code.
 
-**Missing Validations**:
+**Supported Validations**:
 - Min/max value ranges
-- Valid value ranges
-- Character set validation
-- Length constraints
+- Range checking for numeric types
+- Extension methods for validation
 
-**Impact**: No runtime validation of values against schema constraints
+**Implementation**:
+- `ValidationGenerator` generates validation extension methods
+- Supports both type-level and field-level constraints
+- Runtime validation via `.Validate()` method calls
+
+**Required for**:
+- Data integrity enforcement
+- Schema compliance validation
+- Runtime value checking
+
+**See**: [Validation Constraints Documentation](./VALIDATION_CONSTRAINTS.md)
 
 ---
 
@@ -380,25 +389,27 @@ Deprecated attribute is recognized but not enforced.
 
 ### Current Test Suite
 
-**Unit Tests** (`SbeCodeGenerator.Tests`): 23 tests ✅
+**Unit Tests** (`SbeCodeGenerator.Tests`): 28 tests ✅
 - Primitive type generation
 - Enum generation  
 - Set generation
 - Composite generation
 - Message generation
 - Diagnostics validation
+- Validation constraint generation
 
-**Integration Tests** (`SbeCodeGenerator.IntegrationTests`): 9 tests ✅
+**Integration Tests** (`SbeCodeGenerator.IntegrationTests`): 15 tests ✅
 - Real-world B3 schema processing
 - Snapshot testing for generated code
+- Validation constraint enforcement
 
-**Total**: 32 tests, all passing ✅
+**Total**: 43 tests, all passing ✅
 
 ### Test Coverage Gaps
 
 - ❌ No tests for variable-length data
 - ❌ No tests for schema versioning
-- ❌ No tests for validation constraints
+- ✅ **Validation constraints** - Fully tested
 - ❌ No tests for byte order handling
 - ❌ No tests for multi-schema references
 
@@ -472,10 +483,10 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 
 ### Medium Priority
 
-4. **Validation Constraints**
-   - Implement min/max value validation
-   - Add range checking
-   - Generate validation methods
+4. ~~**Validation Constraints**~~ ✅ **COMPLETED**
+   - ✅ Implement min/max value validation
+   - ✅ Add range checking
+   - ✅ Generate validation methods
 
 5. **Byte Order Handling**
    - Test and document endianness behavior

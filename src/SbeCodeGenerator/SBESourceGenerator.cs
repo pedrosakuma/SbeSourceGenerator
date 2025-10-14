@@ -54,12 +54,15 @@ namespace SbeSourceGenerator
                     var typesGenerator = new TypesCodeGenerator();
                     var messagesGenerator = new MessagesCodeGenerator();
                     var utilitiesGenerator = new UtilitiesCodeGenerator();
+                    var validationGenerator = new ValidationGenerator();
                     
                     foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
                     foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
                     foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
+                        sourceContext.AddSource(item.name, item.content);
+                    foreach (var item in validationGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
                 }
                 catch (Exception ex)
