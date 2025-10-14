@@ -49,34 +49,22 @@ public partial struct TradeData
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
 		var reader = new SpanReader(buffer);
-		
-		// Validate buffer has enough bytes for the specified block length
-		if (!reader.CanRead(blockLength))
-		{
-			message = default;
-			variableData = default;
-			return false;
-		}
-		
-		// Read the message data (MESSAGE_SIZE bytes)
-		// For schema evolution: the message struct is always MESSAGE_SIZE,
-		// but variable data starts at blockLength to skip/include version-specific fields
+		return TryParseWithReader(reader, buffer, blockLength, out message, out variableData);
+	}
+	private static bool TryParseWithReader(SpanReader reader, ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
+	{
+		// Read the message data
 		if (!reader.TryRead<TradeData>(out message))
 		{
-			message = default;
 			variableData = default;
 			return false;
 		}
 		
-		// Calculate variable data position based on blockLength for schema evolution
-		// If blockLength > MESSAGE_SIZE: skip additional bytes (newer schema)
-		// If blockLength < MESSAGE_SIZE: variable data overlaps with message (older schema)
-		var variableDataOffset = blockLength;
-		var bytesConsumed = MESSAGE_SIZE;
-		if (variableDataOffset > bytesConsumed)
+		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
+		var additionalBytes = blockLength - MESSAGE_SIZE;
+		if (additionalBytes > 0)
 		{
-			// Skip additional bytes for newer schema versions
-			if (!reader.TrySkip(variableDataOffset - bytesConsumed))
+			if (!reader.TrySkip(additionalBytes))
 			{
 				variableData = default;
 				return false;
@@ -85,8 +73,8 @@ public partial struct TradeData
 		}
 		else
 		{
-			// Variable data starts at blockLength (may overlap with message for older schemas)
-			variableData = buffer.Slice(variableDataOffset);
+			// For backward compatibility: variable data starts at blockLength
+			variableData = buffer.Slice(blockLength);
 		}
 		
 		return true;
