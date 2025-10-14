@@ -12,11 +12,8 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            // Add namespace.Runtime using if we have groups or data fields
-            if (Groups.Any() || Datas.Any())
-            {
-                sb.AppendUsings(tabs, $"{Namespace}.Runtime");
-            }
+            // Add namespace.Runtime using for SpanReader (used in TryParse) and groups/data fields
+            sb.AppendUsings(tabs, $"{Namespace}.Runtime");
             
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
@@ -38,21 +35,55 @@ namespace SbeSourceGenerator
             sb.AppendLine($"return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);", tabs);
             sb.AppendLine("}", --tabs);
             
-            // New TryParse with blockLength parameter for schema evolution support
+            // TryParse with blockLength parameter for schema evolution support
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("if (buffer.Length < blockLength)", tabs);
+            sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
+            sb.AppendLine("// Read the message data", tabs);
+            sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("message = default;", tabs);
             sb.AppendLine("variableData = default;", tabs);
             sb.AppendLine("return false;", tabs);
             sb.AppendLine("}", --tabs);
-            sb.AppendLine("// Read only the bytes specified by blockLength to support schema evolution", tabs);
-            sb.AppendLine("// If blockLength < MESSAGE_SIZE, we're reading an older version of the message", tabs);
-            sb.AppendLine("// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions", tabs);
-            sb.AppendLine("var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);", tabs);
-            sb.AppendLine($"message = MemoryMarshal.AsRef<{Name}Data>(buffer);", tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
+            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
+            sb.AppendLine("if (additionalBytes > 0)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (!reader.TrySkip(additionalBytes))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("variableData = reader.Remaining;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("else", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// For backward compatibility: variable data starts at blockLength", tabs);
             sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
+            // This method is designed for advanced scenarios where users manage their own SpanReader
+            // Caller can access remaining data via reader.Remaining after successful parse
+            sb.AppendLine($"public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out {Name}Data message)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// Read the message data", tabs);
+            sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
+            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
+            sb.AppendLine("if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }
