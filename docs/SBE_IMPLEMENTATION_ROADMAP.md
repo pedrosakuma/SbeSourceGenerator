@@ -137,21 +137,23 @@ public int OldField { get; set; }
 
 ## Phase 2: Validation & Quality (Medium Priority)
 
-### 2.1 Validation Constraints ❌
+### 2.1 Validation Constraints ✅ **COMPLETED**
 
 **Goal**: Enforce schema validation constraints in generated code.
 
 **Estimated Effort**: Medium (2-3 weeks)
 
+**Status**: ✅ **Completed**
+
 **Tasks**:
-- [ ] Parse min/max value attributes from schema
-- [ ] Generate validation methods for messages
-- [ ] Add range checking for numeric types
-- [ ] Validate enum values against valid values
-- [ ] Support character set validation
-- [ ] Generate helpful error messages for validation failures
-- [ ] Make validation optional (performance vs safety trade-off)
-- [ ] Add validation tests
+- [x] Parse min/max value attributes from schema
+- [x] Generate validation methods for messages
+- [x] Add range checking for numeric types
+- [ ] Validate enum values against valid values (future enhancement)
+- [ ] Support character set validation (future enhancement)
+- [x] Generate helpful error messages for validation failures
+- [x] Make validation optional (performance vs safety trade-off)
+- [x] Add validation tests
 
 **Acceptance Criteria**:
 ```xml
@@ -160,19 +162,27 @@ public int OldField { get; set; }
 
 ```csharp
 // Generated code includes:
-public void Validate()
+public static void Validate(this Price value)
 {
-    if (Price < 0 || Price > 999999999)
-        throw new ArgumentOutOfRangeException(nameof(Price), 
+    if (value.Value < 0 || value.Value > 999999999)
+        throw new ArgumentOutOfRangeException(nameof(value), value.Value, 
             "Price must be between 0 and 999999999");
 }
 ```
 
-**Files to Create/Modify**:
-- `SbeCodeGenerator/Schema/SchemaTypeDto.cs` (add MinValue, MaxValue)
-- `SbeCodeGenerator/Generators/ValidationGenerator.cs` (new)
-- `SbeCodeGenerator/Generators/MessageDefinition.cs` (modify)
-- `SbeCodeGenerator.Tests/ValidationTests.cs` (new)
+✅ **Implementation Complete**
+
+**Files Created/Modified**:
+- ✅ `SbeCodeGenerator/Schema/SchemaTypeDto.cs` (added MinValue, MaxValue)
+- ✅ `SbeCodeGenerator/Schema/SchemaFieldDto.cs` (added MinValue, MaxValue)
+- ✅ `SbeCodeGenerator/Schema/SchemaParser.cs` (parse min/max attributes)
+- ✅ `SbeCodeGenerator/Generators/ValidationGenerator.cs` (new)
+- ✅ `SbeCodeGenerator/SBESourceGenerator.cs` (register ValidationGenerator)
+- ✅ `SbeCodeGenerator.Tests/ValidationGeneratorTests.cs` (new)
+- ✅ `SbeCodeGenerator.IntegrationTests/GeneratorIntegrationTests.cs` (added validation tests)
+
+**Documentation**:
+- ✅ [VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)
 
 ---
 

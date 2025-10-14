@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Integration.Test;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -226,6 +227,48 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(456, parsedMsg.OrderId.Value);
             Assert.Equal(10050, parsedMsg.Price.Value);
             Assert.Equal(0, remaining.Length);
+        }
+
+        [Fact]
+        public void ValidationExtensions_ValidatePrice_ThrowsOnNegativeValue()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.Validate());
+            Assert.Contains("Price must be greater than or equal to 0", exception.Message);
+        }
+
+        [Fact]
+        public void ValidationExtensions_ValidatePrice_PassesOnValidValue()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+
+            // Act & Assert (should not throw)
+            price.Validate();
+        }
+
+        [Fact]
+        public void ValidationExtensions_ValidateOrderId_ThrowsOnZeroValue()
+        {
+            // Arrange
+            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.Validate());
+            Assert.Contains("OrderId must be greater than or equal to 1", exception.Message);
+        }
+
+        [Fact]
+        public void ValidationExtensions_ValidateOrderId_PassesOnValidValue()
+        {
+            // Arrange
+            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 123 };
+
+            // Act & Assert (should not throw)
+            orderId.Validate();
         }
     }
 }
