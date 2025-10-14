@@ -28,7 +28,9 @@ namespace SbeSourceGenerator.Schema
                 Id: fieldElement.GetAttributeOrEmpty("id"),
                 Offset: fieldElement.GetAttributeOrEmpty("offset"),
                 Type: fieldElement.GetAttributeOrEmpty("type"),
-                SinceVersion: fieldElement.GetAttributeOrEmpty("sinceVersion")
+                SinceVersion: fieldElement.GetAttributeOrEmpty("sinceVersion"),
+                MinValue: fieldElement.GetAttributeOrEmpty("minValue"),
+                MaxValue: fieldElement.GetAttributeOrEmpty("maxValue")
             );
         }
 
@@ -82,7 +84,9 @@ namespace SbeSourceGenerator.Schema
                 Presence: typeElement.GetAttributeOrEmpty("presence"),
                 NullValue: typeElement.GetAttributeOrEmpty("nullValue"),
                 Length: typeElement.GetAttributeOrEmpty("length"),
-                InnerText: typeElement.GetInnerTextOrEmpty()
+                InnerText: typeElement.GetInnerTextOrEmpty(),
+                MinValue: typeElement.GetAttributeOrEmpty("minValue"),
+                MaxValue: typeElement.GetAttributeOrEmpty("maxValue")
             );
         }
 

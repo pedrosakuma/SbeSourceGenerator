@@ -16,6 +16,8 @@ namespace SbeSourceGenerator.Schema
         string Id,
         string Offset,
         string Type,
-        string SinceVersion
+        string SinceVersion,
+        string MinValue,
+        string MaxValue
     );
 }
