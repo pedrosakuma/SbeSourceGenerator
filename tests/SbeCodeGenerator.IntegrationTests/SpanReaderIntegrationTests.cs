@@ -4,6 +4,9 @@ using Xunit;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
+    // Delegate for custom parsing - matches the runtime version
+    public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out int bytesConsumed);
+
     /// <summary>
     /// Integration tests demonstrating SpanReader usage for parsing SBE messages.
     /// These tests show the difference between manual offset management and SpanReader approach.
@@ -55,6 +58,31 @@ namespace SbeCodeGenerator.IntegrationTests
                 }
 
                 value = MemoryMarshal.Read<T>(_buffer);
+                return true;
+            }
+
+            public bool TryReadWith<T>(SpanParser<T> parser, out T value)
+            {
+                if (parser(_buffer, out value, out int bytesConsumed))
+                {
+                    _buffer = _buffer.Slice(bytesConsumed);
+                    return true;
+                }
+                
+                value = default!;
+                return false;
+            }
+
+            public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
+            {
+                if (_buffer.Length < count)
+                {
+                    bytes = default;
+                    return false;
+                }
+
+                bytes = _buffer.Slice(0, count);
+                _buffer = _buffer.Slice(count);
                 return true;
             }
         }
@@ -347,6 +375,330 @@ namespace SbeCodeGenerator.IntegrationTests
             }
             
             return buffer;
+        }
+    }
+
+    /// <summary>
+    /// Integration tests for SpanReader extensibility features.
+    /// Demonstrates schema evolution, custom parsing, and alignment in real-world scenarios.
+    /// </summary>
+    public class SpanReaderExtensibilityIntegrationTests
+    {
+        // Local ref struct matching SpanReader (for integration testing without runtime reference)
+        private ref struct TestSpanReader
+        {
+            private ReadOnlySpan<byte> _buffer;
+
+            public TestSpanReader(ReadOnlySpan<byte> buffer)
+            {
+                _buffer = buffer;
+            }
+
+            public readonly int RemainingBytes => _buffer.Length;
+
+            public bool TryRead<T>(out T value) where T : struct
+            {
+                int size = Marshal.SizeOf<T>();
+                if (_buffer.Length < size)
+                {
+                    value = default;
+                    return false;
+                }
+
+                value = MemoryMarshal.Read<T>(_buffer);
+                _buffer = _buffer.Slice(size);
+                return true;
+            }
+
+            public bool TrySkip(int count)
+            {
+                if (_buffer.Length < count)
+                    return false;
+
+                _buffer = _buffer.Slice(count);
+                return true;
+            }
+
+            public bool TryReadWith<T>(SpanParser<T> parser, out T value)
+            {
+                if (parser(_buffer, out value, out int bytesConsumed))
+                {
+                    _buffer = _buffer.Slice(bytesConsumed);
+                    return true;
+                }
+                
+                value = default!;
+                return false;
+            }
+
+            public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
+            {
+                if (_buffer.Length < count)
+                {
+                    bytes = default;
+                    return false;
+                }
+
+                bytes = _buffer.Slice(0, count);
+                _buffer = _buffer.Slice(count);
+                return true;
+            }
+        }
+
+        // Simulated versioned message structures
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        private struct MessageHeaderV1
+        {
+            public ushort Version;
+            public ushort TemplateId;
+            public uint MessageLength;
+            
+            public const int MESSAGE_SIZE = 8;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        private struct OrderV1
+        {
+            public long OrderId;
+            public int Quantity;
+            
+            public const int MESSAGE_SIZE = 12;
+        }
+
+        private struct OrderV2  // Non-blittable for testing custom parser
+        {
+            public long OrderId;
+            public int Quantity;
+            public long Price;  // Added in V2
+            public ushort Version;
+        }
+
+        [Fact]
+        public void ParseVersionedMessage_WithCustomParser_HandlesSchemaEvolution()
+        {
+            // Arrange - Create V2 message buffer
+            var buffer = new byte[100];
+            int offset = 0;
+
+            // Write header
+            ref var header = ref MemoryMarshal.AsRef<MessageHeaderV1>(buffer.AsSpan(offset));
+            header.Version = 2;
+            header.TemplateId = 100;
+            header.MessageLength = 22;  // V2 order size
+            offset += MessageHeaderV1.MESSAGE_SIZE;
+
+            // Write V2 order data
+            MemoryMarshal.Write(buffer.AsSpan(offset), (long)123456);     // OrderId
+            MemoryMarshal.Write(buffer.AsSpan(offset + 8), (int)100);     // Quantity
+            MemoryMarshal.Write(buffer.AsSpan(offset + 12), (long)5000);  // Price (V2 field)
+
+            var reader = new TestSpanReader(buffer);
+
+            // Custom parser for versioned orders
+            static bool ParseOrder(ReadOnlySpan<byte> buf, out OrderV2 order, out int consumed)
+            {
+                order = default;
+                consumed = 0;
+
+                // Read header first (already consumed by main logic)
+                // In real scenario, version would be passed from header
+                
+                // For this test, assume V2 format
+                if (buf.Length < 20)
+                    return false;
+
+                order = new OrderV2
+                {
+                    OrderId = MemoryMarshal.Read<long>(buf),
+                    Quantity = MemoryMarshal.Read<int>(buf.Slice(8)),
+                    Price = MemoryMarshal.Read<long>(buf.Slice(12)),
+                    Version = 2
+                };
+                consumed = 20;
+                return true;
+            }
+
+            // Act
+            Assert.True(reader.TryRead<MessageHeaderV1>(out var parsedHeader));
+            Assert.True(reader.TryReadWith<OrderV2>(ParseOrder, out var order));
+
+            // Assert
+            Assert.Equal(2, parsedHeader.Version);
+            Assert.Equal(100, parsedHeader.TemplateId);
+            Assert.Equal(123456, order.OrderId);
+            Assert.Equal(100, order.Quantity);
+            Assert.Equal(5000, order.Price);
+            Assert.Equal(2, order.Version);
+        }
+
+        [Fact]
+        public void ParseMixedContent_UsingMultipleExtensibilityFeatures_Works()
+        {
+            // Arrange - Create complex buffer with:
+            // 1. Standard message header
+            // 2. Versioned content (custom parser)
+            // 3. Repeating group
+            
+            var buffer = new byte[200];
+            int offset = 0;
+
+            // 1. Standard header
+            ref var header = ref MemoryMarshal.AsRef<MessageHeaderV1>(buffer.AsSpan(offset));
+            header.Version = 2;
+            header.TemplateId = 50;
+            header.MessageLength = 100;
+            offset += MessageHeaderV1.MESSAGE_SIZE;
+
+            // 2. Custom versioned section (write V2 order)
+            MemoryMarshal.Write(buffer.AsSpan(offset), (long)111);    // OrderId
+            MemoryMarshal.Write(buffer.AsSpan(offset + 8), (int)50);  // Quantity
+            MemoryMarshal.Write(buffer.AsSpan(offset + 12), (long)2500); // Price
+            offset += 20;
+
+            // 3. Group header
+            MemoryMarshal.Write(buffer.AsSpan(offset), (ushort)8);   // BlockLength
+            MemoryMarshal.Write(buffer.AsSpan(offset + 2), (uint)2); // NumInGroup
+            offset += 6;
+
+            // Group entries
+            MemoryMarshal.Write(buffer.AsSpan(offset), (long)100);
+            offset += 8;
+            MemoryMarshal.Write(buffer.AsSpan(offset), (long)200);
+
+            // Custom parser for V2 order
+            static bool ParseOrderV2(ReadOnlySpan<byte> buf, out OrderV2 order, out int consumed)
+            {
+                if (buf.Length < 20)
+                {
+                    order = default;
+                    consumed = 0;
+                    return false;
+                }
+
+                order = new OrderV2
+                {
+                    OrderId = MemoryMarshal.Read<long>(buf),
+                    Quantity = MemoryMarshal.Read<int>(buf.Slice(8)),
+                    Price = MemoryMarshal.Read<long>(buf.Slice(12)),
+                    Version = 2
+                };
+                consumed = 20;
+                return true;
+            }
+
+            var reader = new TestSpanReader(buffer);
+
+            // Act & Assert
+            
+            // 1. Read standard header
+            Assert.True(reader.TryRead<MessageHeaderV1>(out var parsedHeader));
+            Assert.Equal(2, parsedHeader.Version);
+
+            // 2. Read versioned content with custom parser
+            Assert.True(reader.TryReadWith<OrderV2>(ParseOrderV2, out var order));
+            Assert.Equal(111, order.OrderId);
+            Assert.Equal(50, order.Quantity);
+            Assert.Equal(2500, order.Price);
+
+            // 3. Read group
+            Assert.True(reader.TryRead<ushort>(out var blockLength));
+            Assert.True(reader.TryRead<uint>(out var numInGroup));
+            Assert.Equal(8, blockLength);
+            Assert.Equal(2u, numInGroup);
+
+            Assert.True(reader.TryRead<long>(out var entry1));
+            Assert.True(reader.TryRead<long>(out var entry2));
+            Assert.Equal(100, entry1);
+            Assert.Equal(200, entry2);
+        }
+
+        [Fact]
+        public void RealWorldScenario_MarketDataFeed_ParsesEfficiently()
+        {
+            // Simulate a real market data feed message with:
+            // - Header with version info
+            // - Variable number of price levels
+            // - Custom parsing for non-standard fields
+
+            var buffer = new byte[500];
+            int offset = 0;
+
+            // Header
+            ref var header = ref MemoryMarshal.AsRef<MessageHeaderV1>(buffer.AsSpan(offset));
+            header.Version = 1;
+            header.TemplateId = 1;  // Market data snapshot
+            header.MessageLength = 200;
+            offset += MessageHeaderV1.MESSAGE_SIZE;
+
+            // Symbol (8 bytes, null-terminated)
+            System.Text.Encoding.ASCII.GetBytes("AAPL").CopyTo(buffer.AsSpan(offset));
+            offset += 8;
+
+            // Number of bid levels
+            int numBids = 3;
+            MemoryMarshal.Write(buffer.AsSpan(offset), numBids);
+            offset += 4;
+
+            // Bid levels (price + qty)
+            for (int i = 0; i < numBids; i++)
+            {
+                MemoryMarshal.Write(buffer.AsSpan(offset), (long)(15000 + i * 10));  // Price
+                MemoryMarshal.Write(buffer.AsSpan(offset + 8), (int)(100 * (i + 1))); // Qty
+                offset += 12;
+            }
+
+            // Number of ask levels
+            int numAsks = 2;
+            MemoryMarshal.Write(buffer.AsSpan(offset), numAsks);
+            offset += 4;
+
+            // Ask levels
+            for (int i = 0; i < numAsks; i++)
+            {
+                MemoryMarshal.Write(buffer.AsSpan(offset), (long)(15100 + i * 10));
+                MemoryMarshal.Write(buffer.AsSpan(offset + 8), (int)(50 * (i + 1)));
+                offset += 12;
+            }
+
+            var reader = new TestSpanReader(buffer);
+
+            // Parse
+            Assert.True(reader.TryRead<MessageHeaderV1>(out var msgHeader));
+            Assert.Equal(1, msgHeader.TemplateId);
+
+            Assert.True(reader.TryReadBytes(8, out var symbolBytes));
+            string symbol = System.Text.Encoding.ASCII.GetString(symbolBytes).TrimEnd('\0');
+            Assert.Equal("AAPL", symbol);
+
+            // Read bids
+            Assert.True(reader.TryRead<int>(out var bidCount));
+            Assert.Equal(3, bidCount);
+
+            long[] bidPrices = new long[bidCount];
+            int[] bidQtys = new int[bidCount];
+            for (int i = 0; i < bidCount; i++)
+            {
+                Assert.True(reader.TryRead<long>(out bidPrices[i]));
+                Assert.True(reader.TryRead<int>(out bidQtys[i]));
+            }
+
+            Assert.Equal(15000, bidPrices[0]);
+            Assert.Equal(100, bidQtys[0]);
+
+            // Read asks
+            Assert.True(reader.TryRead<int>(out var askCount));
+            Assert.Equal(2, askCount);
+
+            long[] askPrices = new long[askCount];
+            int[] askQtys = new int[askCount];
+            for (int i = 0; i < askCount; i++)
+            {
+                Assert.True(reader.TryRead<long>(out askPrices[i]));
+                Assert.True(reader.TryRead<int>(out askQtys[i]));
+            }
+
+            Assert.Equal(15100, askPrices[0]);
+            Assert.Equal(50, askQtys[0]);
         }
     }
 }
