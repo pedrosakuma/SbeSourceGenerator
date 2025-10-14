@@ -270,5 +270,98 @@ namespace SbeCodeGenerator.IntegrationTests
             // Act & Assert (should not throw)
             orderId.Validate();
         }
+
+        [Fact]
+        public void ValidationExtensions_TryValidatePrice_ReturnsFalseOnNegativeValue()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+
+            // Act
+            bool result = price.TryValidate(out string? errorMessage);
+
+            // Assert
+            Assert.False(result);
+            Assert.NotNull(errorMessage);
+            Assert.Contains("Price must be greater than or equal to 0", errorMessage);
+            Assert.Contains("-100", errorMessage);
+        }
+
+        [Fact]
+        public void ValidationExtensions_TryValidatePrice_ReturnsTrueOnValidValue()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+
+            // Act
+            bool result = price.TryValidate(out string? errorMessage);
+
+            // Assert
+            Assert.True(result);
+            Assert.Null(errorMessage);
+        }
+
+        [Fact]
+        public void ValidationExtensions_TryValidateOrderId_ReturnsFalseOnZeroValue()
+        {
+            // Arrange
+            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+
+            // Act
+            bool result = orderId.TryValidate(out string? errorMessage);
+
+            // Assert
+            Assert.False(result);
+            Assert.NotNull(errorMessage);
+            Assert.Contains("OrderId must be greater than or equal to 1", errorMessage);
+        }
+
+        [Fact]
+        public void ValidationExtensions_CreateValidatedPrice_ReturnsValueOnValid()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+
+            // Act
+            var validatedPrice = price.CreateValidated();
+
+            // Assert
+            Assert.Equal(1000, validatedPrice.Value);
+        }
+
+        [Fact]
+        public void ValidationExtensions_CreateValidatedPrice_ThrowsOnInvalid()
+        {
+            // Arrange
+            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.CreateValidated());
+            Assert.Contains("Price must be greater than or equal to 0", exception.Message);
+        }
+
+        [Fact]
+        public void ValidationExtensions_CreateValidatedOrderId_ReturnsValueOnValid()
+        {
+            // Arrange
+            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 123 };
+
+            // Act
+            var validatedOrderId = orderId.CreateValidated();
+
+            // Assert
+            Assert.Equal(123, validatedOrderId.Value);
+        }
+
+        [Fact]
+        public void ValidationExtensions_CreateValidatedOrderId_ThrowsOnInvalid()
+        {
+            // Arrange
+            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.CreateValidated());
+            Assert.Contains("OrderId must be greater than or equal to 1", exception.Message);
+        }
     }
 }
