@@ -50,8 +50,9 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[1024];
             ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
             
-            orderRef.OrderId = new Integration.Test.OrderId { Value = 123456 };
-            orderRef.Price = new Integration.Test.Price { Value = 100000 };
+            // Use implicit conversions and constructors
+            orderRef.OrderId = 123456;  // Implicit conversion from long
+            orderRef.Price = 100000;    // Implicit conversion from long
             orderRef.Quantity = 500;
             orderRef.Side = Integration.Test.OrderSide.Buy;
             orderRef.OrderType = Integration.Test.OrderType.Limit;
@@ -88,8 +89,8 @@ namespace SbeCodeGenerator.IntegrationTests
             // Prepare a buffer with the raw bytes of NewOrderData
             Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
             ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
-            orderRef.OrderId = new Integration.Test.OrderId { Value = 999 };
-            orderRef.Price = new Integration.Test.Price { Value = 50000 };
+            orderRef.OrderId = 999;      // Implicit conversion
+            orderRef.Price = 50000;      // Implicit conversion
             orderRef.Quantity = 100;
             orderRef.Side = Integration.Test.OrderSide.Sell;
             orderRef.OrderType = Integration.Test.OrderType.Market;
@@ -118,7 +119,7 @@ namespace SbeCodeGenerator.IntegrationTests
             header.SchemaId = 2;
             header.Version = 0;
             ref Integration.Test.NewOrderData order = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer.Slice(bodyOffset));
-            order.OrderId = new Integration.Test.OrderId { Value = 42 };
+            order.OrderId = 42;  // Implicit conversion
 
             var success = Integration.Test.MessageHeader.TryParse(buffer, out var parsedHeader, out var payload);
 
@@ -166,8 +167,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 32]; // Extra space
             ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
             
-            message.OrderId = new Integration.Test.OrderId { Value = 123 };
-            message.Price = new Integration.Test.Price { Value = 9950 };
+            message.OrderId = 123;    // Implicit conversion
+            message.Price = 9950;     // Implicit conversion
             message.Quantity = 100;
             message.Side = Integration.Test.OrderSide.Buy;
             message.OrderType = Integration.Test.OrderType.Limit;
@@ -217,8 +218,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
             ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
             
-            message.OrderId = new Integration.Test.OrderId { Value = 456 };
-            message.Price = new Integration.Test.Price { Value = 10050 };
+            message.OrderId = 456;    // Implicit conversion
+            message.Price = 10050;    // Implicit conversion
             
             // Use the original TryParse method (calls the new one internally with MESSAGE_SIZE)
             var success = Integration.Test.NewOrderData.TryParse(buffer, out var parsedMsg, out var remaining);
@@ -233,7 +234,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidatePrice_ThrowsOnNegativeValue()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+            Integration.Test.Price price = -100;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.Validate());
@@ -244,7 +245,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidatePrice_PassesOnValidValue()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+            Integration.Test.Price price = 1000;  // Implicit conversion
 
             // Act & Assert (should not throw)
             price.Validate();
@@ -254,7 +255,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidateOrderId_ThrowsOnZeroValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+            Integration.Test.OrderId orderId = 0;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.Validate());
@@ -265,7 +266,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidateOrderId_PassesOnValidValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 123 };
+            Integration.Test.OrderId orderId = 123;  // Implicit conversion
 
             // Act & Assert (should not throw)
             orderId.Validate();
@@ -275,7 +276,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidatePrice_ReturnsFalseOnNegativeValue()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+            Integration.Test.Price price = -100;  // Implicit conversion
 
             // Act
             bool result = price.TryValidate(out string? errorMessage);
@@ -291,7 +292,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidatePrice_ReturnsTrueOnValidValue()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+            Integration.Test.Price price = 1000;  // Implicit conversion
 
             // Act
             bool result = price.TryValidate(out string? errorMessage);
@@ -305,7 +306,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidateOrderId_ReturnsFalseOnZeroValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+            Integration.Test.OrderId orderId = 0;  // Implicit conversion
 
             // Act
             bool result = orderId.TryValidate(out string? errorMessage);
@@ -320,7 +321,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedPrice_ReturnsValueOnValid()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = 1000 };
+            Integration.Test.Price price = 1000;  // Implicit conversion
 
             // Act
             var validatedPrice = price.CreateValidated();
@@ -333,7 +334,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedPrice_ThrowsOnInvalid()
         {
             // Arrange
-            Integration.Test.Price price = new Integration.Test.Price { Value = -100 };
+            Integration.Test.Price price = -100;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.CreateValidated());
@@ -344,7 +345,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedOrderId_ReturnsValueOnValid()
         {
             // Arrange
-            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 123 };
+            Integration.Test.OrderId orderId = 123;  // Implicit conversion
 
             // Act
             var validatedOrderId = orderId.CreateValidated();
@@ -357,7 +358,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedOrderId_ThrowsOnInvalid()
         {
             // Arrange
-            Integration.Test.OrderId orderId = new Integration.Test.OrderId { Value = 0 };
+            Integration.Test.OrderId orderId = 0;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.CreateValidated());
