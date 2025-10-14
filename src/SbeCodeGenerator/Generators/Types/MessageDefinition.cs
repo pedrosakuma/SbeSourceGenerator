@@ -35,16 +35,10 @@ namespace SbeSourceGenerator
             sb.AppendLine($"return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);", tabs);
             sb.AppendLine("}", --tabs);
             
-            // New TryParse with blockLength parameter for schema evolution support
+            // TryParse with blockLength parameter for schema evolution support
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
-            sb.AppendLine($"return TryParseWithReader(reader, buffer, blockLength, out message, out variableData);", tabs);
-            sb.AppendLine("}", --tabs);
-            
-            // Helper method that uses SpanReader for parsing
-            sb.AppendLine($"private static bool TryParseWithReader(SpanReader reader, ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
-            sb.AppendLine("{", tabs++);
             sb.AppendLine("// Read the message data", tabs);
             sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
             sb.AppendLine("{", tabs++);
@@ -69,6 +63,30 @@ namespace SbeSourceGenerator
             sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
             sb.AppendLine("}", --tabs);
             sb.AppendLine("", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
+            // This method is designed for advanced scenarios where users manage their own SpanReader
+            sb.AppendLine($"public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// Read the message data", tabs);
+            sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
+            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
+            sb.AppendLine("if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Return remaining buffer for variable data", tabs);
+            sb.AppendLine("variableData = reader.Remaining;", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }

@@ -49,10 +49,6 @@ public partial struct TradeData
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
 		var reader = new SpanReader(buffer);
-		return TryParseWithReader(reader, buffer, blockLength, out message, out variableData);
-	}
-	private static bool TryParseWithReader(SpanReader reader, ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
-	{
 		// Read the message data
 		if (!reader.TryRead<TradeData>(out message))
 		{
@@ -77,6 +73,27 @@ public partial struct TradeData
 			variableData = buffer.Slice(blockLength);
 		}
 		
+		return true;
+	}
+	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
+	{
+		// Read the message data
+		if (!reader.TryRead<TradeData>(out message))
+		{
+			variableData = default;
+			return false;
+		}
+		
+		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
+		var additionalBytes = blockLength - MESSAGE_SIZE;
+		if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))
+		{
+			variableData = default;
+			return false;
+		}
+		
+		// Return remaining buffer for variable data
+		variableData = reader.Remaining;
 		return true;
 	}
 }
