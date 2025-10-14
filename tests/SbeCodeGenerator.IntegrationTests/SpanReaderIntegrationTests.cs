@@ -73,18 +73,6 @@ namespace SbeCodeGenerator.IntegrationTests
                 return false;
             }
 
-            public bool TryAlignFrom(int alignment, int startOffset)
-            {
-                int padding = (alignment - (startOffset % alignment)) % alignment;
-                
-                if (padding > 0)
-                {
-                    return TrySkip(padding);
-                }
-                
-                return true;
-            }
-
             public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
             {
                 if (_buffer.Length < count)
@@ -443,18 +431,6 @@ namespace SbeCodeGenerator.IntegrationTests
                 return false;
             }
 
-            public bool TryAlignFrom(int alignment, int startOffset)
-            {
-                int padding = (alignment - (startOffset % alignment)) % alignment;
-                
-                if (padding > 0)
-                {
-                    return TrySkip(padding);
-                }
-                
-                return true;
-            }
-
             public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
             {
                 if (_buffer.Length < count)
@@ -556,53 +532,12 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void ParseAlignedProtocol_WithAlignment_ReadsCorrectly()
-        {
-            // Arrange - Create buffer with alignment padding
-            var buffer = new byte[100];
-            int offset = 0;
-
-            // Write unaligned header (5 bytes)
-            buffer[offset++] = 1;  // Version
-            buffer[offset++] = 2;  // Type
-            buffer[offset++] = 3;  // Flags
-            MemoryMarshal.Write(buffer.AsSpan(offset), (ushort)100);  // Length
-            offset += 2;  // Total: 5 bytes
-
-            // Add padding to align to 8-byte boundary (3 bytes of padding)
-            offset += 3;
-
-            // Write aligned data (8 bytes) at offset 8
-            MemoryMarshal.Write(buffer.AsSpan(offset), (long)999888777);
-
-            var reader = new TestSpanReader(buffer);
-
-            // Act
-            Assert.True(reader.TryReadBytes(5, out var headerBytes));  // Read 5-byte header
-            int consumed = 5;
-            
-            // Align to 8-byte boundary
-            Assert.True(reader.TryAlignFrom(8, consumed));
-            consumed += 3;  // padding
-
-            // Read aligned value
-            Assert.True(reader.TryRead<long>(out var alignedValue));
-
-            // Assert
-            Assert.Equal(1, headerBytes[0]);
-            Assert.Equal(2, headerBytes[1]);
-            Assert.Equal(3, headerBytes[2]);
-            Assert.Equal(999888777, alignedValue);
-        }
-
-        [Fact]
         public void ParseMixedContent_UsingMultipleExtensibilityFeatures_Works()
         {
             // Arrange - Create complex buffer with:
             // 1. Standard message header
             // 2. Versioned content (custom parser)
-            // 3. Aligned section
-            // 4. Repeating group
+            // 3. Repeating group
             
             var buffer = new byte[200];
             int offset = 0;
@@ -620,10 +555,7 @@ namespace SbeCodeGenerator.IntegrationTests
             MemoryMarshal.Write(buffer.AsSpan(offset + 12), (long)2500); // Price
             offset += 20;
 
-            // 3. Alignment padding (offset=28, align to 32)
-            offset = 32;
-
-            // 4. Group header
+            // 3. Group header
             MemoryMarshal.Write(buffer.AsSpan(offset), (ushort)8);   // BlockLength
             MemoryMarshal.Write(buffer.AsSpan(offset + 2), (uint)2); // NumInGroup
             offset += 6;
@@ -655,28 +587,20 @@ namespace SbeCodeGenerator.IntegrationTests
             }
 
             var reader = new TestSpanReader(buffer);
-            int totalConsumed = 0;
 
             // Act & Assert
             
             // 1. Read standard header
             Assert.True(reader.TryRead<MessageHeaderV1>(out var parsedHeader));
             Assert.Equal(2, parsedHeader.Version);
-            totalConsumed += MessageHeaderV1.MESSAGE_SIZE;
 
             // 2. Read versioned content with custom parser
             Assert.True(reader.TryReadWith<OrderV2>(ParseOrderV2, out var order));
             Assert.Equal(111, order.OrderId);
             Assert.Equal(50, order.Quantity);
             Assert.Equal(2500, order.Price);
-            totalConsumed += 20;
 
-            // 3. Align to 32-byte boundary
-            int padding = (32 - totalConsumed) % 32;
-            Assert.True(reader.TrySkip(padding));
-            totalConsumed = 32;
-
-            // 4. Read group
+            // 3. Read group
             Assert.True(reader.TryRead<ushort>(out var blockLength));
             Assert.True(reader.TryRead<uint>(out var numInGroup));
             Assert.Equal(8, blockLength);

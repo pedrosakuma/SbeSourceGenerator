@@ -8,7 +8,6 @@
 - ✅ Automatic offset management
 - ✅ Type-safe parsing with Try-pattern
 - ✅ Support for custom parsing logic (schema evolution, non-blittable types)
-- ✅ Memory alignment support
 - ✅ Zero allocations (ref struct)
 - ✅ Aggressive inlining for optimal performance
 
@@ -340,7 +339,7 @@ void ProcessGroups(ReadOnlySpan<byte> buffer,
 
 ## Extensibility and Advanced Features
 
-SpanReader supports extensibility through custom parsing delegates, enabling advanced scenarios like schema evolution, memory alignment, and non-blittable types.
+SpanReader supports extensibility through custom parsing delegates, enabling advanced scenarios like schema evolution and non-blittable types.
 
 ### Custom Parsing with TryReadWith
 
@@ -479,66 +478,27 @@ if (reader.TryReadWith(ParseVarString, out var str))
 
 SpanReader provides methods for handling memory-aligned data structures:
 
-#### TryAlignFrom
-
-Aligns the reader to a specific byte boundary based on absolute position:
-
-```csharp
-public bool TryAlignFrom(int alignment, int startOffset)
-```
-
-**Example**: Parsing a protocol with 8-byte aligned fields:
-
-```csharp
-var reader = new SpanReader(buffer);
-int totalConsumed = 0;
-
-// Read header (10 bytes)
-if (reader.TryRead<ProtocolHeader>(out var header))
-{
-    totalConsumed += 10;
-    
-    // Align to 8-byte boundary before reading next field
-    if (reader.TryAlignFrom(8, totalConsumed))
-    {
-        // Calculate padding
-        int padding = (8 - (totalConsumed % 8)) % 8;
-        totalConsumed += padding;
-        
-        // Now read 8-byte aligned field
-        if (reader.TryRead<AlignedData>(out var data))
-        {
-            totalConsumed += 8;
-            ProcessData(data);
-        }
-    }
-}
-```
-
 ### Combining Features
 
-You can combine custom parsing, alignment, and standard reading:
+You can combine custom parsing and standard reading:
 
 ```csharp
 var reader = new SpanReader(buffer);
-int position = 0;
 
 // Standard read
 if (reader.TryRead<MessageHeader>(out var header))
 {
-    position += 8;
-    
     // Custom parsing for versioned content
     if (reader.TryReadWith(ParseVersionedContent, out var content))
     {
-        position += content.BytesConsumed;
-        
-        // Align before reading next section
-        reader.TryAlignFrom(4, position);
-        
         // Continue with standard reads
         if (reader.TryRead<Footer>(out var footer))
         {
+            ProcessMessage(header, content, footer);
+        }
+    }
+}
+```
             ProcessMessage(header, content, footer);
         }
     }
