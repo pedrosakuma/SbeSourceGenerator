@@ -120,5 +120,141 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("Flag1", setResult.content);
             Assert.Contains("Flag2", setResult.content);
         }
+
+        // ===== Phase 1 Feature Tests =====
+
+        [Fact]
+        public void Generate_TypeDefinition_IncludesReadonlyModifier()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <type name='OrderId' primitiveType='uint64' description='Order identifier'/>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("OrderId"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("public readonly partial struct OrderId", typeResult.content);
+            Assert.Contains("public readonly ulong Value;", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_TypeDefinition_IncludesConstructor()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <type name='Price' primitiveType='int64' description='Price value'/>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("Price"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("public Price(long value)", typeResult.content);
+            Assert.Contains("Value = value;", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_TypeDefinition_IncludesImplicitConversion()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <type name='Quantity' primitiveType='uint32' description='Quantity value'/>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("Quantity"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("public static implicit operator Quantity(uint value)", typeResult.content);
+            Assert.Contains("new Quantity(value)", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_TypeDefinition_IncludesExplicitConversion()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <type name='UserId' primitiveType='int32' description='User identifier'/>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("UserId"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("public static explicit operator int(UserId value)", typeResult.content);
+            Assert.Contains("value.Value", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_TypeDefinition_AllPhase1Features_IntegrationTest()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <type name='TradeId' primitiveType='uint64' description='Trade identifier'/>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("TradeId"));
+            Assert.NotEqual(default, typeResult);
+            
+            // Verify readonly struct
+            Assert.Contains("public readonly partial struct TradeId", typeResult.content);
+            Assert.Contains("public readonly ulong Value;", typeResult.content);
+            
+            // Verify constructor
+            Assert.Contains("public TradeId(ulong value)", typeResult.content);
+            
+            // Verify conversions
+            Assert.Contains("public static implicit operator TradeId(ulong value)", typeResult.content);
+            Assert.Contains("public static explicit operator ulong(TradeId value)", typeResult.content);
+        }
     }
 }
