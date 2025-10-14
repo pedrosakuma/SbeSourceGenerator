@@ -14,6 +14,30 @@ This folder contains comprehensive documentation for the SBE Code Generator proj
 - **[SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[SBE_CHECKLIST.md](./SBE_CHECKLIST.md)** - Implementation checklist
 
+## Type System Enhancements ⭐ NEW
+
+Progressive enhancement of generated types with constructors, readonly modifiers, and conversions:
+
+### Phase 1: TypeDefinition (✅ Complete)
+- **[PHASE1_IMPLEMENTATION.md](./PHASE1_IMPLEMENTATION.md)** - Technical implementation details
+- **[PHASE1_SUMMARY.md](./PHASE1_SUMMARY.md)** - Executive summary
+- **[MIGRATION_GUIDE_PHASE1.md](./MIGRATION_GUIDE_PHASE1.md)** - Migration guide
+
+**Delivered:** Readonly structs, constructors, and implicit/explicit conversions for TypeDefinition
+
+### Phase 2: Review and Planning (✅ Complete)
+- **[PHASE2_README.md](./PHASE2_README.md)** - ⭐ **START HERE** - Documentation index and quick start
+- **[PHASE2_IMPLEMENTATION.md](./PHASE2_IMPLEMENTATION.md)** - Technical analysis and recommendations
+- **[PHASE2_SUMMARY.md](./PHASE2_SUMMARY.md)** - Executive summary
+- **[PHASE2_COMPLETE.md](./PHASE2_COMPLETE.md)** - Phase 2 completion summary
+- **[MIGRATION_GUIDE_PHASE2.md](./MIGRATION_GUIDE_PHASE2.md)** - Future migration recommendations
+
+**Delivered:** Comprehensive review, feasibility analysis, risk assessment, and roadmap for future enhancements
+
+### Feasibility Study (Foundation)
+- **[FEASIBILITY_STUDY_AUTO_CONSTRUCTORS_READONLY_CONVERSIONS.md](./FEASIBILITY_STUDY_AUTO_CONSTRUCTORS_READONLY_CONVERSIONS.md)** - Original comprehensive study
+- **[FEASIBILITY_STUDY_SUMMARY_PT.md](./FEASIBILITY_STUDY_SUMMARY_PT.md)** - Portuguese executive summary
+
 ## Validation Patterns ⭐ NEW
 
 - **[VALIDATION_PATTERNS.md](./VALIDATION_PATTERNS.md)** - Design discussion and comparison of all validation patterns
