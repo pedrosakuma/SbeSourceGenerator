@@ -60,8 +60,9 @@ Progressive enhancement of parsing flows with automatic offset management:
 
 - **[SPAN_READER_INTEGRATION.md](./SPAN_READER_INTEGRATION.md)** - ⭐ **Integration summary**: How SpanReader was integrated into SBE parsing flows
 - **[SPAN_READER_README.md](./SPAN_READER_README.md)** - SpanReader API reference and usage examples
-- **[SPAN_READER_IMPLEMENTATION_SUMMARY.md](./SPAN_READER_IMPLEMENTATION_SUMMARY.md)** - Original prototype implementation details
+- **[SPAN_READER_DESIGN_RATIONALE.md](./SPAN_READER_DESIGN_RATIONALE.md)** - ⭐ **Design decisions**: Comprehensive analysis of interface patterns, tradeoffs, and rationale
 - **[SPAN_READER_EXTENSIBILITY.md](./SPAN_READER_EXTENSIBILITY.md)** - Advanced features and custom parsing patterns
+- **[SPAN_READER_IMPLEMENTATION_SUMMARY.md](./SPAN_READER_IMPLEMENTATION_SUMMARY.md)** - Original prototype implementation details
 - **[SPAN_READER_EVALUATION.md](./SPAN_READER_EVALUATION.md)** - Initial evaluation and feasibility study
 
 **Delivered:** Automatic offset management in generated parsing code, eliminating manual offset tracking errors
