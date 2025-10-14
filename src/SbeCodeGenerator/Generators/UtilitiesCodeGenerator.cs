@@ -21,6 +21,11 @@ namespace SbeSourceGenerator.Generators
             sb = new StringBuilder();
             new EndianHelpers(ns).AppendFileContent(sb);
             yield return ($"Utilities\\EndianHelpers", sb.ToString());
+
+            // Generate SpanReader
+            sb = new StringBuilder();
+            new SpanReaderGenerator(ns).AppendFileContent(sb);
+            yield return ($"Runtime\\SpanReader", sb.ToString());
         }
     }
 }
