@@ -1,0 +1,160 @@
+using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+namespace SbeSourceGenerator.Runtime
+{
+    /// <summary>
+    /// A ref struct that provides sequential reading of binary data from a ReadOnlySpan.
+    /// Eliminates the need for manual offset management during parsing.
+    /// </summary>
+    /// <remarks>
+    /// This is a stack-only type (ref struct) that cannot be used in async methods or stored as a field.
+    /// It automatically advances the internal position as data is read, preventing offset calculation errors.
+    /// </remarks>
+    public ref struct SpanReader
+    {
+        private ReadOnlySpan<byte> _buffer;
+
+        /// <summary>
+        /// Creates a new SpanReader from the specified buffer.
+        /// </summary>
+        /// <param name="buffer">The buffer to read from.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public SpanReader(ReadOnlySpan<byte> buffer)
+        {
+            _buffer = buffer;
+        }
+
+        /// <summary>
+        /// Gets the remaining unread portion of the buffer.
+        /// </summary>
+        public readonly ReadOnlySpan<byte> Remaining
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _buffer;
+        }
+
+        /// <summary>
+        /// Gets the number of bytes remaining to be read.
+        /// </summary>
+        public readonly int RemainingBytes
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _buffer.Length;
+        }
+
+        /// <summary>
+        /// Checks if the specified number of bytes can be read from the buffer.
+        /// </summary>
+        /// <param name="count">Number of bytes to check.</param>
+        /// <returns>True if count bytes are available; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool CanRead(int count) => _buffer.Length >= count;
+
+        /// <summary>
+        /// Attempts to read a blittable structure from the buffer and advances the reader position.
+        /// </summary>
+        /// <typeparam name="T">The type of structure to read. Must be a blittable type.</typeparam>
+        /// <param name="value">When this method returns, contains the read value if successful; otherwise, the default value.</param>
+        /// <returns>True if the structure was successfully read; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryRead<T>(out T value) where T : struct
+        {
+            int size = Unsafe.SizeOf<T>();
+            if (_buffer.Length < size)
+            {
+                value = default;
+                return false;
+            }
+
+            value = MemoryMarshal.Read<T>(_buffer);
+            _buffer = _buffer.Slice(size);
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to read the specified number of bytes from the buffer and advances the reader position.
+        /// </summary>
+        /// <param name="count">Number of bytes to read.</param>
+        /// <param name="bytes">When this method returns, contains the read bytes if successful; otherwise, an empty span.</param>
+        /// <returns>True if the bytes were successfully read; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
+        {
+            if (_buffer.Length < count)
+            {
+                bytes = default;
+                return false;
+            }
+
+            bytes = _buffer.Slice(0, count);
+            _buffer = _buffer.Slice(count);
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to skip the specified number of bytes in the buffer.
+        /// </summary>
+        /// <param name="count">Number of bytes to skip.</param>
+        /// <returns>True if the bytes were successfully skipped; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TrySkip(int count)
+        {
+            if (_buffer.Length < count)
+                return false;
+
+            _buffer = _buffer.Slice(count);
+            return true;
+        }
+
+        /// <summary>
+        /// Peeks at a value without advancing the reader position.
+        /// </summary>
+        /// <typeparam name="T">The type of structure to peek. Must be a blittable type.</typeparam>
+        /// <param name="value">When this method returns, contains the peeked value if successful; otherwise, the default value.</param>
+        /// <returns>True if the structure was successfully peeked; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool TryPeek<T>(out T value) where T : struct
+        {
+            int size = Unsafe.SizeOf<T>();
+            if (_buffer.Length < size)
+            {
+                value = default;
+                return false;
+            }
+
+            value = MemoryMarshal.Read<T>(_buffer);
+            return true;
+        }
+
+        /// <summary>
+        /// Peeks at the specified number of bytes without advancing the reader position.
+        /// </summary>
+        /// <param name="count">Number of bytes to peek.</param>
+        /// <param name="bytes">When this method returns, contains the peeked bytes if successful; otherwise, an empty span.</param>
+        /// <returns>True if the bytes were successfully peeked; otherwise, false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool TryPeekBytes(int count, out ReadOnlySpan<byte> bytes)
+        {
+            if (_buffer.Length < count)
+            {
+                bytes = default;
+                return false;
+            }
+
+            bytes = _buffer.Slice(0, count);
+            return true;
+        }
+
+        /// <summary>
+        /// Resets the reader to the specified buffer position.
+        /// </summary>
+        /// <param name="buffer">The new buffer to read from.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Reset(ReadOnlySpan<byte> buffer)
+        {
+            _buffer = buffer;
+        }
+    }
+}
