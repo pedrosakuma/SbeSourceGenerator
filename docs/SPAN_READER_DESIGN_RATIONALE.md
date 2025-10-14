@@ -892,15 +892,120 @@ public ref struct SpanReader
 
 ## Future Considerations
 
+### Target Framework-Aware Code Generation
+
+**Question:** Could the source generator detect the consuming project's target framework and generate static interface-based code for C# 11+?
+
+**Answer:** Yes, this is technically feasible but comes with important tradeoffs.
+
+#### Technical Feasibility
+
+Source generators can access the compilation's target framework through `Compilation.AssemblyName` or language version through `ParseOptions.LanguageVersion`:
+
+```csharp
+public void Initialize(IncrementalGeneratorInitializationContext context)
+{
+    var compilationProvider = context.CompilationProvider;
+    
+    context.RegisterSourceOutput(compilationProvider, (sourceContext, compilation) =>
+    {
+        var langVersion = ((CSharpCompilation)compilation).LanguageVersion;
+        var targetFramework = compilation.Assembly.Identity.Version;
+        
+        if (langVersion >= LanguageVersion.CSharp11)
+        {
+            // Generate static interface-based code
+        }
+        else
+        {
+            // Generate delegate-based code
+        }
+    });
+}
+```
+
+#### Performance Benefits Beyond Ergonomics
+
+Yes, static interfaces offer measurable performance benefits:
+
+| Benefit | Impact |
+|---------|--------|
+| **Better JIT Inlining** | ~1.3ns improvement (14.8ns vs 16.1ns) |
+| **No Delegate Overhead** | Eliminates null check and indirect call |
+| **Compile-time Resolution** | More optimization opportunities for JIT |
+| **Cache Locality** | Better code layout, fewer indirections |
+
+**Real-world Impact:**
+- For high-frequency parsing (millions of messages/second), 1.3ns per call is significant
+- In typical scenarios (thousands of messages/second), the benefit is negligible
+- Zero allocations are maintained in both approaches
+
+#### Tradeoffs and Concerns
+
+**✅ Advantages:**
+1. **Performance** - ~8% improvement in hot paths (14.8ns vs 16.1ns)
+2. **Type Safety** - Compile-time verification of parser implementations
+3. **Modern Code** - Leverages latest C# features when available
+4. **Future-Proof** - Positioned for evolution as ecosystem moves to newer frameworks
+
+**❌ Disadvantages:**
+1. **Complexity** - Two code paths to maintain, test, and document
+2. **Debugging** - Users see different generated code based on their project settings
+3. **Consistency** - Same schema generates different APIs in different projects
+4. **Breaking Changes** - Switching target framework changes generated code structure
+5. **Migration Burden** - Users upgrading frameworks must adapt to new patterns
+6. **Testing Overhead** - Must test both generation paths comprehensively
+
+#### Recommendation
+
+**Current State:** ❌ **Not Recommended** for the following reasons:
+
+1. **Marginal Benefit** - 1.3ns improvement doesn't justify complexity for most use cases
+2. **User Experience** - Inconsistent APIs across projects could confuse users
+3. **Maintenance Cost** - Two code generation paths increase maintenance burden
+4. **Delegate Performance** - Already excellent with zero allocations and ~6% overhead
+
+**Future State:** ✅ **Could Be Considered** if:
+
+1. **Benchmark-Driven** - Real-world benchmarks show significant improvement (e.g., >20% in actual workloads)
+2. **Opt-In Mechanism** - Make it a configuration option rather than automatic:
+   ```xml
+   <PropertyGroup>
+     <SbeUseStaticInterfaces>true</SbeUseStaticInterfaces>
+   </PropertyGroup>
+   ```
+3. **Clear Migration Path** - Provide comprehensive documentation for users
+4. **Wide Adoption** - When C# 11+ becomes the de facto standard (e.g., >80% of users)
+
+#### Implementation Guidance (If Pursued)
+
+If framework-aware generation is implemented, consider:
+
+1. **Feature Flag Approach** - Make it opt-in via MSBuild property
+2. **Dual API Surface** - Generate both interfaces, let users choose:
+   ```csharp
+   // Always generate delegate-based API
+   public bool TryReadWith<T>(SpanParser<T> parser, out T value)
+   
+   // Conditionally generate for C# 11+
+   #if NET7_0_OR_GREATER
+   public bool TryRead<T>(out T value) where T : ISpanParsable<T>
+   #endif
+   ```
+3. **Documentation** - Clearly explain differences and when to use each approach
+4. **Migration Tools** - Provide automated migration for projects upgrading frameworks
+
 ### When .NET 7+ Becomes Minimum Target
 
-If/when the project upgrades to .NET 7+ and C# 11+:
+If/when the project's **minimum requirement** upgrades to .NET 7+ and C# 11+:
 
-1. **Could migrate to static interfaces** for new parsers
-2. **Maintain delegate support** for backward compatibility
+1. **Could migrate to static interfaces** as the primary API
+2. **Maintain delegate support** for backward compatibility and runtime parsing
 3. **Provide both patterns** based on use case:
-   - Static interfaces for built-in types
-   - Delegates for runtime-determined parsing
+   - Static interfaces for built-in types (compile-time known)
+   - Delegates for runtime-determined parsing (schema evolution)
+
+This is different from framework-aware generation - it's a single code path using modern features.
 
 ### Potential Enhancements
 
@@ -908,6 +1013,7 @@ If/when the project upgrades to .NET 7+ and C# 11+:
 2. **Parser Composition Utilities** (combinator library)
 3. **Validation Framework Integration**
 4. **Performance Monitoring Decorators**
+5. **Opt-In Static Interface Generation** (see above)
 
 ---
 
