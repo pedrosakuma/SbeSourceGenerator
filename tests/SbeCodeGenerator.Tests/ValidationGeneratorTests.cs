@@ -172,5 +172,91 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("Quantity", validation.content);
             Assert.Contains("Discount", validation.content);
         }
+
+        [Fact]
+        public void Generate_WithConstraints_ProducesTryValidateMethod()
+        {
+            // Arrange
+            var xml = @"<?xml version='1.0' encoding='UTF-8'?>
+<sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                   package='test'
+                   id='1'
+                   version='0'>
+    <types>
+        <type name='Price' primitiveType='int64' minValue='0' maxValue='999999999'/>
+    </types>
+    <sbe:message name='Order' id='1'>
+        <field name='price' id='1' type='int64' minValue='0' maxValue='999999999'/>
+    </sbe:message>
+</sbe:messageSchema>";
+
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            var context = new SchemaContext();
+            var generator = new ValidationGenerator();
+
+            // Act
+            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+
+            // Assert
+            Assert.NotEmpty(results);
+            
+            // Check message TryValidate was generated
+            var orderValidation = results.FirstOrDefault(r => r.name.Contains("OrderValidation"));
+            Assert.True(orderValidation != default);
+            Assert.Contains("TryValidate", orderValidation.content);
+            Assert.Contains("out string? errorMessage", orderValidation.content);
+            Assert.Contains("return true", orderValidation.content);
+            Assert.Contains("return false", orderValidation.content);
+            
+            // Check type TryValidate was generated
+            var priceValidation = results.FirstOrDefault(r => r.name.Contains("PriceValidation"));
+            Assert.True(priceValidation != default);
+            Assert.Contains("TryValidate", priceValidation.content);
+            Assert.Contains("out string? errorMessage", priceValidation.content);
+        }
+
+        [Fact]
+        public void Generate_WithConstraints_ProducesCreateValidatedMethod()
+        {
+            // Arrange
+            var xml = @"<?xml version='1.0' encoding='UTF-8'?>
+<sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                   package='test'
+                   id='1'
+                   version='0'>
+    <types>
+        <type name='Price' primitiveType='int64' minValue='0' maxValue='999999999'/>
+    </types>
+    <sbe:message name='Order' id='1'>
+        <field name='price' id='1' type='int64' minValue='0' maxValue='999999999'/>
+    </sbe:message>
+</sbe:messageSchema>";
+
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            var context = new SchemaContext();
+            var generator = new ValidationGenerator();
+
+            // Act
+            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+
+            // Assert
+            Assert.NotEmpty(results);
+            
+            // Check message CreateValidated was generated
+            var orderValidation = results.FirstOrDefault(r => r.name.Contains("OrderValidation"));
+            Assert.True(orderValidation != default);
+            Assert.Contains("CreateValidated", orderValidation.content);
+            Assert.Contains("message.Validate()", orderValidation.content);
+            Assert.Contains("return message", orderValidation.content);
+            
+            // Check type CreateValidated was generated
+            var priceValidation = results.FirstOrDefault(r => r.name.Contains("PriceValidation"));
+            Assert.True(priceValidation != default);
+            Assert.Contains("CreateValidated", priceValidation.content);
+            Assert.Contains("value.Validate()", priceValidation.content);
+            Assert.Contains("return value", priceValidation.content);
+        }
     }
 }

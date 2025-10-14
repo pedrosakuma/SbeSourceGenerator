@@ -14,9 +14,30 @@ This folder contains comprehensive documentation for the SBE Code Generator proj
 - **[SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[SBE_CHECKLIST.md](./SBE_CHECKLIST.md)** - Implementation checklist
 
+## Validation Patterns ⭐ NEW
+
+- **[VALIDATION_PATTERNS.md](./VALIDATION_PATTERNS.md)** - Design discussion and comparison of all validation patterns
+- **[VALIDATION_PATTERNS_EXAMPLES.md](./VALIDATION_PATTERNS_EXAMPLES.md)** - Practical real-world examples and best practices
+- **[VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)** - Feature overview and API reference
+- **[VALIDATION_EXAMPLE.md](./VALIDATION_EXAMPLE.md)** - Quick start example
+
+The validation system now supports three complementary patterns:
+1. **Validate()** - Traditional throwing validation (fail-fast)
+2. **TryValidate()** - Non-throwing validation with error messages (user-friendly)
+3. **CreateValidated()** - Factory method pattern with validation (fluent)
+
+## Advanced Features
+
+- **[BLOCK_LENGTH_EXTENSION.md](./BLOCK_LENGTH_EXTENSION.md)** - Schema evolution and forward compatibility
+
 ## Testing
 
 - **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - How to test the generator
+
+## Deployment
+
+- **[CICD_PIPELINE.md](./CICD_PIPELINE.md)** - CI/CD pipeline documentation
+- **[NUGET_SETUP_GUIDE.md](./NUGET_SETUP_GUIDE.md)** - Publishing to NuGet
 
 ## Quick Links
 

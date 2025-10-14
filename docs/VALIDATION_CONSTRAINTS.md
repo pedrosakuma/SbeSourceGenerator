@@ -45,6 +45,11 @@ For each type or message with validation constraints, the generator creates:
 1. **Type Validation Extension Methods** - Static extension methods for types with constraints
 2. **Message Validation Extension Methods** - Static extension methods for messages with field constraints
 
+Each validation class includes three methods:
+- **Validate()** - Throws exception on invalid values (traditional approach)
+- **TryValidate()** - Non-throwing validation that returns bool with error message
+- **CreateValidated()** - Factory method that validates and returns the value
+
 ### Example: Type Validation
 
 For the `Price` type defined above, the generator creates:
@@ -66,6 +71,35 @@ public static class PriceValidation
     {
         if (value.Value < 0 || value.Value > 999999999)
             throw new ArgumentOutOfRangeException(nameof(value), value.Value, "Price must be between 0 and 999999999");
+    }
+
+    /// <summary>
+    /// Attempts to validate that the value is within the schema-defined constraints.
+    /// </summary>
+    /// <param name="value">The value to validate.</param>
+    /// <param name="errorMessage">The error message if validation fails, or null if validation succeeds.</param>
+    /// <returns>True if validation succeeds, false otherwise.</returns>
+    public static bool TryValidate(this Price value, out string? errorMessage)
+    {
+        if (value.Value < 0 || value.Value > 999999999)
+        {
+            errorMessage = $"Price must be between 0 and 999999999. Actual value was {value.Value}.";
+            return false;
+        }
+        errorMessage = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Creates a validated instance of Price.
+    /// </summary>
+    /// <param name="value">The value to validate.</param>
+    /// <returns>The validated value.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is outside the valid range.</exception>
+    public static Price CreateValidated(this Price value)
+    {
+        value.Validate();
+        return value;
     }
 }
 ```
@@ -94,12 +128,48 @@ public static class OrderValidation
         if (message.Quantity < 1)
             throw new ArgumentOutOfRangeException(nameof(message.Quantity), message.Quantity, "Quantity must be greater than or equal to 1");
     }
+
+    /// <summary>
+    /// Attempts to validate all fields with constraints in Order.
+    /// </summary>
+    /// <param name="message">The message to validate.</param>
+    /// <param name="errorMessage">The error message if validation fails, or null if validation succeeds.</param>
+    /// <returns>True if validation succeeds, false otherwise.</returns>
+    public static bool TryValidate(this Order message, out string? errorMessage)
+    {
+        if (message.Price < 0 || message.Price > 999999999)
+        {
+            errorMessage = $"Price must be between 0 and 999999999. Actual value was {message.Price}.";
+            return false;
+        }
+        if (message.Quantity < 1)
+        {
+            errorMessage = $"Quantity must be greater than or equal to 1. Actual value was {message.Quantity}.";
+            return false;
+        }
+        errorMessage = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Creates a validated instance of Order.
+    /// </summary>
+    /// <param name="message">The message to validate.</param>
+    /// <returns>The validated message.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when a field value is outside its valid range.</exception>
+    public static Order CreateValidated(this Order message)
+    {
+        message.Validate();
+        return message;
+    }
 }
 ```
 
 ## Usage
 
 ### Validating Types
+
+#### Throwing Validation (Traditional)
 
 ```csharp
 Price price = new Price { Value = 1000 };
@@ -109,7 +179,36 @@ Price invalidPrice = new Price { Value = -100 };
 invalidPrice.Validate(); // Throws ArgumentOutOfRangeException
 ```
 
+#### Non-Throwing Validation (TryValidate Pattern)
+
+```csharp
+Price price = new Price { Value = -100 };
+if (!price.TryValidate(out string? errorMessage))
+{
+    Console.WriteLine($"Validation failed: {errorMessage}");
+    // Output: Validation failed: Price must be between 0 and 999999999. Actual value was -100.
+}
+
+Price validPrice = new Price { Value = 1000 };
+if (validPrice.TryValidate(out errorMessage))
+{
+    Console.WriteLine("Validation passed!");
+}
+```
+
+#### Factory Method Pattern
+
+```csharp
+// Create and validate in one step
+var price = new Price { Value = 1000 }.CreateValidated();
+
+// This will throw if validation fails
+var invalidPrice = new Price { Value = -100 }.CreateValidated(); // Throws ArgumentOutOfRangeException
+```
+
 ### Validating Messages
+
+#### Throwing Validation (Traditional)
 
 ```csharp
 Order order = new Order 
@@ -128,6 +227,57 @@ Order invalidOrder = new Order
 };
 invalidOrder.Validate(); // Throws ArgumentOutOfRangeException
 ```
+
+#### Non-Throwing Validation (TryValidate Pattern)
+
+```csharp
+Order order = new Order 
+{ 
+    OrderId = 123,
+    Price = -100,
+    Quantity = 100
+};
+
+if (!order.TryValidate(out string? errorMessage))
+{
+    Console.WriteLine($"Order validation failed: {errorMessage}");
+    // Output: Order validation failed: Price must be between 0 and 999999999. Actual value was -100.
+}
+```
+
+#### Factory Method Pattern
+
+```csharp
+// Create and validate in one step
+var order = new Order 
+{ 
+    OrderId = 123,
+    Price = 10000,
+    Quantity = 100
+}.CreateValidated();
+
+// Fluent-style usage
+var validatedOrder = new Order()
+    .CreateValidated(); // Ensures validation on creation
+```
+
+### Choosing the Right Validation Pattern
+
+**Use `Validate()` (throwing) when:**
+- You want to fail fast on invalid data
+- Validation failures are exceptional cases
+- You're in a context where exceptions are appropriate (e.g., parsing external input)
+
+**Use `TryValidate()` (non-throwing) when:**
+- You want to handle validation errors gracefully
+- You need detailed error messages for user feedback
+- Performance is critical and you want to avoid exception overhead
+- You're validating user input in interactive scenarios
+
+**Use `CreateValidated()` (factory) when:**
+- You want to ensure objects are always valid after construction
+- You prefer a fluent, declarative style
+- You want to validate immediately after object initialization
 
 ## Validation Behavior
 
