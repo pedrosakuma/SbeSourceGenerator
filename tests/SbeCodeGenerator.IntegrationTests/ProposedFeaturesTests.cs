@@ -263,4 +263,84 @@ public class ProposedFeaturesTests
         Assert.Equal((byte)5, str.Length);
         Assert.Equal(5, str.Data.Length);
     }
+
+    // ===== Phase 1 Feature Validation Tests =====
+    // These tests validate that the actual generated types from the schema
+    // now have the same features as the manually-created proposed types above
+
+    [Fact]
+    public void GeneratedTypeDefinition_HasReadonlyStruct()
+    {
+        // Verify that generated TypeDefinition types are readonly structs
+        var orderIdType = typeof(Integration.Test.OrderId);
+        Assert.True(orderIdType.IsValueType);
+        
+        // Check if struct is readonly (using reflection to check attributes/modifiers)
+        var structAttribute = orderIdType.GetCustomAttributes(typeof(System.Runtime.CompilerServices.IsReadOnlyAttribute), false);
+        // Note: IsReadOnlyAttribute may not be present in all frameworks, so we check the field instead
+        var valueField = orderIdType.GetField("Value");
+        Assert.NotNull(valueField);
+        Assert.True(valueField.IsInitOnly, "Value field should be readonly");
+    }
+
+    [Fact]
+    public void GeneratedTypeDefinition_HasConstructor()
+    {
+        // Verify that generated TypeDefinition types have a constructor
+        // Act - use constructor to create instance
+        var orderId = new Integration.Test.OrderId(123456);
+        
+        // Assert
+        Assert.Equal(123456, orderId.Value);
+    }
+
+    [Fact]
+    public void GeneratedTypeDefinition_SupportsImplicitConversion()
+    {
+        // Verify implicit conversion from primitive to wrapper works
+        // Act - implicit conversion
+        Integration.Test.OrderId orderId = 123456;
+        
+        // Assert
+        Assert.Equal(123456, orderId.Value);
+    }
+
+    [Fact]
+    public void GeneratedTypeDefinition_SupportsExplicitConversion()
+    {
+        // Verify explicit conversion from wrapper to primitive works
+        // Arrange
+        var orderId = new Integration.Test.OrderId(123456);
+        
+        // Act - explicit conversion
+        long value = (long)orderId;
+        
+        // Assert
+        Assert.Equal(123456, value);
+    }
+
+    [Fact]
+    public void GeneratedTypeDefinition_Phase1Features_WorkTogether()
+    {
+        // Comprehensive test showing all Phase 1 features working together
+        
+        // 1. Implicit conversion for concise initialization
+        Integration.Test.Price price = 100000;
+        Assert.Equal(100000, price.Value);
+        
+        // 2. Constructor for explicit initialization
+        var quantity = new Integration.Test.OrderId(500);
+        Assert.Equal(500, quantity.Value);
+        
+        // 3. Explicit conversion for interop
+        long priceValue = (long)price;
+        Assert.Equal(100000, priceValue);
+        
+        // 4. Use in calculations
+        long total = (long)price * (long)quantity;
+        Assert.Equal(50000000, total);
+        
+        // 5. Readonly prevents mutation (compile-time check, shown in test)
+        // price.Value = 200000; // Would not compile - field is readonly
+    }
 }
