@@ -328,5 +328,223 @@ namespace SbeCodeGenerator.Tests.Runtime
             Assert.Equal(4, remaining[1]);
             Assert.Equal(5, remaining[2]);
         }
+
+        #region Custom Parser Tests (Schema Evolution & Extensibility)
+
+        private struct VersionedMessage
+        {
+            public ushort Version;
+            public int Value;
+            public long ExtendedValue; // Only in version 2+
+        }
+
+        [Fact]
+        public void TryReadWith_CustomParser_ParsesSuccessfully()
+        {
+            // Arrange
+            Span<byte> buffer = stackalloc byte[100];
+            ushort version = 1;
+            int value = 42;
+            MemoryMarshal.Write(buffer, in version);
+            MemoryMarshal.Write(buffer.Slice(2), in value);
+
+            var reader = new SpanReader(buffer);
+
+            // Custom parser that reads version-specific data
+            static bool ParseVersionedMessage(ReadOnlySpan<byte> buf, out VersionedMessage msg, out int consumed)
+            {
+                if (buf.Length < 6)
+                {
+                    msg = default;
+                    consumed = 0;
+                    return false;
+                }
+
+                msg = new VersionedMessage
+                {
+                    Version = MemoryMarshal.Read<ushort>(buf),
+                    Value = MemoryMarshal.Read<int>(buf.Slice(2))
+                };
+                consumed = 6;
+                return true;
+            }
+
+            // Act
+            bool success = reader.TryReadWith<VersionedMessage>(ParseVersionedMessage, out var result);
+
+            // Assert
+            Assert.True(success);
+            Assert.Equal(1, result.Version);
+            Assert.Equal(42, result.Value);
+            Assert.Equal(94, reader.RemainingBytes); // 100 - 6
+        }
+
+        [Fact]
+        public void TryReadWith_CustomParser_HandlesSchemaEvolution()
+        {
+            // Arrange - Version 2 message with extended field
+            Span<byte> buffer = stackalloc byte[100];
+            ushort version = 2;
+            int value = 42;
+            long extendedValue = 9999;
+            MemoryMarshal.Write(buffer, in version);
+            MemoryMarshal.Write(buffer.Slice(2), in value);
+            MemoryMarshal.Write(buffer.Slice(6), in extendedValue);
+
+            var reader = new SpanReader(buffer);
+
+            // Custom parser that handles schema evolution
+            static bool ParseVersionedMessageV2(ReadOnlySpan<byte> buf, out VersionedMessage msg, out int consumed)
+            {
+                if (buf.Length < 2)
+                {
+                    msg = default;
+                    consumed = 0;
+                    return false;
+                }
+
+                ushort version = MemoryMarshal.Read<ushort>(buf);
+                
+                if (version == 1)
+                {
+                    if (buf.Length < 6)
+                    {
+                        msg = default;
+                        consumed = 0;
+                        return false;
+                    }
+                    msg = new VersionedMessage
+                    {
+                        Version = version,
+                        Value = MemoryMarshal.Read<int>(buf.Slice(2))
+                    };
+                    consumed = 6;
+                }
+                else // version 2+
+                {
+                    if (buf.Length < 14)
+                    {
+                        msg = default;
+                        consumed = 0;
+                        return false;
+                    }
+                    msg = new VersionedMessage
+                    {
+                        Version = version,
+                        Value = MemoryMarshal.Read<int>(buf.Slice(2)),
+                        ExtendedValue = MemoryMarshal.Read<long>(buf.Slice(6))
+                    };
+                    consumed = 14;
+                }
+                
+                return true;
+            }
+
+            // Act
+            bool success = reader.TryReadWith<VersionedMessage>(ParseVersionedMessageV2, out var result);
+
+            // Assert
+            Assert.True(success);
+            Assert.Equal(2, result.Version);
+            Assert.Equal(42, result.Value);
+            Assert.Equal(9999, result.ExtendedValue);
+            Assert.Equal(86, reader.RemainingBytes); // 100 - 14
+        }
+
+        [Fact]
+        public void TryReadWith_CustomParser_FailsWhenInsufficientData()
+        {
+            // Arrange
+            Span<byte> buffer = stackalloc byte[3]; // Too small
+            var reader = new SpanReader(buffer);
+
+            static bool FailingParser(ReadOnlySpan<byte> buf, out int value, out int consumed)
+            {
+                value = 0;
+                consumed = 0;
+                return false;
+            }
+
+            // Act
+            bool success = reader.TryReadWith<int>(FailingParser, out var result);
+
+            // Assert
+            Assert.False(success);
+            Assert.Equal(3, reader.RemainingBytes); // Position unchanged
+        }
+
+        #endregion
+
+        #region Non-Blittable Type Support Tests
+
+        private struct NonBlittableData
+        {
+            public int Length;
+            public byte Byte1;
+            public byte Byte2;
+            public byte Byte3;
+            public byte Byte4;
+            public byte Byte5;
+        }
+
+        [Fact]
+        public void TryReadWith_SupportsNonBlittableTypes()
+        {
+            // Arrange
+            Span<byte> buffer = stackalloc byte[100];
+            int length = 5;
+            MemoryMarshal.Write(buffer, in length); // Length prefix
+            buffer[4] = (byte)'H';
+            buffer[5] = (byte)'e';
+            buffer[6] = (byte)'l';
+            buffer[7] = (byte)'l';
+            buffer[8] = (byte)'o';
+
+            var reader = new SpanReader(buffer);
+
+            // Custom parser for length-prefixed data
+            static bool ParseData(ReadOnlySpan<byte> buf, out NonBlittableData data, out int consumed)
+            {
+                if (buf.Length < 4)
+                {
+                    data = default;
+                    consumed = 0;
+                    return false;
+                }
+
+                int length = MemoryMarshal.Read<int>(buf);
+                if (buf.Length < 4 + length || length > 5)
+                {
+                    data = default;
+                    consumed = 0;
+                    return false;
+                }
+
+                data = new NonBlittableData { Length = length };
+                if (length > 0) data.Byte1 = buf[4];
+                if (length > 1) data.Byte2 = buf[5];
+                if (length > 2) data.Byte3 = buf[6];
+                if (length > 3) data.Byte4 = buf[7];
+                if (length > 4) data.Byte5 = buf[8];
+                
+                consumed = 4 + length;
+                return true;
+            }
+
+            // Act
+            bool success = reader.TryReadWith<NonBlittableData>(ParseData, out var result);
+
+            // Assert
+            Assert.True(success);
+            Assert.Equal(5, result.Length);
+            Assert.Equal((byte)'H', result.Byte1);
+            Assert.Equal((byte)'e', result.Byte2);
+            Assert.Equal((byte)'l', result.Byte3);
+            Assert.Equal((byte)'l', result.Byte4);
+            Assert.Equal((byte)'o', result.Byte5);
+            Assert.Equal(91, reader.RemainingBytes); // 100 - 9
+        }
+
+        #endregion
     }
 }

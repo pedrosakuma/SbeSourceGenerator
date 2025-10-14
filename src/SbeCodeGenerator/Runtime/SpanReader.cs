@@ -5,12 +5,27 @@ using System.Runtime.InteropServices;
 namespace SbeSourceGenerator.Runtime
 {
     /// <summary>
+    /// Delegate for custom parsing logic that can be passed to SpanReader.
+    /// Useful for schema evolution and types that need version-specific parsing.
+    /// </summary>
+    /// <typeparam name="T">The type being parsed.</typeparam>
+    /// <param name="buffer">The buffer to parse from.</param>
+    /// <param name="value">When this method returns, contains the parsed value if successful.</param>
+    /// <param name="bytesConsumed">When this method returns, contains the number of bytes consumed if successful.</param>
+    /// <returns>True if parsing succeeded; otherwise, false.</returns>
+    public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out int bytesConsumed);
+
+    /// <summary>
     /// A ref struct that provides sequential reading of binary data from a ReadOnlySpan.
     /// Eliminates the need for manual offset management during parsing.
     /// </summary>
     /// <remarks>
     /// This is a stack-only type (ref struct) that cannot be used in async methods or stored as a field.
     /// It automatically advances the internal position as data is read, preventing offset calculation errors.
+    /// 
+    /// Supports extensibility through:
+    /// - Custom parsing delegates for schema evolution
+    /// - Flexible parsing patterns for non-blittable types
     /// </remarks>
     public ref struct SpanReader
     {
@@ -155,6 +170,32 @@ namespace SbeSourceGenerator.Runtime
         public void Reset(ReadOnlySpan<byte> buffer)
         {
             _buffer = buffer;
+        }
+
+        /// <summary>
+        /// Attempts to parse a value using a custom parser delegate and advances the reader position.
+        /// Useful for schema evolution where parsing logic may vary by version.
+        /// </summary>
+        /// <typeparam name="T">The type to parse.</typeparam>
+        /// <param name="parser">The custom parser delegate.</param>
+        /// <param name="value">When this method returns, contains the parsed value if successful; otherwise, the default value.</param>
+        /// <returns>True if parsing succeeded; otherwise, false.</returns>
+        /// <remarks>
+        /// This method enables type-specific parsing logic including:
+        /// - Schema evolution handling (different parsing based on version)
+        /// - Non-blittable type support
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadWith<T>(SpanParser<T> parser, out T value)
+        {
+            if (parser(_buffer, out value, out int bytesConsumed))
+            {
+                _buffer = _buffer.Slice(bytesConsumed);
+                return true;
+            }
+            
+            value = default!;
+            return false;
         }
     }
 }
