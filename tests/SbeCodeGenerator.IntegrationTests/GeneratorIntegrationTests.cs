@@ -466,5 +466,136 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((byte)4, symbolLength);
             Assert.Equal("AAPL", symbolStr);
         }
+
+        [Fact]
+        public void TryParse_WithSpanReader_ValidatesBufferLength()
+        {
+            // Test that TryParse using SpanReader properly validates buffer length
+            // This ensures CanRead check works correctly
+            
+            // Arrange - Create a buffer that's too small
+            Span<byte> smallBuffer = stackalloc byte[10]; // Less than MESSAGE_SIZE (26)
+            
+            // Act
+            var success = Integration.Test.NewOrderData.TryParse(smallBuffer, out var message, out var variableData);
+            
+            // Assert
+            Assert.False(success);
+            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.True(variableData.IsEmpty);
+        }
+
+        [Fact]
+        public void TryParse_WithSpanReader_ReadsMessageCorrectly()
+        {
+            // Test that TryParse using SpanReader reads the message struct correctly
+            
+            // Arrange
+            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 16];
+            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            orderRef.OrderId = 12345;    // Implicit conversion
+            orderRef.Price = 99999;      // Implicit conversion
+            orderRef.Quantity = 500;
+            orderRef.Side = Integration.Test.OrderSide.Buy;
+            orderRef.OrderType = Integration.Test.OrderType.Limit;
+            
+            // Act
+            var success = Integration.Test.NewOrderData.TryParse(buffer, out var message, out var variableData);
+            
+            // Assert
+            Assert.True(success);
+            Assert.Equal(12345, message.OrderId.Value);
+            Assert.Equal(99999, message.Price.Value);
+            Assert.Equal(500, message.Quantity);
+            Assert.Equal(Integration.Test.OrderSide.Buy, message.Side);
+            Assert.Equal(Integration.Test.OrderType.Limit, message.OrderType);
+            Assert.Equal(16, variableData.Length); // Remaining bytes after MESSAGE_SIZE
+        }
+
+        [Fact]
+        public void TryParse_WithSpanReader_HandlesSchemaEvolutionWithLargerBlockLength()
+        {
+            // Test that TryParse using SpanReader correctly skips additional bytes
+            // when blockLength > MESSAGE_SIZE (newer schema version)
+            
+            // Arrange
+            int extendedBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE + 8;
+            Span<byte> buffer = stackalloc byte[extendedBlockLength + 10]; // Extra space for variable data
+            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            orderRef.OrderId = 777;
+            orderRef.Price = 5000;
+            
+            // Act - Parse with larger block length
+            var success = Integration.Test.NewOrderData.TryParse(buffer, extendedBlockLength, out var message, out var variableData);
+            
+            // Assert
+            Assert.True(success);
+            Assert.Equal(777, message.OrderId.Value);
+            Assert.Equal(5000, message.Price.Value);
+            // Variable data should start after the extended block length
+            Assert.Equal(10, variableData.Length);
+        }
+
+        [Fact]
+        public void TryParse_WithSpanReader_HandlesSchemaEvolutionWithSmallerBlockLength()
+        {
+            // Test that TryParse using SpanReader correctly handles older schema versions
+            // when blockLength < MESSAGE_SIZE
+            
+            // Arrange
+            int smallerBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE - 4;
+            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 20];
+            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            orderRef.OrderId = 888;
+            orderRef.Price = 6000;
+            
+            // Act - Parse with smaller block length
+            var success = Integration.Test.NewOrderData.TryParse(buffer, smallerBlockLength, out var message, out var variableData);
+            
+            // Assert
+            Assert.True(success);
+            Assert.Equal(888, message.OrderId.Value);
+            Assert.Equal(6000, message.Price.Value);
+            // Variable data should start at smallerBlockLength, overlapping with message
+            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE + 20 - smallerBlockLength, variableData.Length);
+        }
+
+        [Fact]
+        public void TryParse_WithSpanReader_FailsWhenInsufficientBufferForBlockLength()
+        {
+            // Test that TryParse fails when buffer is smaller than blockLength
+            // This validates the CanRead check in SpanReader
+            
+            // Arrange
+            int blockLength = 50;
+            Span<byte> buffer = stackalloc byte[40]; // Less than blockLength
+            
+            // Act
+            var success = Integration.Test.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            
+            // Assert
+            Assert.False(success);
+            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.True(variableData.IsEmpty);
+        }
+
+        [Fact]
+        public void TryParse_WithSpanReader_FailsWhenInsufficientBufferForMessage()
+        {
+            // Test that TryParse fails when buffer is smaller than MESSAGE_SIZE
+            // This validates the TryRead check in SpanReader
+            
+            // Arrange
+            int blockLength = 10; // Less than MESSAGE_SIZE
+            Span<byte> buffer = stackalloc byte[10]; // Same as blockLength, but less than MESSAGE_SIZE
+            
+            // Act
+            var success = Integration.Test.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            
+            // Assert
+            Assert.False(success);
+            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.True(variableData.IsEmpty);
+        }
     }
 }
