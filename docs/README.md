@@ -54,6 +54,18 @@ The validation system now supports three complementary patterns:
 
 - **[BLOCK_LENGTH_EXTENSION.md](./BLOCK_LENGTH_EXTENSION.md)** - Schema evolution and forward compatibility
 
+## SpanReader Integration ⭐ NEW
+
+Progressive enhancement of parsing flows with automatic offset management:
+
+- **[SPAN_READER_INTEGRATION.md](./SPAN_READER_INTEGRATION.md)** - ⭐ **Integration summary**: How SpanReader was integrated into SBE parsing flows
+- **[SPAN_READER_README.md](./SPAN_READER_README.md)** - SpanReader API reference and usage examples
+- **[SPAN_READER_IMPLEMENTATION_SUMMARY.md](./SPAN_READER_IMPLEMENTATION_SUMMARY.md)** - Original prototype implementation details
+- **[SPAN_READER_EXTENSIBILITY.md](./SPAN_READER_EXTENSIBILITY.md)** - Advanced features and custom parsing patterns
+- **[SPAN_READER_EVALUATION.md](./SPAN_READER_EVALUATION.md)** - Initial evaluation and feasibility study
+
+**Delivered:** Automatic offset management in generated parsing code, eliminating manual offset tracking errors
+
 ## Testing
 
 - **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - How to test the generator
