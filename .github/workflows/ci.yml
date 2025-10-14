@@ -32,14 +32,7 @@ jobs:
         dotnet build --no-restore --configuration Release tests/SbeCodeGenerator.IntegrationTests/SbeCodeGenerator.IntegrationTests.csproj
       
     - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
-      
-    - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        files: '**/test-results.trx'
-        check_name: 'Test Results'
+      run: dotnet test --no-build --configuration Release --verbosity normal
         
     - name: Pack NuGet package (dry-run)
       run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts
