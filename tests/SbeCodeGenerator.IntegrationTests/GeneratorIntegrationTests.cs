@@ -364,5 +364,107 @@ namespace SbeCodeGenerator.IntegrationTests
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.CreateValidated());
             Assert.Contains("OrderId must be greater than or equal to 1", exception.Message);
         }
+
+        [Fact]
+        public void ConsumeVariableLengthSegments_WithSpanReader_ParsesGroupsCorrectly()
+        {
+            // Arrange - Create buffer with GroupSizeEncoding + entries for bids and asks
+            Span<byte> buffer = stackalloc byte[512];
+            int offset = 0;
+            
+            // Write bids group header (3 bids)
+            ref Integration.Test.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
+            bidsHeader.BlockLength = (ushort)Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+            bidsHeader.NumInGroup = 3;
+            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            
+            // Write bid entries
+            for (int i = 0; i < 3; i++)
+            {
+                ref Integration.Test.OrderBookData.BidsData bid = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.BidsData>(buffer.Slice(offset));
+                bid.Price = 1000 + i * 10;  // Implicit conversion
+                bid.Quantity = 100 + i;
+                offset += Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+            }
+            
+            // Write asks group header (2 asks)
+            ref Integration.Test.GroupSizeEncoding asksHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
+            asksHeader.BlockLength = (ushort)Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+            asksHeader.NumInGroup = 2;
+            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            
+            // Write ask entries
+            for (int i = 0; i < 2; i++)
+            {
+                ref Integration.Test.OrderBookData.AsksData ask = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.AsksData>(buffer.Slice(offset));
+                ask.Price = 2000 + i * 10;  // Implicit conversion
+                ask.Quantity = 200 + i;
+                offset += Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+            }
+            
+            // Act
+            var bidPrices = new System.Collections.Generic.List<long>();
+            var askPrices = new System.Collections.Generic.List<long>();
+            var bidQuantities = new System.Collections.Generic.List<long>();
+            var askQuantities = new System.Collections.Generic.List<long>();
+            
+            // Create a dummy OrderBookData and call ConsumeVariableLengthSegments
+            var orderBook = new Integration.Test.OrderBookData();
+            orderBook.ConsumeVariableLengthSegments(
+                buffer.Slice(0, offset),
+                bid => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
+                ask => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
+            );
+            
+            // Assert
+            Assert.Equal(3, bidPrices.Count);
+            Assert.Equal(2, askPrices.Count);
+            
+            // Verify bids
+            Assert.Equal(1000, bidPrices[0]);
+            Assert.Equal(1010, bidPrices[1]);
+            Assert.Equal(1020, bidPrices[2]);
+            Assert.Equal(100, bidQuantities[0]);
+            Assert.Equal(101, bidQuantities[1]);
+            Assert.Equal(102, bidQuantities[2]);
+            
+            // Verify asks
+            Assert.Equal(2000, askPrices[0]);
+            Assert.Equal(2010, askPrices[1]);
+            Assert.Equal(200, askQuantities[0]);
+            Assert.Equal(201, askQuantities[1]);
+        }
+
+        [Fact]
+        public void ConsumeVariableLengthSegments_WithSpanReader_ParsesDataFieldsCorrectly()
+        {
+            // Arrange - Create buffer with VarString8 data
+            Span<byte> buffer = stackalloc byte[512];
+            int offset = 0;
+            
+            // Write VarString8: length byte + string bytes
+            string testSymbol = "AAPL";
+            buffer[offset++] = (byte)testSymbol.Length;
+            for (int i = 0; i < testSymbol.Length; i++)
+            {
+                buffer[offset++] = (byte)testSymbol[i];
+            }
+            
+            // Act
+            byte symbolLength = 0;
+            string symbolStr = "";
+            var order = new Integration.Test.NewOrderData();
+            order.ConsumeVariableLengthSegments(
+                buffer.Slice(0, offset),
+                symbol => { 
+                    symbolLength = symbol.Length;
+                    symbolStr = System.Text.Encoding.UTF8.GetString(symbol.VarData);
+                }
+            );
+            
+            // Assert
+            Assert.Equal((byte)4, symbolLength);
+            Assert.Equal("AAPL", symbolStr);
+        }
     }
 }
