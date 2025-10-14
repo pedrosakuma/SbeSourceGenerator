@@ -11,6 +11,8 @@ namespace SbeSourceGenerator.Schema
         string Presence,
         string NullValue,
         string Length,
-        string InnerText
+        string InnerText,
+        string MinValue,
+        string MaxValue
     );
 }
