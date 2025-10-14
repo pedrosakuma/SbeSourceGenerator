@@ -256,5 +256,134 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("public static implicit operator TradeId(ulong value)", typeResult.content);
             Assert.Contains("public static explicit operator ulong(TradeId value)", typeResult.content);
         }
+
+        [Fact]
+        public void Generate_RefStruct_IncludesReadonlyModifier()
+        {
+            // Arrange - Phase 3 Option 1: readonly ref structs
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <composite name='VarString8' description='Variable length UTF-8 string'>
+                            <type name='length' primitiveType='uint8'/>
+                            <type name='varData' length='0' primitiveType='uint8' characterEncoding='UTF-8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("VarString8"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify readonly ref struct declaration
+            Assert.Contains("public readonly ref partial struct VarString8", compositeResult.content);
+            
+            // Verify readonly fields
+            Assert.Contains("public readonly byte Length;", compositeResult.content);
+            Assert.Contains("public readonly ReadOnlySpan<byte> VarData;", compositeResult.content);
+        }
+
+        [Fact]
+        public void Generate_RefStruct_IncludesConstructor()
+        {
+            // Arrange - Phase 3 Option 1: ref struct constructors
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <composite name='VarString8' description='Variable length UTF-8 string'>
+                            <type name='length' primitiveType='uint8'/>
+                            <type name='varData' length='0' primitiveType='uint8' characterEncoding='UTF-8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("VarString8"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify constructor exists with correct signature
+            Assert.Contains("public VarString8(byte length, ReadOnlySpan<byte> varData)", compositeResult.content);
+            Assert.Contains("Length = length;", compositeResult.content);
+            Assert.Contains("VarData = varData;", compositeResult.content);
+        }
+
+        [Fact]
+        public void Generate_RefStruct_CreateMethodUsesConstructor()
+        {
+            // Arrange - Phase 3 Option 1: Create method should use constructor
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <composite name='VarString8' description='Variable length UTF-8 string'>
+                            <type name='length' primitiveType='uint8'/>
+                            <type name='varData' length='0' primitiveType='uint8' characterEncoding='UTF-8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("VarString8"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify Create method uses constructor instead of object initializer
+            Assert.Contains("public static VarString8 Create(ReadOnlySpan<byte> buffer) => new VarString8(", compositeResult.content);
+            
+            // Should NOT use object initializer syntax
+            Assert.DoesNotContain("new VarString8 {", compositeResult.content);
+        }
+
+        [Fact]
+        public void Generate_BlittableComposite_RemainsUnchanged()
+        {
+            // Arrange - Blittable composites should NOT be readonly ref structs
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <messageSchema>
+                    <types>
+                        <composite name='MessageHeader' description='Message header'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("MessageHeader"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify it's a regular struct, not a ref struct
+            Assert.Contains("public partial struct MessageHeader", compositeResult.content);
+            Assert.DoesNotContain("ref struct", compositeResult.content);
+            
+            // Should have StructLayout attribute for blittable types
+            Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 1)]", compositeResult.content);
+        }
     }
 }
