@@ -63,7 +63,7 @@ public static class OrderValidation
 
 ## Usage Examples
 
-### Valid Values ✅
+### Throwing Validation (Traditional) ✅
 
 ```csharp
 // Valid type
@@ -80,7 +80,68 @@ var order = new Order
 order.Validate(); // ✅ Passes
 ```
 
-### Invalid Values ❌
+### Non-Throwing Validation (TryValidate Pattern) ✅
+
+```csharp
+// Check validity without exceptions
+var price = new Price { Value = -100 };
+if (!price.TryValidate(out string? errorMessage))
+{
+    Console.WriteLine($"Invalid price: {errorMessage}");
+    // Output: Invalid price: Price must be between 0 and 999999999. Actual value was -100.
+    return;
+}
+
+// Validate order with user-friendly error messages
+var order = new Order 
+{
+    OrderId = 12345,
+    Price = -1000,
+    Quantity = 100
+};
+
+if (order.TryValidate(out errorMessage))
+{
+    Console.WriteLine("Order is valid!");
+}
+else
+{
+    Console.WriteLine($"Order validation failed: {errorMessage}");
+    // Output: Order validation failed: Price must be between 0 and 999999999. Actual value was -1000.
+}
+```
+
+### Factory Method Pattern (CreateValidated) ✅
+
+```csharp
+// Create and validate in one fluent step
+var validPrice = new Price { Value = 100000 }.CreateValidated();
+
+// Use with object initializer syntax
+var order = new Order 
+{
+    OrderId = 12345,
+    Price = 100000,
+    Quantity = 100
+}.CreateValidated(); // Throws if invalid
+
+// This pattern ensures the object is always valid
+try
+{
+    var invalidOrder = new Order 
+    { 
+        OrderId = 1, 
+        Price = -100,  // Invalid
+        Quantity = 10 
+    }.CreateValidated();
+}
+catch (ArgumentOutOfRangeException ex)
+{
+    Console.WriteLine($"Cannot create invalid order: {ex.Message}");
+}
+```
+
+### Invalid Values with Throwing Validation ❌
 
 ```csharp
 // Invalid: negative price
@@ -125,12 +186,14 @@ catch (ArgumentOutOfRangeException ex)
 
 ## Integration with Application Logic
 
+### Using Throwing Validation
+
 ```csharp
 public class OrderProcessor
 {
     public void ProcessOrder(Order order)
     {
-        // Validate before processing
+        // Validate before processing - throws on error
         order.Validate();
         
         // Process the validated order
@@ -159,6 +222,73 @@ var invalidOrder = new Order
     Quantity = 10 
 };
 processor.ProcessOrder(invalidOrder); // ❌ Throws
+```
+
+### Using TryValidate Pattern
+
+```csharp
+public class OrderValidator
+{
+    public bool TryProcessOrder(Order order, out string? error)
+    {
+        // Non-throwing validation
+        if (!order.TryValidate(out error))
+        {
+            return false;
+        }
+        
+        // Process the validated order
+        Console.WriteLine($"Processing order {order.OrderId}");
+        Console.WriteLine($"Price: {order.Price}, Quantity: {order.Quantity}");
+        return true;
+    }
+}
+
+// Usage with user-friendly error handling
+var validator = new OrderValidator();
+var order = new Order 
+{ 
+    OrderId = 1, 
+    Price = -100,  // Invalid
+    Quantity = 10 
+};
+
+if (!validator.TryProcessOrder(order, out string? error))
+{
+    Console.WriteLine($"Cannot process order: {error}");
+    // Output: Cannot process order: Price must be between 0 and 999999999. Actual value was -100.
+}
+```
+
+### Using CreateValidated Pattern
+
+```csharp
+public class OrderBuilder
+{
+    public Order BuildValidatedOrder(long orderId, long price, long quantity)
+    {
+        // Factory pattern - ensures valid object creation
+        return new Order
+        {
+            OrderId = orderId,
+            Price = price,
+            Quantity = quantity
+        }.CreateValidated(); // Throws immediately if invalid
+    }
+}
+
+// Usage
+var builder = new OrderBuilder();
+
+try
+{
+    var order = builder.BuildValidatedOrder(1, 50000, 10);
+    Console.WriteLine("Order created successfully!");
+}
+catch (ArgumentOutOfRangeException ex)
+{
+    Console.WriteLine($"Failed to create order: {ex.Message}");
+}
 ```
 
 ## Performance Note
