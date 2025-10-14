@@ -4,6 +4,13 @@
 
 `SpanReader` is a ref struct that provides sequential reading of binary data from a `ReadOnlySpan<byte>`. It eliminates the need for manual offset management during binary parsing, making code safer, cleaner, and easier to maintain.
 
+**Key Features:**
+- ✅ Automatic offset management
+- ✅ Type-safe parsing with Try-pattern
+- ✅ Support for custom parsing logic (schema evolution, non-blittable types)
+- ✅ Zero allocations (ref struct)
+- ✅ Aggressive inlining for optimal performance
+
 ## Quick Start
 
 ```csharp
@@ -327,6 +334,242 @@ void ProcessGroups(ReadOnlySpan<byte> buffer,
                 onAsk(ask);
         }
     }
+}
+```
+
+## Extensibility and Advanced Features
+
+SpanReader supports extensibility through custom parsing delegates, enabling advanced scenarios like schema evolution and non-blittable types.
+
+### Custom Parsing with TryReadWith
+
+The `TryReadWith` method allows you to provide custom parsing logic via a delegate:
+
+```csharp
+public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out int bytesConsumed);
+
+public bool TryReadWith<T>(SpanParser<T> parser, out T value)
+```
+
+#### Example: Schema Evolution
+
+Handle different message versions with version-specific parsing:
+
+```csharp
+// Define a versioned message structure
+struct VersionedOrder
+{
+    public ushort Version;
+    public long OrderId;
+    public int Quantity;
+    public long Price;      // Added in V2
+}
+
+// Custom parser that handles multiple versions
+static bool ParseOrder(ReadOnlySpan<byte> buffer, out VersionedOrder order, out int consumed)
+{
+    if (buffer.Length < 2)
+    {
+        order = default;
+        consumed = 0;
+        return false;
+    }
+
+    ushort version = MemoryMarshal.Read<ushort>(buffer);
+    
+    if (version == 1)
+    {
+        // V1: version(2) + orderId(8) + quantity(4) = 14 bytes
+        if (buffer.Length < 14)
+        {
+            order = default;
+            consumed = 0;
+            return false;
+        }
+        
+        order = new VersionedOrder
+        {
+            Version = version,
+            OrderId = MemoryMarshal.Read<long>(buffer.Slice(2)),
+            Quantity = MemoryMarshal.Read<int>(buffer.Slice(10)),
+            Price = 0  // Not available in V1
+        };
+        consumed = 14;
+    }
+    else // version 2+
+    {
+        // V2: version(2) + orderId(8) + quantity(4) + price(8) = 22 bytes
+        if (buffer.Length < 22)
+        {
+            order = default;
+            consumed = 0;
+            return false;
+        }
+        
+        order = new VersionedOrder
+        {
+            Version = version,
+            OrderId = MemoryMarshal.Read<long>(buffer.Slice(2)),
+            Quantity = MemoryMarshal.Read<int>(buffer.Slice(10)),
+            Price = MemoryMarshal.Read<long>(buffer.Slice(14))
+        };
+        consumed = 22;
+    }
+    
+    return true;
+}
+
+// Usage
+var reader = new SpanReader(buffer);
+if (reader.TryReadWith(ParseOrder, out var order))
+{
+    Console.WriteLine($"Order V{order.Version}: ID={order.OrderId}, Qty={order.Quantity}");
+    if (order.Version >= 2)
+        Console.WriteLine($"  Price={order.Price}");
+}
+```
+
+#### Example: Non-Blittable Types
+
+Parse complex types that can't be directly memory-mapped:
+
+```csharp
+struct VariableLengthString
+{
+    public int Length;
+    public byte[] Data;  // Non-blittable
+}
+
+static bool ParseVarString(ReadOnlySpan<byte> buffer, out VariableLengthString str, out int consumed)
+{
+    if (buffer.Length < 4)
+    {
+        str = default;
+        consumed = 0;
+        return false;
+    }
+
+    int length = MemoryMarshal.Read<int>(buffer);
+    if (buffer.Length < 4 + length)
+    {
+        str = default;
+        consumed = 0;
+        return false;
+    }
+
+    str = new VariableLengthString
+    {
+        Length = length,
+        Data = buffer.Slice(4, length).ToArray()
+    };
+    consumed = 4 + length;
+    return true;
+}
+
+// Usage
+var reader = new SpanReader(buffer);
+if (reader.TryReadWith(ParseVarString, out var str))
+{
+    Console.WriteLine($"String length: {str.Length}");
+}
+```
+
+### Memory Alignment Support
+
+SpanReader provides methods for handling memory-aligned data structures:
+
+### Combining Features
+
+You can combine custom parsing and standard reading:
+
+```csharp
+var reader = new SpanReader(buffer);
+
+// Standard read
+if (reader.TryRead<MessageHeader>(out var header))
+{
+    // Custom parsing for versioned content
+    if (reader.TryReadWith(ParseVersionedContent, out var content))
+    {
+        // Continue with standard reads
+        if (reader.TryRead<Footer>(out var footer))
+        {
+            ProcessMessage(header, content, footer);
+        }
+    }
+}
+```
+            ProcessMessage(header, content, footer);
+        }
+    }
+}
+```
+
+### Design Patterns for Extensibility
+
+#### 1. Parser Factory Pattern
+
+Create reusable parsers for different scenarios:
+
+```csharp
+public static class OrderParsers
+{
+    public static SpanParser<Order> GetParser(int version)
+    {
+        return version switch
+        {
+            1 => ParseOrderV1,
+            2 => ParseOrderV2,
+            _ => ParseOrderLatest
+        };
+    }
+    
+    private static bool ParseOrderV1(ReadOnlySpan<byte> buf, out Order order, out int consumed)
+    {
+        // V1 parsing logic
+    }
+    
+    private static bool ParseOrderV2(ReadOnlySpan<byte> buf, out Order order, out int consumed)
+    {
+        // V2 parsing logic
+    }
+}
+
+// Usage
+var reader = new SpanReader(buffer);
+var parser = OrderParsers.GetParser(schemaVersion);
+if (reader.TryReadWith(parser, out var order))
+{
+    ProcessOrder(order);
+}
+```
+
+#### 2. Conditional Field Reading
+
+Handle optional fields based on version or flags:
+
+```csharp
+static bool ParseMessage(ReadOnlySpan<byte> buffer, out Message msg, out int consumed)
+{
+    var reader = new SpanReader(buffer);
+    msg = new Message();
+    consumed = 0;
+    
+    // Required fields
+    if (!reader.TryRead<int>(out msg.Id)) return false;
+    consumed += 4;
+    
+    if (!reader.TryRead<byte>(out byte flags)) return false;
+    consumed += 1;
+    
+    // Optional field based on flag
+    if ((flags & 0x01) != 0)
+    {
+        if (!reader.TryRead<long>(out msg.OptionalTimestamp)) return false;
+        consumed += 8;
+    }
+    
+    return true;
 }
 ```
 
