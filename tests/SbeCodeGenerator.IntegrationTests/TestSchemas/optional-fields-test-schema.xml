@@ -40,4 +40,17 @@
         <field name="id" id="1" type="int64" description="Required ID"/>
         <field name="optionalValue" id="2" type="Int64NULL" description="Optional value"/>
     </sbe:message>
+
+    <!-- Comprehensive message with all optional types -->
+    <sbe:message name="AllOptionalTypes" id="42" description="Message with all optional primitive types">
+        <field name="id" id="1" type="int64" description="Required ID"/>
+        <field name="optInt8" id="2" type="Int8NULL" description="Optional int8"/>
+        <field name="optInt16" id="3" type="Int16NULL" description="Optional int16"/>
+        <field name="optInt32" id="4" type="Int32NULL" description="Optional int32"/>
+        <field name="optInt64" id="5" type="Int64NULL" description="Optional int64"/>
+        <field name="optUInt8" id="6" type="UInt8NULL" description="Optional uint8"/>
+        <field name="optUInt16" id="7" type="UInt16NULL" description="Optional uint16"/>
+        <field name="optUInt32" id="8" type="UInt32NULL" description="Optional uint32"/>
+        <field name="optUInt64" id="9" type="UInt64NULL" description="Optional uint64"/>
+    </sbe:message>
 </sbe:messageSchema>
