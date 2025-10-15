@@ -186,9 +186,9 @@ dotnet test SbeCodeGenerator.IntegrationTests
 dotnet test
 ```
 
-**Current Status**: 32 tests, all passing ✅
+**Current Status**: 145 tests (68 unit + 77 integration), all passing ✅
 
-See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
+See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 
 ## Documentation
 
