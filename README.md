@@ -10,12 +10,13 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 
 ✅ **Fully Implemented SBE Features**:
 - All primitive types (int8, int16, int32, int64, uint8, uint16, uint32, uint64, char)
-- Message encoding/decoding with proper field layout
-- Optional fields with null value semantics
+- **Message encoding/decoding** with proper field layout
+- **Optional fields** with null value semantics and encoding support
 - Composite types with nested fields
 - Enumerations (enums)
 - Bit sets (choice sets with flags)
-- Repeating groups with dimension encoding
+- **Repeating groups** with dimension encoding (read and write)
+- **Variable-length data (varData)** encoding and decoding
 - Constant fields in messages, composites, and groups
 - Automatic and manual field offset calculation
 - **Byte order (endianness) handling** - Little-endian and big-endian support
@@ -27,7 +28,8 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Deprecated field handling (parsed but not marked in code)
 
 📋 **Planned Features**:
-- Variable-length data (varData) support
+- Nested groups (groups within groups)
+- Extended varData types (VarString16, VarString32)
 - Schema evolution with sinceVersion
 - Custom encoding/decoding hooks
 
@@ -63,9 +65,10 @@ Build your project. The generator will automatically create C# types from your s
 
 ### 4. Use Generated Code
 
+**Simple Messages:**
 ```csharp
-// Generated types are ready to use
-var trade = new Trade
+// Create and encode a simple message
+var trade = new TradeData
 {
     TradeId = 123456,
     Price = 9950,
@@ -74,11 +77,62 @@ var trade = new Trade
 };
 
 // Encode to binary format
-byte[] buffer = new byte[Trade.MessageSize];
-// ... encoding logic ...
+byte[] buffer = new byte[TradeData.MESSAGE_SIZE];
+if (trade.TryEncode(buffer, out int bytesWritten))
+{
+    // Send via network
+    await socket.SendAsync(buffer.AsMemory(0, bytesWritten));
+}
 
 // Decode from binary format
-// ... decoding logic ...
+if (TradeData.TryParse(receivedBuffer, out var decoded, out _))
+{
+    Console.WriteLine($"Trade: {decoded.TradeId}, Price: {decoded.Price}");
+}
+```
+
+**Messages with Repeating Groups:**
+```csharp
+// Create message with groups
+var orderBook = new OrderBookData { InstrumentId = 42 };
+var bids = new[] {
+    new BidsData { Price = 1000, Quantity = 100 },
+    new BidsData { Price = 1010, Quantity = 101 }
+};
+
+// Encode with groups
+Span<byte> buffer = stackalloc byte[1024];
+orderBook.BeginEncoding(buffer, out var writer);
+OrderBookData.TryEncodeBids(ref writer, bids);
+
+// Decode with groups
+OrderBookData.TryParse(buffer, out var decoded, out var variableData);
+decoded.ConsumeVariableLengthSegments(
+    variableData,
+    bid => Console.WriteLine($"Bid: {bid.Price}"),
+    ask => Console.WriteLine($"Ask: {ask.Price}")
+);
+```
+
+**Messages with Variable-Length Data:**
+```csharp
+// Encode message with varData
+var order = new NewOrderData { OrderId = 123, Price = 9950 };
+var symbolBytes = Encoding.UTF8.GetBytes("AAPL");
+
+Span<byte> buffer = stackalloc byte[512];
+order.BeginEncoding(buffer, out var writer);
+NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+
+// Decode varData
+NewOrderData.TryParse(buffer, out var decoded, out var variableData);
+decoded.ConsumeVariableLengthSegments(
+    variableData,
+    symbol => {
+        var text = Encoding.UTF8.GetString(symbol.VarData.Slice(0, symbol.Length));
+        Console.WriteLine($"Symbol: {text}");
+    }
+);
 ```
 
 ## Example Schema
@@ -186,7 +240,7 @@ dotnet test SbeCodeGenerator.IntegrationTests
 dotnet test
 ```
 
-**Current Status**: 145 tests (68 unit + 77 integration), all passing ✅
+**Current Status**: 214 tests (105 unit + 109 integration), all passing ✅
 
 See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 

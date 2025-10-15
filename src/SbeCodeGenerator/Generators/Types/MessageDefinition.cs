@@ -143,6 +143,94 @@ namespace SbeSourceGenerator
             sb.AppendLine("", tabs);
             sb.AppendLine("return bytesWritten;", tabs);
             sb.AppendLine("}", --tabs);
+            
+            // If message has groups or varData, generate encoding methods for them
+            if (Groups.Any() || Datas.Any())
+            {
+                AppendVariableDataEncoding(sb, tabs);
+            }
+        }
+
+        private void AppendVariableDataEncoding(StringBuilder sb, int tabs)
+        {
+            // Generate BeginEncoding method that returns a SpanWriter positioned after the message
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Begins encoding this {Name} message with variable-length data support.", tabs);
+            sb.AppendLine("/// Use the returned writer to encode groups and varData fields.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
+            sb.AppendLine("/// <param name=\"writer\">The writer positioned after the message header for writing variable data.</param>", tabs);
+            sb.AppendLine("/// <returns>True if encoding started successfully; otherwise, false.</returns>", tabs);
+            sb.AppendLine($"public bool BeginEncoding(Span<byte> buffer, out SpanWriter writer)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("writer = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("writer = new SpanWriter(buffer);", tabs);
+            sb.AppendLine("writer.Write(this);", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+
+            // Generate helper methods for each group
+            foreach (var group in Groups.Cast<GroupDefinition>())
+            {
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Encodes a {group.Name} group into the buffer.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine("/// <param name=\"writer\">The writer to use for encoding.</param>", tabs);
+                sb.AppendLine($"/// <param name=\"entries\">The {group.Name} entries to encode.</param>", tabs);
+                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+                sb.AppendLine($"public static bool TryEncode{group.Name}(ref SpanWriter writer, ReadOnlySpan<{group.Name}Data> entries)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"// Write group header", tabs);
+                sb.AppendLine($"var header = new {group.DimensionType}", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"BlockLength = (ushort){group.Name}Data.MESSAGE_SIZE,", tabs);
+                sb.AppendLine($"NumInGroup = (uint)entries.Length", tabs);
+                sb.AppendLine("};", --tabs);
+                sb.AppendLine("", tabs);
+                sb.AppendLine("if (!writer.TryWrite(header))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"// Write each entry", tabs);
+                sb.AppendLine("for (int i = 0; i < entries.Length; i++)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!writer.TryWrite(entries[i]))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+            }
+
+            // Generate helper methods for each varData field
+            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            {
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Encodes a {data.Name} varData field into the buffer.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine("/// <param name=\"writer\">The writer to use for encoding.</param>", tabs);
+                sb.AppendLine($"/// <param name=\"data\">The {data.Name} data to encode.</param>", tabs);
+                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+                sb.AppendLine($"public static bool TryEncode{data.Name.FirstCharToUpper()}(ref SpanWriter writer, ReadOnlySpan<byte> data)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"// Write length prefix (uint8 for VarString8)", tabs);
+                sb.AppendLine($"if (data.Length > 255)", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine("if (!writer.TryWrite((byte)data.Length))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"// Write data bytes", tabs);
+                sb.AppendLine("if (!writer.TryWriteBytes(data))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+            }
         }
 
         private void AppendConsumeVariable(StringBuilder sb, int tabs)
