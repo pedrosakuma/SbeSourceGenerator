@@ -194,9 +194,9 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for testing guidelines.
 
 - **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
 - **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
-- **[Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
-- **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - System architecture
-- **[Testing Guide](./TESTING_GUIDE.md)** - How to test the generator
+- **[Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
+- **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture
+- **[Testing Guide](./docs/TESTING_GUIDE.md)** - How to test the generator
 - **[Schema DTOs Documentation](./src/SbeCodeGenerator/Schema/README.md)** - Schema parsing infrastructure
 - **[Changelog](./CHANGELOG.md)** - Version history and release notes
 
@@ -297,4 +297,4 @@ For questions, issues, or feature requests:
 
 **Status**: Active Development  
 **Version**: Pre-1.0 (see roadmap for 1.0 timeline)  
-**Last Updated**: 2024-10-06
+**Last Updated**: 2025-10-15
