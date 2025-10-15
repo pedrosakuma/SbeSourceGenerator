@@ -121,6 +121,8 @@ namespace SbeSourceGenerator.Generators
                     };
                 if (generator is ConstantTypeDefinition constantType)
                     context.CustomConstantTypes[constantType.Name] = 0;
+                if (generator is OptionalTypeDefinition optionalType)
+                    context.OptionalTypes[typeDto.Name] = ToNativeType(typeDto.PrimitiveType);
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
