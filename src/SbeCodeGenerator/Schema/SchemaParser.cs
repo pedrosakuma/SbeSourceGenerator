@@ -30,7 +30,8 @@ namespace SbeSourceGenerator.Schema
                 Type: fieldElement.GetAttributeOrEmpty("type"),
                 SinceVersion: fieldElement.GetAttributeOrEmpty("sinceVersion"),
                 MinValue: fieldElement.GetAttributeOrEmpty("minValue"),
-                MaxValue: fieldElement.GetAttributeOrEmpty("maxValue")
+                MaxValue: fieldElement.GetAttributeOrEmpty("maxValue"),
+                Deprecated: fieldElement.GetAttributeOrEmpty("deprecated")
             );
         }
 

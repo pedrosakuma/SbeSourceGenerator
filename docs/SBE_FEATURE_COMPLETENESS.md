@@ -420,16 +420,22 @@ public long Quantity;
 ---
 
 #### 18. Deprecated Fields Handling
-**Status**: ⚠️ **PARTIAL**
+**Status**: ✅ **IMPLEMENTED**
 
-Deprecated attribute is recognized but not enforced.
+Deprecated fields are properly marked with `[Obsolete]` attribute.
 
 **Current**:
-- `deprecated` attribute is parsed
-- Stored in DTOs
-- Not reflected in generated code (no attributes or warnings)
+- `deprecated` attribute is parsed ✅
+- Stored in DTOs ✅
+- Reflected in generated code with `[Obsolete]` attribute ✅
+- Compiler warnings generated (CS0618) ✅
+- Version information included in deprecation message when `sinceVersion` is present ✅
+- Comprehensive unit and integration tests ✅
 
-**Recommendation**: Add `[Obsolete]` attribute to deprecated fields.
+**Implementation**:
+- Fields with `deprecated` attribute generate `[Obsolete("This field is deprecated")]`
+- Fields with both `deprecated` and `sinceVersion` generate `[Obsolete("This field is deprecated since version N")]`
+- Backward compatibility maintained - deprecated fields still work correctly
 
 ---
 

@@ -222,30 +222,42 @@ This section tracks the progressive enhancement of generated types based on the 
 
 ---
 
-### 1.3 Deprecated Field Handling ⚠️
+### 1.3 Deprecated Field Handling ✅ **COMPLETED**
 
 **Goal**: Properly mark and document deprecated fields in generated code.
 
 **Estimated Effort**: Small (1 week)
 
 **Tasks**:
-- [ ] Add `[Obsolete]` attribute to deprecated fields
-- [ ] Include deprecation message in attribute
-- [ ] Update documentation generation for deprecated items
-- [ ] Add compiler warnings for deprecated field usage
-- [ ] Test that deprecated fields still work correctly
-- [ ] Document migration path from deprecated fields
+- [x] Add `[Obsolete]` attribute to deprecated fields
+- [x] Include deprecation message in attribute
+- [x] Update documentation generation for deprecated items
+- [x] Add compiler warnings for deprecated field usage
+- [x] Test that deprecated fields still work correctly
+- [x] Document migration path from deprecated fields
 
-**Acceptance Criteria**:
+**Acceptance Criteria**: ✅ All Met
 ```csharp
-// Generated code should include:
-[Obsolete("This field is deprecated since version 2.0")]
-public int OldField { get; set; }
+// Generated code includes:
+[Obsolete("This field is deprecated")]
+[FieldOffset(8)]
+public Price OldPrice;
+
+// With sinceVersion, includes version info:
+[Obsolete("This field is deprecated since version 1")]
+[FieldOffset(24)]
+public long LegacyQuantity;
 ```
 
-**Files to Modify**:
-- All field definition generators
-- `SbeCodeGenerator/Generators/Fields/*.cs`
+**Files Modified**:
+- ✅ `SbeCodeGenerator/Schema/SchemaFieldDto.cs` (added Deprecated property)
+- ✅ `SbeCodeGenerator/Schema/SchemaParser.cs` (parse deprecated attribute)
+- ✅ `SbeCodeGenerator/Generators/Fields/MessageFieldDefinition.cs` (generate [Obsolete] attribute)
+- ✅ `SbeCodeGenerator/Generators/Fields/OptionalMessageFieldDefinition.cs` (generate [Obsolete] attribute)
+- ✅ `SbeCodeGenerator/Generators/MessagesCodeGenerator.cs` (pass deprecated to field generators)
+- ✅ `tests/SbeCodeGenerator.Tests/MessagesCodeGeneratorTests.cs` (unit tests added)
+- ✅ `tests/SbeCodeGenerator.IntegrationTests/DeprecatedFieldsIntegrationTests.cs` (integration tests added)
+- ✅ `tests/SbeCodeGenerator.IntegrationTests/TestSchemas/deprecated-test-schema.xml` (test schema created)
 
 ---
 
