@@ -1,7 +1,8 @@
-﻿using System.Runtime.InteropServices;
+﻿using TestNamespace.Runtime;
+using System.Runtime.InteropServices;
 namespace TestNamespace;
 /// <summary>
-/// Trade message
+/// Trade message (Version 0)
 /// (MessageDefinition)
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Pack = 1)]
@@ -47,18 +48,48 @@ public partial struct TradeData
 	}
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
-		if (buffer.Length < blockLength)
+		var reader = new SpanReader(buffer);
+		// Read the message data
+		if (!reader.TryRead<TradeData>(out message))
 		{
-			message = default;
 			variableData = default;
 			return false;
 		}
-		// Read only the bytes specified by blockLength to support schema evolution
-		// If blockLength < MESSAGE_SIZE, we're reading an older version of the message
-		// If blockLength > MESSAGE_SIZE, we skip unknown fields added in newer versions
-		var actualReadSize = System.Math.Min(blockLength, MESSAGE_SIZE);
-		message = MemoryMarshal.AsRef<TradeData>(buffer);
-		variableData = buffer.Slice(blockLength);
+		
+		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
+		var additionalBytes = blockLength - MESSAGE_SIZE;
+		if (additionalBytes > 0)
+		{
+			if (!reader.TrySkip(additionalBytes))
+			{
+				variableData = default;
+				return false;
+			}
+			variableData = reader.Remaining;
+		}
+		else
+		{
+			// For backward compatibility: variable data starts at blockLength
+			variableData = buffer.Slice(blockLength);
+		}
+		
+		return true;
+	}
+	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out TradeData message)
+	{
+		// Read the message data
+		if (!reader.TryRead<TradeData>(out message))
+		{
+			return false;
+		}
+		
+		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
+		var additionalBytes = blockLength - MESSAGE_SIZE;
+		if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))
+		{
+			return false;
+		}
+		
 		return true;
 	}
 }
