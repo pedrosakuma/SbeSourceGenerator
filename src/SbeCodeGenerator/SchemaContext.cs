@@ -11,5 +11,11 @@ namespace SbeSourceGenerator
         public Dictionary<string, string> EnumPrimitiveTypes { get; } = new Dictionary<string, string>();
         public Dictionary<string, int> CustomTypeLengths { get; } = new Dictionary<string, int>();
         public Dictionary<string, byte> CustomConstantTypes { get; } = new Dictionary<string, byte>();
+        
+        /// <summary>
+        /// The byte order (endianness) specified in the schema.
+        /// Defaults to "littleEndian" if not specified.
+        /// </summary>
+        public string ByteOrder { get; set; } = "littleEndian";
     }
 }
