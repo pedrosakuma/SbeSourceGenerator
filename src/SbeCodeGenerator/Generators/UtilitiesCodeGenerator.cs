@@ -26,6 +26,11 @@ namespace SbeSourceGenerator.Generators
             sb = new StringBuilder();
             new SpanReaderGenerator(ns).AppendFileContent(sb);
             yield return ($"{ns}\\Runtime\\SpanReader", sb.ToString());
+
+            // Generate EncodingHooks
+            sb = new StringBuilder();
+            new EncodingHooksGenerator(ns).AppendFileContent(sb);
+            yield return ($"{ns}\\Runtime\\EncodingHooks", sb.ToString());
         }
     }
 }

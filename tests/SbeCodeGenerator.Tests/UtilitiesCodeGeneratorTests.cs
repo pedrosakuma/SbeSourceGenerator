@@ -22,7 +22,7 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Equal(3, resultList.Count);
+            Assert.Equal(4, resultList.Count);
             Assert.Contains(resultList, r => r.name.Contains("NumberExtensions"));
             Assert.Contains(resultList, r => r.content.Contains("NumberExtensions"));
         }
@@ -41,7 +41,7 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Equal(3, resultList.Count);
+            Assert.Equal(4, resultList.Count);
             Assert.Contains(resultList, r => r.name.Contains("EndianHelpers"));
             Assert.Contains(resultList, r => r.content.Contains("EndianHelpers"));
         }
@@ -60,7 +60,7 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Equal(3, resultList.Count);
+            Assert.Equal(4, resultList.Count);
             Assert.All(resultList, r => Assert.Contains("MyCustomNamespace", r.content));
         }
 
@@ -78,9 +78,28 @@ namespace SbeCodeGenerator.Tests
 
             // Assert
             var resultList = results.ToList();
-            Assert.Equal(3, resultList.Count);
+            Assert.Equal(4, resultList.Count);
             Assert.Contains(resultList, r => r.name.Contains("SpanReader"));
             Assert.Contains(resultList, r => r.content.Contains("public ref struct SpanReader"));
+        }
+
+        [Fact]
+        public void Generate_ProducesEncodingHooks()
+        {
+            // Arrange
+            var generator = new UtilitiesCodeGenerator();
+            var context = new SchemaContext();
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            Assert.Equal(4, resultList.Count);
+            Assert.Contains(resultList, r => r.name.Contains("EncodingHooks"));
+            Assert.Contains(resultList, r => r.content.Contains("EncodingHooks<TMessage>"));
         }
     }
 }

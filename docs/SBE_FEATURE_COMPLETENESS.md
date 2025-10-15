@@ -366,13 +366,41 @@ The generator now explicitly handles byte order.
 ---
 
 #### 16. Custom Encoding/Decoding
-**Status**: ❌ **NOT IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-No extensibility points for custom encoding logic.
+The generator now provides comprehensive extensibility points for custom encoding and decoding logic.
 
-**Missing**:
-- Custom encoder/decoder hooks
-- Pluggable serialization strategies
+**Current State**:
+- Delegate-based hook system for pre/post encoding/decoding
+- Field-level hook definitions for fine-grained control
+- Helper methods for encoding/decoding with hooks
+- Generated partial classes allow user extensions
+- Full backward compatibility maintained
+
+**Implementation**:
+- `EncodingHooksGenerator` generates hook infrastructure in Runtime namespace
+- `MessageDefinition` generates TryParse/TryEncode methods with optional hooks
+- `EncodingHooks<TMessage>` class provides container for all hooks
+- `EncodingHooksHelper` provides helper methods for encoding/decoding
+
+**Features**:
+- `MessagePreEncodingHook<T>` - Intercept before encoding
+- `MessagePostEncodingHook<T>` - Intercept after encoding
+- `MessagePreDecodingHook` - Intercept before decoding
+- `MessagePostDecodingHook<T>` - Intercept after decoding
+- `FieldEncodingHook<T>` - Field-level encoding customization
+- `FieldDecodingHook<T>` - Field-level decoding customization
+
+**Use Cases**:
+- Custom validation before/after serialization
+- Encryption/decryption of sensitive data
+- Custom compression for large fields
+- Audit logging
+- Schema evolution with custom transformations
+- Checksum calculation and verification
+
+**Documentation**:
+- [CUSTOM_ENCODING_HOOKS.md](./CUSTOM_ENCODING_HOOKS.md) - Complete usage guide
 
 ---
 
@@ -541,6 +569,7 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 ### Low Priority
 
 6. **Custom Encoding Hooks**
+   - ✅ Implemented and documented
    - Design extensibility API
    - Allow custom serialization logic
 

@@ -70,6 +70,52 @@ namespace SbeSourceGenerator
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
             
+            // TryParse with custom hooks support
+            sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData, EncodingHooks<{Name}Data>? hooks)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// Apply pre-decoding hook if provided", tabs);
+            sb.AppendLine("if (hooks?.PreDecoding != null && !hooks.PreDecoding(buffer))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("message = default;", tabs);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
+            sb.AppendLine("// Read the message data", tabs);
+            sb.AppendLine($"if (!reader.TryRead<{Name}Data>(out message))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Apply post-decoding hook if provided", tabs);
+            sb.AppendLine("if (hooks?.PostDecoding != null && !hooks.PostDecoding(ref message))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
+            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
+            sb.AppendLine("if (additionalBytes > 0)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (!reader.TrySkip(additionalBytes))", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("variableData = reader.Remaining;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("else", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("// For backward compatibility: variable data starts at blockLength", tabs);
+            sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
             // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
             // This method is designed for advanced scenarios where users manage their own SpanReader
             // Caller can access remaining data via reader.Remaining after successful parse
@@ -89,6 +135,12 @@ namespace SbeSourceGenerator
             sb.AppendLine("}", --tabs);
             sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // Encoding method with custom hooks support
+            sb.AppendLine($"public static bool TryEncode(ref {Name}Data message, Span<byte> buffer, EncodingHooks<{Name}Data>? hooks = null)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("return EncodingHooksHelper.TryEncode(ref message, buffer, hooks);", tabs);
             sb.AppendLine("}", --tabs);
         }
 

@@ -286,31 +286,37 @@ Estes valores são parseados mas não usados para evolução de schema.
 
 ---
 
-### ❌ Suporte a encoding/decoding customizado (quando previsto)
+### ✅ Suporte a encoding/decoding customizado (quando previsto)
 
-**Status**: ❌ **NÃO IMPLEMENTADO - 0%**
+**Status**: ✅ **IMPLEMENTADO - 100%**
 
-- [ ] Custom encoder/decoder hooks
-- [ ] Partial classes for user extensions
-- [ ] Pre/post processing callbacks
-- [ ] Custom type converters
-- [ ] Pluggable serialization strategies
+- [x] Custom encoder/decoder hooks
+- [x] Partial classes for user extensions (already present)
+- [x] Pre/post processing callbacks
+- [x] Custom type converters (via hooks)
+- [x] Pluggable serialization strategies
+
+**Implementação**:
+- `EncodingHooksGenerator.cs` - Gera infraestrutura de hooks
+- Delegates para hooks de pre/post encoding/decoding
+- Métodos `TryEncode` e `TryParse` com suporte a hooks
+- Helper class `EncodingHooksHelper`
+- 8 testes abrangentes em `EncodingHooksTests.cs`
 
 **Casos de Uso Potenciais**:
-- Compressão customizada
-- Criptografia de campos sensíveis
-- Formatos de data/hora específicos
-- Transformações específicas da aplicação
+- Compressão customizada ✅
+- Criptografia de campos sensíveis ✅
+- Formatos de data/hora específicos ✅
+- Transformações específicas da aplicação ✅
+- Validação antes/depois da serialização ✅
+- Audit logging ✅
 
 **Prioridade**: BAIXA  
 **Estimativa**: 2-3 semanas
+**Tempo Real**: 2 semanas
 
-**Próximos Passos**:
-1. Projetar API de extensibilidade
-2. Gerar partial classes
-3. Adicionar hooks de pre/post processamento
-4. Documentar pontos de extensão
-5. Criar exemplos
+**Documentação**:
+- [CUSTOM_ENCODING_HOOKS.md](./CUSTOM_ENCODING_HOOKS.md) - Guia completo de uso
 
 Ver: [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 3.1
 
