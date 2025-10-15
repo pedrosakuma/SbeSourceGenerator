@@ -254,5 +254,152 @@ namespace SbeCodeGenerator.IntegrationTests
             SimpleOptionalData.TryParse(buffer3, out var decoded3, out _);
             Assert.Equal(200, decoded3.OptionalValue);
         }
+
+        [Fact]
+        public void AllOptionalTypes_RoundTrip_WithAllFieldsSet_Succeeds()
+        {
+            // Arrange - Create message with all optional fields set to non-null values
+            var original = new AllOptionalTypesData { Id = 1 };
+            original.SetOptInt8(sbyte.MaxValue);
+            original.SetOptInt16(short.MaxValue);
+            original.SetOptInt32(int.MaxValue);
+            original.SetOptInt64(long.MaxValue);
+            original.SetOptUInt8(byte.MaxValue - 1); // -1 because 255 is null value
+            original.SetOptUInt16(ushort.MaxValue - 1); // -1 because 65535 is null value
+            original.SetOptUInt32(uint.MaxValue - 1); // -1 because 4294967295 is null value
+            original.SetOptUInt64(ulong.MaxValue - 1); // -1 because max is null value
+
+            var buffer = new byte[AllOptionalTypesData.MESSAGE_SIZE];
+
+            // Act - Encode
+            bool encodeResult = original.TryEncode(buffer, out int bytesWritten);
+
+            // Assert encoding succeeded
+            Assert.True(encodeResult);
+            Assert.Equal(AllOptionalTypesData.MESSAGE_SIZE, bytesWritten);
+
+            // Act - Decode
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+
+            // Assert decoding succeeded and all values match
+            Assert.True(decodeResult);
+            Assert.Equal(original.Id, decoded.Id);
+            Assert.Equal(sbyte.MaxValue, decoded.OptInt8);
+            Assert.Equal(short.MaxValue, decoded.OptInt16);
+            Assert.Equal(int.MaxValue, decoded.OptInt32);
+            Assert.Equal(long.MaxValue, decoded.OptInt64);
+            Assert.Equal((byte)(byte.MaxValue - 1), decoded.OptUInt8);
+            Assert.Equal((ushort)(ushort.MaxValue - 1), decoded.OptUInt16);
+            Assert.Equal(uint.MaxValue - 1, decoded.OptUInt32);
+            Assert.Equal(ulong.MaxValue - 1, decoded.OptUInt64);
+        }
+
+        [Fact]
+        public void AllOptionalTypes_RoundTrip_WithAllFieldsNull_Succeeds()
+        {
+            // Arrange - Create message with all optional fields set to null
+            var original = new AllOptionalTypesData { Id = 2 };
+            original.SetOptInt8(null);
+            original.SetOptInt16(null);
+            original.SetOptInt32(null);
+            original.SetOptInt64(null);
+            original.SetOptUInt8(null);
+            original.SetOptUInt16(null);
+            original.SetOptUInt32(null);
+            original.SetOptUInt64(null);
+
+            var buffer = new byte[AllOptionalTypesData.MESSAGE_SIZE];
+
+            // Act - Encode
+            bool encodeResult = original.TryEncode(buffer, out int bytesWritten);
+
+            // Assert encoding succeeded
+            Assert.True(encodeResult);
+            Assert.Equal(AllOptionalTypesData.MESSAGE_SIZE, bytesWritten);
+
+            // Act - Decode
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+
+            // Assert decoding succeeded and all values are null
+            Assert.True(decodeResult);
+            Assert.Equal(original.Id, decoded.Id);
+            Assert.Null(decoded.OptInt8);
+            Assert.Null(decoded.OptInt16);
+            Assert.Null(decoded.OptInt32);
+            Assert.Null(decoded.OptInt64);
+            Assert.Null(decoded.OptUInt8);
+            Assert.Null(decoded.OptUInt16);
+            Assert.Null(decoded.OptUInt32);
+            Assert.Null(decoded.OptUInt64);
+        }
+
+        [Fact]
+        public void AllOptionalTypes_RoundTrip_WithMixedNullAndValues_Succeeds()
+        {
+            // Arrange - Create message with some optional fields set and some null
+            var original = new AllOptionalTypesData { Id = 3 };
+            original.SetOptInt8(10);
+            original.SetOptInt16(null);
+            original.SetOptInt32(1000);
+            original.SetOptInt64(null);
+            original.SetOptUInt8(null);
+            original.SetOptUInt16(200);
+            original.SetOptUInt32(null);
+            original.SetOptUInt64(3000);
+
+            var buffer = new byte[AllOptionalTypesData.MESSAGE_SIZE];
+
+            // Act - Encode
+            bool encodeResult = original.TryEncode(buffer, out int bytesWritten);
+
+            // Assert encoding succeeded
+            Assert.True(encodeResult);
+
+            // Act - Decode
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+
+            // Assert decoding succeeded and values match
+            Assert.True(decodeResult);
+            Assert.Equal(original.Id, decoded.Id);
+            Assert.Equal((sbyte)10, decoded.OptInt8);
+            Assert.Null(decoded.OptInt16);
+            Assert.Equal(1000, decoded.OptInt32);
+            Assert.Null(decoded.OptInt64);
+            Assert.Null(decoded.OptUInt8);
+            Assert.Equal((ushort)200, decoded.OptUInt16);
+            Assert.Null(decoded.OptUInt32);
+            Assert.Equal((ulong)3000, decoded.OptUInt64);
+        }
+
+        [Fact]
+        public void AllOptionalTypes_RoundTrip_WithEdgeCaseValues_Succeeds()
+        {
+            // Test values near the null values to ensure they're preserved correctly
+            var original = new AllOptionalTypesData { Id = 4 };
+            original.SetOptInt8(-127); // Near null value (-128) but not null
+            original.SetOptInt16(-32767); // Near null value (-32768) but not null
+            original.SetOptInt32(-2147483647); // Near null value but not null
+            original.SetOptInt64(-9223372036854775807L); // Near null value but not null
+            original.SetOptUInt8(254); // Near null value (255) but not null
+            original.SetOptUInt16(65534); // Near null value (65535) but not null
+            original.SetOptUInt32(4294967294); // Near null value but not null
+            original.SetOptUInt64(18446744073709551614); // Near null value but not null
+
+            var buffer = new byte[AllOptionalTypesData.MESSAGE_SIZE];
+
+            // Act - Encode and decode
+            original.TryEncode(buffer, out _);
+            AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+
+            // Assert all values are preserved (not null)
+            Assert.Equal((sbyte)-127, decoded.OptInt8);
+            Assert.Equal((short)-32767, decoded.OptInt16);
+            Assert.Equal(-2147483647, decoded.OptInt32);
+            Assert.Equal(-9223372036854775807L, decoded.OptInt64);
+            Assert.Equal((byte)254, decoded.OptUInt8);
+            Assert.Equal((ushort)65534, decoded.OptUInt16);
+            Assert.Equal((uint)4294967294, decoded.OptUInt32);
+            Assert.Equal((ulong)18446744073709551614, decoded.OptUInt64);
+        }
     }
 }
