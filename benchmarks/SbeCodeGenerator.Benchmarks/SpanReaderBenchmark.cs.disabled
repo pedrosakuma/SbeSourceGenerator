@@ -1,8 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
-using SbeSourceGenerator.Runtime;
 
 namespace SbeCodeGenerator.Benchmarks
 {
@@ -175,14 +173,6 @@ namespace SbeCodeGenerator.Benchmarks
             }
             
             return totalBidQty + totalAskQty;
-        }
-    }
-
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var summary = BenchmarkRunner.Run<SpanReaderBenchmark>();
         }
     }
 }

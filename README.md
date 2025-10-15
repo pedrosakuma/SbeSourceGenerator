@@ -293,7 +293,9 @@ The generated code is designed for high performance:
 - Explicit memory layout for cache efficiency
 - Blittable types for P/Invoke scenarios
 
-*Note: Formal benchmarks are planned as part of the roadmap.*
+**Benchmark Infrastructure**: Comprehensive benchmarks using BenchmarkDotNet are available in the `benchmarks/` directory.
+
+See [Performance Tuning Guide](./docs/PERFORMANCE_TUNING_GUIDE.md) for optimization best practices and [Benchmark Results](./docs/BENCHMARK_RESULTS.md) for detailed performance analysis.
 
 ## Compliance
 
