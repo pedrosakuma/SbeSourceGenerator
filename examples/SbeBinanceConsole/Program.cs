@@ -107,7 +107,7 @@ namespace SbeBinanceConsole
                                 decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
                                 string? symbol = null;
                                 
-                                trades.ConsumeVariableLengthSegments(reader.Remaining,
+                                trades.ConsumeVariableLengthSegments(ref reader,
                                 trade =>
                                     {
                                         lastTrade = trade;
@@ -135,7 +135,7 @@ namespace SbeBinanceConsole
                                 string symbol = "";
                                 decimal qtyMultiplier = (decimal)Math.Pow(10, bestBid.QtyExponent.Value);
                                 decimal priceMultiplier = (decimal)Math.Pow(10, bestBid.PriceExponent.Value);
-                                bestBid.ConsumeVariableLengthSegments(reader.Remaining,
+                                bestBid.ConsumeVariableLengthSegments(ref reader,
                                    s =>
                                    {
                                        symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
@@ -176,7 +176,7 @@ namespace SbeBinanceConsole
                                     string symbol = "";
                                     decimal qtyMultiplier = (decimal)Math.Pow(10, depth.QtyExponent.Value);
                                     decimal priceMultiplier = (decimal)Math.Pow(10, depth.PriceExponent.Value);
-                                    depth.ConsumeVariableLengthSegments(reader.Remaining,
+                                    depth.ConsumeVariableLengthSegments(ref reader,
                                         cb =>
                                         {
                                                 var entry = new OrderBookEntry
