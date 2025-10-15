@@ -9,6 +9,12 @@ This directory contains performance benchmarks for the SBE Code Generator using 
 
 ## Running Benchmarks
 
+### Current Status
+
+⚠️ **Note**: Some benchmarks are temporarily disabled due to a pre-existing code generation bug with `GroupSizeEncoding`. See [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) for details.
+
+The benchmark infrastructure is complete and ready. Once the code generation bug is fixed, the full benchmark suite can be executed.
+
 ### Run All Benchmarks
 
 ```bash
