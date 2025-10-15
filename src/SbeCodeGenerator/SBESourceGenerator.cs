@@ -50,6 +50,17 @@ namespace SbeSourceGenerator
                     // Create a per-schema context to hold mutable state
                     var context = new SchemaContext();
                     
+                    // Parse byteOrder attribute from messageSchema element
+                    var messageSchemaNode = d.DocumentElement;
+                    if (messageSchemaNode != null)
+                    {
+                        var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
+                        if (!string.IsNullOrEmpty(byteOrderAttr))
+                        {
+                            context.ByteOrder = byteOrderAttr;
+                        }
+                    }
+                    
                     // Use specialized generators to handle different categories
                     var typesGenerator = new TypesCodeGenerator();
                     var messagesGenerator = new MessagesCodeGenerator();

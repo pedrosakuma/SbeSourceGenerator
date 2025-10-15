@@ -121,4 +121,76 @@ public static class EndianHelpers
     {
         return BinaryPrimitives.ReadUInt64LittleEndian(source);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt16BigEndian(Span<byte> destination, short value)
+    {
+        BinaryPrimitives.WriteInt16BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt16LittleEndian(Span<byte> destination, short value)
+    {
+        BinaryPrimitives.WriteInt16LittleEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt16BigEndian(Span<byte> destination, ushort value)
+    {
+        BinaryPrimitives.WriteUInt16BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt16LittleEndian(Span<byte> destination, ushort value)
+    {
+        BinaryPrimitives.WriteUInt16LittleEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt32BigEndian(Span<byte> destination, int value)
+    {
+        BinaryPrimitives.WriteInt32BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt32LittleEndian(Span<byte> destination, int value)
+    {
+        BinaryPrimitives.WriteInt32LittleEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt32BigEndian(Span<byte> destination, uint value)
+    {
+        BinaryPrimitives.WriteUInt32BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt32LittleEndian(Span<byte> destination, uint value)
+    {
+        BinaryPrimitives.WriteUInt32LittleEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt64BigEndian(Span<byte> destination, long value)
+    {
+        BinaryPrimitives.WriteInt64BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteInt64LittleEndian(Span<byte> destination, long value)
+    {
+        BinaryPrimitives.WriteInt64LittleEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt64BigEndian(Span<byte> destination, ulong value)
+    {
+        BinaryPrimitives.WriteUInt64BigEndian(destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt64LittleEndian(Span<byte> destination, ulong value)
+    {
+        BinaryPrimitives.WriteUInt64LittleEndian(destination, value);
+    }
 }

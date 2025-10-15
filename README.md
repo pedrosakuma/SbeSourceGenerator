@@ -18,6 +18,8 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Repeating groups with dimension encoding
 - Constant fields in messages, composites, and groups
 - Automatic and manual field offset calculation
+- **Byte order (endianness) handling** - Little-endian and big-endian support
+- Validation constraints (min/max ranges)
 - Comprehensive diagnostics and error reporting
 
 ⚠️ **Partially Implemented**:
@@ -27,8 +29,6 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 📋 **Planned Features**:
 - Variable-length data (varData) support
 - Schema evolution with sinceVersion
-- Validation constraints (min/max ranges)
-- Byte order (endianness) handling
 - Custom encoding/decoding hooks
 
 See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
