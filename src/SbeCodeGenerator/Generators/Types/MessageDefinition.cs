@@ -13,7 +13,11 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             // Add namespace.Runtime using for SpanReader (used in TryParse) and groups/data fields
-            sb.AppendUsings(tabs, $"{Namespace}.Runtime");
+            // For versioned namespaces (e.g., MySchema.V1), use the base namespace's Runtime (MySchema.Runtime)
+            var baseNamespace = Namespace.Contains(".V") 
+                ? Namespace.Substring(0, Namespace.LastIndexOf(".V"))
+                : Namespace;
+            sb.AppendUsings(tabs, $"{baseNamespace}.Runtime");
             
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 

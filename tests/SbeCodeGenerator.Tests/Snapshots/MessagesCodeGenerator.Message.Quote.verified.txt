@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 namespace TestNamespace;
 /// <summary>
-/// Quote message
+/// Quote message (Version 0)
 /// (MessageDefinition)
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Pack = 1)]
