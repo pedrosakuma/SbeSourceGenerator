@@ -26,6 +26,7 @@ namespace SbeSourceGenerator
             AppendConstantsFileContent(sb, tabs);
             AppendFieldsFileContent(sb, tabs);
             AppendParseHelpers(sb, tabs);
+            AppendEncodeHelpers(sb, tabs);
             AppendGroupsFileContent(sb, tabs);
             AppendConsumeVariable(sb, tabs);
             sb.AppendLine("}", --tabs);
@@ -89,6 +90,58 @@ namespace SbeSourceGenerator
             sb.AppendLine("}", --tabs);
             sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+        }
+
+        private void AppendEncodeHelpers(StringBuilder sb, int tabs)
+        {
+            // TryEncode - basic encoding method
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Encodes this {Name} message to the provided buffer.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
+            sb.AppendLine("/// <param name=\"bytesWritten\">Number of bytes written on success.</param>", tabs);
+            sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+            sb.AppendLine($"public bool TryEncode(Span<byte> buffer, out int bytesWritten)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("bytesWritten = 0;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("var writer = new SpanWriter(buffer);", tabs);
+            sb.AppendLine("writer.Write(this);", tabs);
+            sb.AppendLine("bytesWritten = MESSAGE_SIZE;", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // TryEncodeWithWriter - encoding with existing SpanWriter
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Encodes this {Name} message using an existing SpanWriter.", tabs);
+            sb.AppendLine("/// Useful for composing multiple messages or adding headers.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("/// <param name=\"writer\">The writer to use.</param>", tabs);
+            sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+            sb.AppendLine($"public bool TryEncodeWithWriter(ref SpanWriter writer)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("return writer.TryWrite(this);", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            // Encode - throwing version
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Encodes this {Name} message to the provided buffer.", tabs);
+            sb.AppendLine("/// Throws InvalidOperationException if encoding fails.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
+            sb.AppendLine("/// <returns>Number of bytes written.</returns>", tabs);
+            sb.AppendLine("/// <exception cref=\"InvalidOperationException\">Thrown when buffer is too small.</exception>", tabs);
+            sb.AppendLine($"public int Encode(Span<byte> buffer)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (!TryEncode(buffer, out int bytesWritten))", tabs);
+            sb.AppendLine($"    throw new InvalidOperationException($\"Failed to encode {Name}Data. Buffer size: {{buffer.Length}}, Required: {{MESSAGE_SIZE}}\");", tabs);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("return bytesWritten;", tabs);
             sb.AppendLine("}", --tabs);
         }
 
