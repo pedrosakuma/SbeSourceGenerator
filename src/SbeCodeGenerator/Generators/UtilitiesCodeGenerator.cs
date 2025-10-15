@@ -15,17 +15,17 @@ namespace SbeSourceGenerator.Generators
             // Generate NumberExtensions
             StringBuilder sb = new StringBuilder();
             new NumberExtensions(ns).AppendFileContent(sb);
-            yield return ($"Utilities\\NumberExtensions", sb.ToString());
+            yield return ($"{ns}\\Utilities\\NumberExtensions", sb.ToString());
 
             // Generate EndianHelpers
             sb = new StringBuilder();
             new EndianHelpers(ns).AppendFileContent(sb);
-            yield return ($"Utilities\\EndianHelpers", sb.ToString());
+            yield return ($"{ns}\\Utilities\\EndianHelpers", sb.ToString());
 
             // Generate SpanReader
             sb = new StringBuilder();
             new SpanReaderGenerator(ns).AppendFileContent(sb);
-            yield return ($"Runtime\\SpanReader", sb.ToString());
+            yield return ($"{ns}\\Runtime\\SpanReader", sb.ToString());
         }
     }
 }
