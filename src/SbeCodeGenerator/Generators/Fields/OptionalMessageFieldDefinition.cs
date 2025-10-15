@@ -42,6 +42,7 @@ namespace SbeSourceGenerator
             {
                 sb.AppendLine($"private {Type} {Name.FirstCharToLower()};", tabs);
                 sb.AppendLine($"public {Type}? {Name} => ({PrimitiveType}){Name.FirstCharToLower()} == {TypesCatalog.NullValueByType[PrimitiveType]} ? null : {Name.FirstCharToLower()};", tabs);
+                sb.AppendLine($"public void Set{Name}({Type}? value) => {Name.FirstCharToLower()} = value ?? ({Type}){TypesCatalog.NullValueByType[PrimitiveType]};", tabs);
             }
             else
             {

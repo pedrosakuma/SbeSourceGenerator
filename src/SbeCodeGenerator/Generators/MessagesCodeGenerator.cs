@@ -153,9 +153,14 @@ namespace SbeSourceGenerator.Generators
                     return true; // Include if we can't parse the version
                 })
                 .Select(field =>
-                    field.Presence switch
-                    {
-                        "optional" => new OptionalMessageFieldDefinition(
+                {
+                    // Check if this field is optional either by:
+                    // 1. Having presence="optional" attribute
+                    // 2. Using a type that is defined as optional (e.g., Int64NULL)
+                    bool isOptional = field.Presence == "optional" || context.OptionalTypes.ContainsKey(field.Type);
+                    
+                    return isOptional
+                        ? new OptionalMessageFieldDefinition(
                             field.Name.FirstCharToUpper(),
                             field.Id,
                             ToNativeType(field.Type),
@@ -165,8 +170,8 @@ namespace SbeSourceGenerator.Generators
                             GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated
-                        ),
-                        _ => (IFileContentGenerator)new MessageFieldDefinition(
+                        )
+                        : (IFileContentGenerator)new MessageFieldDefinition(
                             field.Name.FirstCharToUpper(),
                             field.Id,
                             ToNativeType(field.Type),
@@ -175,15 +180,22 @@ namespace SbeSourceGenerator.Generators
                             GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated
-                        )
-                    })
+                        );
+                })
                 .ToList();
         }
 
         private static string? GetUnderlyingType(string type, SchemaContext context)
         {
-            context.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType);
-            return underlyingType;
+            // Check if it's an enum type first
+            if (context.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType))
+                return underlyingType;
+            
+            // Check if it's an optional type (e.g., Int64NULL)
+            if (context.OptionalTypes.TryGetValue(type, out underlyingType))
+                return underlyingType;
+            
+            return null;
         }
 
         private static int GetTypeLength(string type, SchemaContext context)
