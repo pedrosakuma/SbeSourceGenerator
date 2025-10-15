@@ -13,6 +13,12 @@ namespace SbeSourceGenerator
         public Dictionary<string, byte> CustomConstantTypes { get; } = new Dictionary<string, byte>();
         
         /// <summary>
+        /// Tracks which types are optional types (have presence="optional").
+        /// Maps type name to its underlying primitive type (e.g., "Int64NULL" -> "long").
+        /// </summary>
+        public Dictionary<string, string> OptionalTypes { get; } = new Dictionary<string, string>();
+        
+        /// <summary>
         /// The byte order (endianness) specified in the schema.
         /// Defaults to "littleEndian" if not specified.
         /// </summary>
