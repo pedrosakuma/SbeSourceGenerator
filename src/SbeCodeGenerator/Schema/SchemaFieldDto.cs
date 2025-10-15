@@ -18,6 +18,7 @@ namespace SbeSourceGenerator.Schema
         string Type,
         string SinceVersion,
         string MinValue,
-        string MaxValue
+        string MaxValue,
+        string Deprecated
     );
 }
