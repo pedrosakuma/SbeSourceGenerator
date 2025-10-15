@@ -1,5 +1,10 @@
 # Phase 2 Summary: Type Conversions and Advanced Features
 
+> **⚠️ HISTORICAL DOCUMENT**  
+> Phase 2 was a planning and documentation phase completed in 2025-10-14.  
+> The recommendations from Phase 2 have been implemented in Phase 3.  
+> **For current summary, see [PHASE3_SUMMARY.md](./PHASE3_SUMMARY.md)**.
+
 ## Overview
 
 This document summarizes Phase 2 of the SbeSourceGenerator development, which focuses on documenting lessons learned from Phase 1 and providing a roadmap for future type conversion and advanced feature implementations.
