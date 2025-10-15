@@ -27,8 +27,8 @@ This project follows a simple code of conduct:
 1. **Read the Documentation**
    - [README.md](./README.md) - Project overview
    - [CI/CD Pipeline](./docs/CICD_PIPELINE.md) - CI/CD configuration and publishing
-   - [SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md) - Current feature status
-   - [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
+   - [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) - Current feature status
+   - [SBE_IMPLEMENTATION_ROADMAP.md](./docs/SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
    - [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) - System design
    - [sbe-generator.md](./docs/sbe-generator.md) - Generator architecture and extension guide ⭐ **Start here for development**
 
@@ -39,9 +39,9 @@ This project follows a simple code of conduct:
    - Read documentation in `docs/`
 
 3. **Find an Issue**
-   - Check [open issues](https://github.com/pedrosakuma/PcapSbePocConsole/issues)
+   - Check [open issues](https://github.com/pedrosakuma/SbeSourceGenerator/issues)
    - Look for issues labeled `good first issue` or `help wanted`
-   - Review the [Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) for larger features
+   - Review the [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for larger features
 
 ## How to Contribute
 
