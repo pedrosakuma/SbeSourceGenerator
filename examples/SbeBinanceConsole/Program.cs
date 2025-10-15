@@ -1,4 +1,5 @@
 ﻿using Binance.Stream;
+using Binance.Stream.Runtime;
 using System.CommandLine;
 using System.Dynamic;
 using System.Net;
@@ -65,7 +66,7 @@ namespace SbeBinanceConsole
             rootCommand.Subcommands.Add(command);
         }
 
-        private static async Task SubscribeAsync(string? key, string? subscription, string? instrument, Action<MessageHeader, ReadOnlySpan<byte>> action, CancellationToken token)
+        private static async Task SubscribeAsync(string? key, string? subscription, string? instrument, Action<MessageHeader, SpanReader> action, CancellationToken token)
         {
             ClientWebSocket ws = new ClientWebSocket();
             ws.Options.SetRequestHeader("X-MBX-APIKEY", key);
@@ -83,36 +84,38 @@ namespace SbeBinanceConsole
                     break;
                 }
                 var span = buffer.Span.Slice(0, result.Count);
-                if (!MessageHeader.TryParse(span, out var header, out var body))
+                var reader = new SpanReader(span);
+                if(!reader.TryRead<MessageHeader>(out var header))
                 {
                     continue;
                 }
-                action(header, body);
+                action(header, reader);
             }
         }
         private static Task Trade(string key, string instrument, CancellationToken token)
         {
             return SubscribeAsync(key, "trade", instrument,
-                (header, body) =>
+                (header, reader) =>
                 {
                     switch (header.TemplateId)
                     {
                         case TradesStreamEventData.MESSAGE_ID:
-                            if (TradesStreamEventData.TryParse(body, out var trades, out var tradesVariableData))
+                            if (reader.TryRead<TradesStreamEventData>(out var trades))
                             {
                                 TradesStreamEventData.TradesData lastTrade = default;
                                 decimal qtyMultiplier = (decimal)Math.Pow(10, trades.QtyExponent.Value);
                                 decimal priceMultiplier = (decimal)Math.Pow(10, trades.PriceExponent.Value);
                                 string? symbol = null;
-                                trades.ConsumeVariableLengthSegments(tradesVariableData,
+                                
+                                trades.ConsumeVariableLengthSegments(reader.Remaining,
                                 trade =>
-                                {
-                                    lastTrade = trade;
-                                },
-                                s =>
-                                {
-                                    symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
-                                });
+                                    {
+                                        lastTrade = trade;
+                                    },
+                                    s =>
+                                    {
+                                        symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
+                                    });
                                 Console.WriteLine($"s:{symbol}, id: {lastTrade.Id.Value}, q: {lastTrade.Qty.Value * priceMultiplier}, p: {lastTrade.Price.Value * priceMultiplier}");
                             }
                             break;
@@ -122,17 +125,17 @@ namespace SbeBinanceConsole
         private static Task BestBidAsk(string key, string instrument, CancellationToken token)
         {
             return SubscribeAsync(key, "bestBidAsk", instrument,
-                (header, body) =>
+                (header, reader) =>
                 {
                     switch (header.TemplateId)
                     {
                         case BestBidAskStreamEventData.MESSAGE_ID:
-                            if (BestBidAskStreamEventData.TryParse(body, out var bestBid, out var bestBidVariableData))
+                            if (reader.TryRead<BestBidAskStreamEventData>(out var bestBid))
                             {
                                 string symbol = "";
                                 decimal qtyMultiplier = (decimal)Math.Pow(10, bestBid.QtyExponent.Value);
                                 decimal priceMultiplier = (decimal)Math.Pow(10, bestBid.PriceExponent.Value);
-                                bestBid.ConsumeVariableLengthSegments(bestBidVariableData,
+                                bestBid.ConsumeVariableLengthSegments(reader.Remaining,
                                    s =>
                                    {
                                        symbol = Encoding.ASCII.GetString(s.VarData[..s.Length]);
@@ -156,7 +159,7 @@ namespace SbeBinanceConsole
             var asksComparer = new AsksComparer();
             long lastUpdateId = 0L;
             var task = SubscribeAsync(key, "depth", instrument,
-                (header, body) =>
+                (header, reader) =>
                 {
                     switch (header.TemplateId)
                     {
@@ -165,7 +168,7 @@ namespace SbeBinanceConsole
                             {
                                 mres.Wait();
                             }
-                            if (DepthDiffStreamEventData.TryParse(body, out var depth, out var depthData))
+                            if (reader.TryRead<DepthDiffStreamEventData>(out var depth))
                             {
                                 if (depth.FirstBookUpdateId.Value > lastUpdateId)
                                 {
@@ -173,7 +176,7 @@ namespace SbeBinanceConsole
                                     string symbol = "";
                                     decimal qtyMultiplier = (decimal)Math.Pow(10, depth.QtyExponent.Value);
                                     decimal priceMultiplier = (decimal)Math.Pow(10, depth.PriceExponent.Value);
-                                    depth.ConsumeVariableLengthSegments(depthData,
+                                    depth.ConsumeVariableLengthSegments(reader.Remaining,
                                         cb =>
                                         {
                                                 var entry = new OrderBookEntry
