@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="Benchmark.Messages"
+                   id="1"
+                   version="0"
+                   semanticVersion="1.0"
+                   description="Benchmark schema for performance testing"
+                   byteOrder="littleEndian">
+    <types>
+        <composite name="MessageHeader">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+
+        <type name="Price" primitiveType="int64" description="Price with 4 decimal places"/>
+        <type name="Quantity" primitiveType="int64" description="Quantity"/>
+        
+        <enum name="Side" encodingType="uint8">
+            <validValue name="Buy">0</validValue>
+            <validValue name="Sell">1</validValue>
+        </enum>
+
+        <composite name="GroupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint16"/>
+        </composite>
+    </types>
+
+    <!-- Simple message for baseline performance -->
+    <sbe:message name="SimpleOrder" id="1" description="Simple order message">
+        <field name="orderId" id="1" type="uint64"/>
+        <field name="price" id="2" type="Price"/>
+        <field name="quantity" id="3" type="Quantity"/>
+        <field name="side" id="4" type="Side"/>
+    </sbe:message>
+
+    <!-- Message with optional fields -->
+    <sbe:message name="OrderWithOptionals" id="2" description="Order with optional fields">
+        <field name="orderId" id="1" type="uint64"/>
+        <field name="price" id="2" type="Price"/>
+        <field name="quantity" id="3" type="Quantity"/>
+        <field name="side" id="4" type="Side"/>
+        <field name="stopPrice" id="5" type="Price" presence="optional"/>
+        <field name="clientOrderId" id="6" type="uint64" presence="optional"/>
+    </sbe:message>
+
+    <!-- Message with repeating groups -->
+    <sbe:message name="MarketData" id="3" description="Market data with bids and asks">
+        <field name="instrumentId" id="1" type="uint64"/>
+        <field name="timestamp" id="2" type="uint64"/>
+        
+        <group name="bids" id="3" dimensionType="GroupSizeEncoding">
+            <field name="price" id="4" type="Price"/>
+            <field name="quantity" id="5" type="Quantity"/>
+        </group>
+        
+        <group name="asks" id="6" dimensionType="GroupSizeEncoding">
+            <field name="price" id="7" type="Price"/>
+            <field name="quantity" id="8" type="Quantity"/>
+        </group>
+    </sbe:message>
+
+    <!-- Complex message with multiple groups -->
+    <sbe:message name="ComplexMarketData" id="4" description="Complex market data">
+        <field name="instrumentId" id="1" type="uint64"/>
+        <field name="timestamp" id="2" type="uint64"/>
+        <field name="flags" id="3" type="uint32"/>
+        
+        <group name="bids" id="4" dimensionType="GroupSizeEncoding">
+            <field name="price" id="5" type="Price"/>
+            <field name="quantity" id="6" type="Quantity"/>
+            <field name="numberOfOrders" id="7" type="uint32"/>
+        </group>
+        
+        <group name="asks" id="8" dimensionType="GroupSizeEncoding">
+            <field name="price" id="9" type="Price"/>
+            <field name="quantity" id="10" type="Quantity"/>
+            <field name="numberOfOrders" id="11" type="uint32"/>
+        </group>
+        
+        <group name="trades" id="12" dimensionType="GroupSizeEncoding">
+            <field name="tradeId" id="13" type="uint64"/>
+            <field name="price" id="14" type="Price"/>
+            <field name="quantity" id="15" type="Quantity"/>
+            <field name="side" id="16" type="Side"/>
+        </group>
+    </sbe:message>
+</sbe:messageSchema>
