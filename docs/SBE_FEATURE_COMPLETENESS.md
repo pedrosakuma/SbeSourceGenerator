@@ -347,15 +347,21 @@ Schema-level validation constraints are now enforced in generated code.
 ---
 
 #### 15. Byte Order (Endianness)
-**Status**: ❌ **NOT VERIFIED**
+**Status**: ✅ **IMPLEMENTED**
 
-The generator does not explicitly handle byte order.
+The generator now explicitly handles byte order.
 
 **Current State**:
-- Assumes little-endian (platform default)
-- `byteOrder` attribute is ignored
+- Parses `byteOrder` attribute from messageSchema element
+- Stores byte order in SchemaContext
+- Generated EndianHelpers class provides methods for both little-endian and big-endian operations
+- Supports reading and writing with proper byte order conversion
+- Includes comprehensive tests for both endianness scenarios
 
-**Recommendation**: Add byte swapping for big-endian schemas or document little-endian requirement.
+**Implementation**:
+- `SchemaContext.ByteOrder` property stores the schema's byte order
+- `EndianHelpers` class provides Read*/Write* methods for both byte orders
+- Default byte order is "littleEndian" if not specified in schema
 
 ---
 
@@ -445,14 +451,14 @@ Deprecated attribute is recognized but not enforced.
 - Snapshot testing for generated code
 - Validation constraint enforcement
 
-**Total**: 43 tests, all passing ✅
+**Total**: 74 tests, all passing ✅
 
 ### Test Coverage Gaps
 
 - ❌ No tests for variable-length data
 - ❌ No tests for schema versioning
 - ✅ **Validation constraints** - Fully tested
-- ❌ No tests for byte order handling
+- ✅ **Byte order handling** - Fully tested (unit + integration tests)
 - ❌ No tests for multi-schema references
 
 ---
@@ -522,8 +528,9 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
    - ✅ Generate validation methods
 
 5. **Byte Order Handling**
-   - Test and document endianness behavior
-   - Add byte swapping if needed for big-endian support
+   - ✅ Implemented and tested
+   - Parse `byteOrder` attribute from schema
+   - Support both little-endian and big-endian encoding/decoding
 
 ### Low Priority
 
