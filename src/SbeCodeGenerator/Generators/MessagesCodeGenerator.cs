@@ -44,7 +44,8 @@ namespace SbeSourceGenerator.Generators
                                         GetUnderlyingType(field.Type, context),
                                         field.Description,
                                         ParseOffset(field.Offset, field.Name, sourceContext),
-                                        GetTypeLength(field.Type, context)
+                                        GetTypeLength(field.Type, context),
+                                        field.SinceVersion
                                     ),
                                     _ => (IFileContentGenerator)new MessageFieldDefinition(
                                         field.Name.FirstCharToUpper(),
@@ -52,7 +53,8 @@ namespace SbeSourceGenerator.Generators
                                         ToNativeType(field.Type),
                                         field.Description,
                                         ParseOffset(field.Offset, field.Name, sourceContext),
-                                        GetTypeLength(field.Type, context)
+                                        GetTypeLength(field.Type, context),
+                                        field.SinceVersion
                                     )
                                 }
                             )
