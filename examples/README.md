@@ -45,6 +45,27 @@ Binance market data processing example.
 - `binance-stream-1.0.xml` - Binance streaming protocol
 - `binance-spot-3.1.xml` - Binance spot trading protocol
 
+### HighPerformanceMarketData ⭐ NEW
+
+A comprehensive example demonstrating high-performance SBE message processing best practices.
+
+**Features**:
+- Zero-allocation message processing
+- Buffer pooling with ArrayPool
+- Efficient repeating group handling
+- Batch processing techniques
+- Performance benchmarking
+- Demonstrates all optimization best practices
+
+**Key Techniques**:
+- Stack allocation for small messages
+- ArrayPool for larger buffers
+- Streaming group processing
+- Incremental decoding
+- Multi-million messages/second throughput
+
+**Perfect for**: Learning performance optimization patterns
+
 ## Running the Examples
 
 Each example is a standalone console application. To run:
