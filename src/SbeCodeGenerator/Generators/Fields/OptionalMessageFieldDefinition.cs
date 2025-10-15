@@ -11,9 +11,10 @@ namespace SbeSourceGenerator
         public string Description { get; }
         public int? Offset { get; set; }
         public int Length { get; }
+        public string SinceVersion { get; }
 
         public OptionalMessageFieldDefinition(string Name, string Id, string Type, string? PrimitiveType, string Description,
-            int? Offset, int Length)
+            int? Offset, int Length, string SinceVersion = "")
         {
             this.Name = Name;
             this.Id = Id;
@@ -22,10 +23,11 @@ namespace SbeSourceGenerator
             this.Description = Description;
             this.Offset = Offset;
             this.Length = Length;
+            this.SinceVersion = SinceVersion;
         }
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendSummary(Description, tabs, nameof(OptionalMessageFieldDefinition));
+            AppendSummaryWithVersion(sb, Description, SinceVersion, tabs);
             sb.AppendLine($"[FieldOffset({Offset})]", tabs);
             if (PrimitiveType != null)
             {
@@ -36,6 +38,26 @@ namespace SbeSourceGenerator
             {
                 sb.AppendLine($"public {Type} {Name};", tabs);
             }
+        }
+
+        private void AppendSummaryWithVersion(StringBuilder sb, string description, string sinceVersion, int tabs)
+        {
+            sb.AppendLine("/// <summary>", tabs);
+            if (!string.IsNullOrEmpty(description))
+            {
+                sb.AppendLine($"/// {description}", tabs);
+            }
+            else
+            {
+                sb.AppendLine($"/// ", tabs);
+            }
+            if (!string.IsNullOrEmpty(sinceVersion))
+            {
+                sb.AppendLine($"/// ", tabs);
+                sb.AppendLine($"/// Since version {sinceVersion}", tabs);
+            }
+            sb.AppendLine($"/// ({nameof(OptionalMessageFieldDefinition)})", tabs);
+            sb.AppendLine("/// </summary>", tabs);
         }
     }
 }

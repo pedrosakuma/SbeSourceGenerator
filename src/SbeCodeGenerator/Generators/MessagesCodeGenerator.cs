@@ -26,37 +26,23 @@ namespace SbeSourceGenerator.Generators
             {
                 var messageDto = SchemaParser.ParseMessage(messageNode, context);
                 
-                var generator = new MessageDefinition(
-                        ns,
-                        messageDto.Name.FirstCharToUpper(),
-                        messageDto.Id,
-                        messageDto.Description,
-                        messageDto.SemanticType,
-                        messageDto.Deprecated,
-                        messageDto.Fields
-                            .Select(field =>
-                                    field.Presence switch
-                                {
-                                    "optional" => new OptionalMessageFieldDefinition(
-                                        field.Name.FirstCharToUpper(),
-                                        field.Id,
-                                        ToNativeType(field.Type),
-                                        GetUnderlyingType(field.Type, context),
-                                        field.Description,
-                                        ParseOffset(field.Offset, field.Name, sourceContext),
-                                        GetTypeLength(field.Type, context)
-                                    ),
-                                    _ => (IFileContentGenerator)new MessageFieldDefinition(
-                                        field.Name.FirstCharToUpper(),
-                                        field.Id,
-                                        ToNativeType(field.Type),
-                                        field.Description,
-                                        ParseOffset(field.Offset, field.Name, sourceContext),
-                                        GetTypeLength(field.Type, context)
-                                    )
-                                }
-                            )
-                            .ToList(),
+                // Determine all versions for this message based on sinceVersion attributes
+                var versions = GetMessageVersions(messageDto);
+                
+                // Generate a separate type for each version
+                foreach (var version in versions)
+                {
+                    var versionNamespace = version == 0 ? ns : $"{ns}.V{version}";
+                    var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
+                    
+                    var generator = new MessageDefinition(
+                            versionNamespace,
+                            messageDto.Name.FirstCharToUpper(),
+                            messageDto.Id,
+                            $"{messageDto.Description} (Version {version})",
+                            messageDto.SemanticType,
+                            messageDto.Deprecated,
+                            fieldsForVersion,
                         messageDto.Constants
                             .Select(constant => (IFileContentGenerator)
                                 new ConstantMessageFieldDefinition(
@@ -71,7 +57,7 @@ namespace SbeSourceGenerator.Generators
                         messageDto.Groups
                             .Select(group => (IFileContentGenerator)
                                 new GroupDefinition(
-                                    ns,
+                                    versionNamespace,
                                     group.Name.FirstCharToUpper(),
                                     group.Id,
                                     group.DimensionType,
@@ -84,7 +70,8 @@ namespace SbeSourceGenerator.Generators
                                                 ToNativeType(field.Type),
                                                 field.Description,
                                                 ParseOffset(field.Offset, field.Name, sourceContext),
-                                                GetTypeLength(field.Type, context)
+                                                GetTypeLength(field.Type, context),
+                                                field.SinceVersion
                                             )
                                         ).ToList(),
                                     group.Constants
@@ -109,10 +96,85 @@ namespace SbeSourceGenerator.Generators
                                 )
                             ).ToList()
                     );
-                StringBuilder sb = new StringBuilder();
-                generator.AppendFileContent(sb);
-                yield return ($"{ns}\\Messages\\{generator.Name}", sb.ToString());
+                    StringBuilder sb = new StringBuilder();
+                    generator.AppendFileContent(sb);
+                    var fileName = version == 0 
+                        ? $"{ns}\\Messages\\{generator.Name}"
+                        : $"{ns}\\V{version}\\Messages\\{generator.Name}";
+                    yield return (fileName, sb.ToString());
+                }
             }
+        }
+
+        /// <summary>
+        /// Determines all versions needed for a message based on sinceVersion attributes.
+        /// Returns a list like [0, 1, 2] for a message with fields at versions 0, 1, and 2.
+        /// </summary>
+        private static List<int> GetMessageVersions(SchemaMessageDto messageDto)
+        {
+            var versions = new HashSet<int> { 0 }; // Always generate version 0
+            
+            foreach (var field in messageDto.Fields)
+            {
+                if (!string.IsNullOrEmpty(field.SinceVersion) && int.TryParse(field.SinceVersion, out int sinceVersion))
+                {
+                    // Add this version and all intermediate versions
+                    for (int v = 0; v <= sinceVersion; v++)
+                    {
+                        versions.Add(v);
+                    }
+                }
+            }
+            
+            return versions.OrderBy(v => v).ToList();
+        }
+
+        /// <summary>
+        /// Gets the fields that should be included for a specific version.
+        /// Only includes fields where sinceVersion is less than or equal to version.
+        /// </summary>
+        private static List<IFileContentGenerator> GetFieldsForVersion(
+            List<SchemaFieldDto> fields, 
+            int version, 
+            SourceProductionContext sourceContext,
+            SchemaContext context)
+        {
+            return fields
+                .Where(field =>
+                {
+                    // Include field if it has no sinceVersion or if sinceVersion <= current version
+                    if (string.IsNullOrEmpty(field.SinceVersion))
+                        return true;
+                    
+                    if (int.TryParse(field.SinceVersion, out int sinceVersion))
+                        return sinceVersion <= version;
+                    
+                    return true; // Include if we can't parse the version
+                })
+                .Select(field =>
+                    field.Presence switch
+                    {
+                        "optional" => new OptionalMessageFieldDefinition(
+                            field.Name.FirstCharToUpper(),
+                            field.Id,
+                            ToNativeType(field.Type),
+                            GetUnderlyingType(field.Type, context),
+                            field.Description,
+                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            GetTypeLength(field.Type, context),
+                            field.SinceVersion
+                        ),
+                        _ => (IFileContentGenerator)new MessageFieldDefinition(
+                            field.Name.FirstCharToUpper(),
+                            field.Id,
+                            ToNativeType(field.Type),
+                            field.Description,
+                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            GetTypeLength(field.Type, context),
+                            field.SinceVersion
+                        )
+                    })
+                .ToList();
         }
 
         private static string? GetUnderlyingType(string type, SchemaContext context)
