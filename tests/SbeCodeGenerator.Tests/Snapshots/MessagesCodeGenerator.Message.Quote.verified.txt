@@ -92,4 +92,47 @@ public partial struct QuoteData
 		
 		return true;
 	}
+	/// <summary>
+	/// Encodes this Quote message to the provided buffer.
+	/// </summary>
+	/// <param name="buffer">The destination buffer.</param>
+	/// <param name="bytesWritten">Number of bytes written on success.</param>
+	/// <returns>True if encoding succeeded; otherwise, false.</returns>
+	public bool TryEncode(Span<byte> buffer, out int bytesWritten)
+	{
+		if (buffer.Length < MESSAGE_SIZE)
+		{
+			bytesWritten = 0;
+			return false;
+		}
+		
+		var writer = new SpanWriter(buffer);
+		writer.Write(this);
+		bytesWritten = MESSAGE_SIZE;
+		return true;
+	}
+	/// <summary>
+	/// Encodes this Quote message using an existing SpanWriter.
+	/// Useful for composing multiple messages or adding headers.
+	/// </summary>
+	/// <param name="writer">The writer to use.</param>
+	/// <returns>True if encoding succeeded; otherwise, false.</returns>
+	public bool TryEncodeWithWriter(ref SpanWriter writer)
+	{
+		return writer.TryWrite(this);
+	}
+	/// <summary>
+	/// Encodes this Quote message to the provided buffer.
+	/// Throws InvalidOperationException if encoding fails.
+	/// </summary>
+	/// <param name="buffer">The destination buffer.</param>
+	/// <returns>Number of bytes written.</returns>
+	/// <exception cref="InvalidOperationException">Thrown when buffer is too small.</exception>
+	public int Encode(Span<byte> buffer)
+	{
+		if (!TryEncode(buffer, out int bytesWritten))
+		    throw new InvalidOperationException($"Failed to encode QuoteData. Buffer size: {buffer.Length}, Required: {MESSAGE_SIZE}");
+		
+		return bytesWritten;
+	}
 }

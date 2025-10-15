@@ -4,7 +4,7 @@ This document tracks the implementation status of features from the [FIX SBE Spe
 
 ## Overview
 
-**Last Updated**: 2024-10-06  
+**Last Updated**: 2025-10-15  
 **SBE Specification Version**: 1.0  
 **Generator Version**: Based on PcapSbePocConsole implementation
 
@@ -562,6 +562,7 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-10-15 | 1.1 | Updated dates and current status |
 | 2024-10-06 | 1.0 | Initial feature completeness assessment |
 
 ---

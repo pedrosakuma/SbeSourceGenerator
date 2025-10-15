@@ -1,5 +1,10 @@
 # Phase 2: Type Conversions and Advanced Features - Complete
 
+> **⚠️ HISTORICAL DOCUMENT**  
+> Phase 2 was a planning and documentation phase completed in 2025-10-14.  
+> The recommendations from Phase 2 have been implemented in Phase 3.  
+> **For current implementation status, see [PHASE3_COMPLETE.md](./PHASE3_COMPLETE.md)**.
+
 ## Executive Summary
 
 Phase 2 of the SbeSourceGenerator type system enhancement initiative has been successfully completed. This phase focused on **documentation, review, and planning** based on the comprehensive feasibility study from PR #35 and the successful Phase 1 implementation (PR #38).
