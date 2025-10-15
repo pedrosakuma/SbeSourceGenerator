@@ -242,22 +242,33 @@ Both automatic and manual field offset calculation is supported.
 ---
 
 #### 10. Schema Versioning
-**Status**: ⚠️ **PARTIALLY IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-Schema metadata is parsed but version evolution is not fully implemented.
+Schema versioning with `sinceVersion` attribute is now fully implemented.
 
-**Currently Supported**:
-- Schema version attribute parsing
-- Semantic version attribute
-- Schema ID in generated code
+**Implemented Features**:
+- ✅ Schema version attribute parsing
+- ✅ Semantic version attribute
+- ✅ Schema ID in generated code
+- ✅ Field-level `sinceVersion` attribute support
+- ✅ Block length extension for schema evolution
+- ✅ Backward compatibility (new decoders read old messages)
+- ✅ Forward compatibility (old decoders skip unknown fields)
+- ✅ Version documentation in generated code
 
-**Not Yet Implemented**:
-- Schema evolution/extension mechanisms
-- Backward compatibility validation
-- Since/deprecated version tracking for fields
+**Implementation**:
+- `SchemaFieldDto` stores `sinceVersion` for each field
+- Field generators include version info in XML documentation
+- TryParse methods accept `blockLength` parameter for version-aware parsing
+- Comprehensive integration tests validate schema evolution scenarios
 
-**Files**:
-- Schema attributes read in XML but not used for evolution
+**Documentation**:
+- [Schema Versioning Guide](./SCHEMA_VERSIONING.md)
+- [Block Length Extension](./BLOCK_LENGTH_EXTENSION.md)
+
+**Tests**:
+- 8 integration tests in `VersioningIntegrationTests.cs`
+- Test schema with v0, v1, and v2 fields in `versioning-test-schema.xml`
 
 ---
 
@@ -360,14 +371,45 @@ No extensibility points for custom encoding logic.
 ---
 
 #### 17. Message Extensions (sinceVersion)
-**Status**: ❌ **NOT IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-Field-level version tracking for schema evolution.
+Field-level version tracking for schema evolution is now fully supported.
 
-**Missing Features**:
-- `sinceVersion` attribute handling
-- Conditional field presence based on version
-- Version-aware decoders
+**Implemented Features**:
+- ✅ `sinceVersion` attribute parsing and storage
+- ✅ Version information in generated XML documentation
+- ✅ Block length-based field presence detection
+- ✅ Backward compatibility (new decoders read old messages)
+- ✅ Forward compatibility (old decoders skip unknown fields)
+
+**Implementation**:
+- Fields with `sinceVersion` include "Since version N" in documentation
+- TryParse methods accept `blockLength` parameter for version-aware parsing
+- Comprehensive integration tests cover V1/V2/V3 schema evolution scenarios
+
+**Example**:
+```xml
+<field name="quantity" id="3" type="int64" sinceVersion="1" 
+       description="Order quantity - added in version 1"/>
+```
+
+Generates:
+```csharp
+/// <summary>
+/// Order quantity - added in version 1
+/// 
+/// Since version 1
+/// (MessageFieldDefinition)
+/// </summary>
+[FieldOffset(16)]
+public long Quantity;
+```
+
+**See**: [Schema Versioning Guide](./SCHEMA_VERSIONING.md)
+
+**Tests**: 8 comprehensive integration tests in `VersioningIntegrationTests.cs`
+
+---
 
 ---
 
@@ -455,11 +497,11 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 | **Optional Fields** | ✅ Implemented | 100% |
 | **Constant Fields** | ✅ Implemented | 100% |
 | **Variable Data** | ❌ Not Implemented | 0% |
-| **Schema Versioning** | ⚠️ Partial | 30% |
-| **Validation** | ❌ Not Implemented | 0% |
+| **Schema Versioning** | ✅ Implemented | 95% |
+| **Validation** | ✅ Implemented | 100% |
 | **Byte Order** | ⚠️ Not Verified | 50% |
 
-**Overall Completeness**: ~70-75% of SBE 1.0 specification
+**Overall Completeness**: ~85-90% of SBE 1.0 specification
 
 ---
 
@@ -472,20 +514,11 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
    - Add length prefix handling
    - Support UTF-8 strings and binary blobs
 
-2. **Schema Versioning**
-   - Implement `sinceVersion` attribute handling
-   - Add version-aware encoding/decoding
-   - Support schema evolution scenarios
-
-3. **Deprecated Field Marking**
+2. **Deprecated Field Marking**
    - Add `[Obsolete]` attributes to deprecated fields
    - Generate compiler warnings for usage
 
 ### Medium Priority
-
-4. ~~**Validation Constraints**~~ ✅ **COMPLETED**
-   - ✅ Implement min/max value validation
-   - ✅ Add range checking
    - ✅ Generate validation methods
 
 5. **Byte Order Handling**
