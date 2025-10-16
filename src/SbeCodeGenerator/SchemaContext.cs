@@ -29,5 +29,35 @@ namespace SbeSourceGenerator
         /// Defaults to "littleEndian" if not specified.
         /// </summary>
         public string ByteOrder { get; set; } = "littleEndian";
+        
+        /// <summary>
+        /// The schema ID from the messageSchema element.
+        /// Used to identify different schemas in multi-schema environments.
+        /// </summary>
+        public string SchemaId { get; set; } = "1";
+        
+        /// <summary>
+        /// The schema version from the messageSchema element.
+        /// Indicates the current version of the schema.
+        /// </summary>
+        public string SchemaVersion { get; set; } = "0";
+        
+        /// <summary>
+        /// The semantic version from the messageSchema element.
+        /// Provides human-readable version information.
+        /// </summary>
+        public string SemanticVersion { get; set; } = "1.0";
+        
+        /// <summary>
+        /// The package name from the messageSchema element.
+        /// Used as the namespace for generated types.
+        /// </summary>
+        public string Package { get; set; } = "";
+        
+        /// <summary>
+        /// The description from the messageSchema element.
+        /// Provides documentation for the schema.
+        /// </summary>
+        public string Description { get; set; } = "";
     }
 }

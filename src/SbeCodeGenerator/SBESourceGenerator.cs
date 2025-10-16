@@ -50,7 +50,7 @@ namespace SbeSourceGenerator
                     // Create a per-schema context to hold mutable state
                     var context = new SchemaContext();
                     
-                    // Parse byteOrder attribute from messageSchema element
+                    // Parse schema-level attributes from messageSchema element
                     var messageSchemaNode = d.DocumentElement;
                     if (messageSchemaNode != null)
                     {
@@ -59,6 +59,37 @@ namespace SbeSourceGenerator
                         {
                             context.ByteOrder = byteOrderAttr;
                         }
+                        
+                        // Parse schema metadata for version tracking
+                        var schemaIdAttr = messageSchemaNode.GetAttribute("id");
+                        if (!string.IsNullOrEmpty(schemaIdAttr))
+                        {
+                            context.SchemaId = schemaIdAttr;
+                        }
+                        
+                        var versionAttr = messageSchemaNode.GetAttribute("version");
+                        if (!string.IsNullOrEmpty(versionAttr))
+                        {
+                            context.SchemaVersion = versionAttr;
+                        }
+                        
+                        var semanticVersionAttr = messageSchemaNode.GetAttribute("semanticVersion");
+                        if (!string.IsNullOrEmpty(semanticVersionAttr))
+                        {
+                            context.SemanticVersion = semanticVersionAttr;
+                        }
+                        
+                        var packageAttr = messageSchemaNode.GetAttribute("package");
+                        if (!string.IsNullOrEmpty(packageAttr))
+                        {
+                            context.Package = packageAttr;
+                        }
+                        
+                        var descriptionAttr = messageSchemaNode.GetAttribute("description");
+                        if (!string.IsNullOrEmpty(descriptionAttr))
+                        {
+                            context.Description = descriptionAttr;
+                        }
                     }
                     
                     // Use specialized generators to handle different categories
@@ -66,6 +97,7 @@ namespace SbeSourceGenerator
                     var messagesGenerator = new MessagesCodeGenerator();
                     var utilitiesGenerator = new UtilitiesCodeGenerator();
                     var validationGenerator = new ValidationGenerator();
+                    var schemaMetadataGenerator = new SchemaMetadataGenerator();
                     
                     foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
@@ -74,6 +106,8 @@ namespace SbeSourceGenerator
                     foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
                     foreach (var item in validationGenerator.Generate(ns, d, context, sourceContext))
+                        sourceContext.AddSource(item.name, item.content);
+                    foreach (var item in schemaMetadataGenerator.Generate(ns, d, context, sourceContext))
                         sourceContext.AddSource(item.name, item.content);
                 }
                 catch (Exception ex)
