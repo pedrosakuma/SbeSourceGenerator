@@ -189,7 +189,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine($"var header = new {group.DimensionType}", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine($"BlockLength = (ushort){group.Name}Data.MESSAGE_SIZE,", tabs);
-                sb.AppendLine($"NumInGroup = (uint)entries.Length", tabs);
+                sb.AppendLine($"NumInGroup = ({group.NumInGroupType})entries.Length", tabs);
                 sb.AppendLine("};", --tabs);
                 sb.AppendLine("", tabs);
                 sb.AppendLine("if (!writer.TryWrite(header))", tabs);
