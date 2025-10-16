@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="example_trading"
+                   id="100"
+                   version="1"
+                   semanticVersion="1.0.0"
+                   description="Example trading schema for documentation"
+                   byteOrder="littleEndian">
+    <types>
+        <composite name="MessageHeader" description="Template ID and length of message root">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+
+        <type name="OrderId" primitiveType="int64"/>
+        <type name="Price" primitiveType="int64"/>
+        
+        <enum name="Side" encodingType="uint8">
+            <validValue name="Buy">1</validValue>
+            <validValue name="Sell">2</validValue>
+        </enum>
+    </types>
+
+    <sbe:message name="Order" id="1" description="Order message">
+        <field name="orderId" id="1" type="OrderId" description="Order identifier"/>
+        <field name="price" id="2" type="Price" description="Order price"/>
+        <field name="quantity" id="3" type="int64" sinceVersion="1" description="Order quantity"/>
+        <field name="side" id="4" type="Side" description="Order side"/>
+    </sbe:message>
+</sbe:messageSchema>

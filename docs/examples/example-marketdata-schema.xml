@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="example_marketdata"
+                   id="200"
+                   version="0"
+                   semanticVersion="1.0.0"
+                   description="Example market data schema for documentation"
+                   byteOrder="littleEndian">
+    <types>
+        <composite name="MessageHeader" description="Template ID and length of message root">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+
+        <type name="Price" primitiveType="int64"/>
+        <type name="Quantity" primitiveType="int64"/>
+    </types>
+
+    <sbe:message name="Quote" id="1" description="Market quote message">
+        <field name="symbol" id="1" type="char" length="8" description="Trading symbol"/>
+        <field name="bidPrice" id="2" type="Price" description="Bid price"/>
+        <field name="askPrice" id="3" type="Price" description="Ask price"/>
+        <field name="bidSize" id="4" type="Quantity" description="Bid size"/>
+        <field name="askSize" id="5" type="Quantity" description="Ask size"/>
+    </sbe:message>
+</sbe:messageSchema>
