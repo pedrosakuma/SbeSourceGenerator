@@ -84,7 +84,8 @@ namespace SbeSourceGenerator.Generators
                                                 constant.Description,
                                                 constant.ValueRef
                                             )
-                                        ).ToList()
+                                        ).ToList(),
+                                    GetNumInGroupType(group.DimensionType, context)
                                 )
                             ).ToList(),
                         messageDto.Data
@@ -205,6 +206,19 @@ namespace SbeSourceGenerator.Generators
                 && !context.CustomTypeLengths.TryGetValue(type, out length))
                 throw new ArgumentException($"Could not get type {type} length");
             return length;
+        }
+
+        private static string GetNumInGroupType(string dimensionType, SchemaContext context)
+        {
+            // Look up the type of the numInGroup field in the dimension composite type
+            // Default to "uint" if not found for backward compatibility
+            var key = $"{dimensionType}.numInGroup";
+            if (context.CompositeFieldTypes.TryGetValue(key, out string? numInGroupType))
+            {
+                return numInGroupType;
+            }
+            // Fallback to "uint" for backward compatibility with existing schemas
+            return "uint";
         }
 
         private static string ToNativeType(string v)

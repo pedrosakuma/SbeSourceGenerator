@@ -205,6 +205,13 @@ namespace SbeSourceGenerator.Generators
         {
             var compositeDto = SchemaParser.ParseComposite(typeNode);
             
+            // Store composite field types in context for later use (e.g., when generating group encoding)
+            foreach (var field in compositeDto.Fields)
+            {
+                var nativeType = ToNativeType(field.PrimitiveType);
+                context.CompositeFieldTypes[$"{compositeDto.Name}.{field.Name}"] = nativeType;
+            }
+            
             var generator = new CompositeDefinition(
                 ns,
                 compositeDto.Name.FirstCharToUpper(),

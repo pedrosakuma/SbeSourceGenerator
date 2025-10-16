@@ -4,7 +4,7 @@ using System.Text;
 namespace SbeSourceGenerator
 {
     public record GroupDefinition(string Namespace, string Name, string Id, string DimensionType, string Description,
-        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants) : IFileContentGenerator
+        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants, string NumInGroupType = "uint") : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
