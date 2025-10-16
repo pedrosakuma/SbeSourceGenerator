@@ -21,16 +21,16 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Automatic and manual field offset calculation
 - **Byte order (endianness) handling** - Little-endian and big-endian support
 - Validation constraints (min/max ranges)
+- **Schema versioning** with sinceVersion attribute and multiple version support
+- **Multiple schema support** with schema metadata and version tracking
 - Comprehensive diagnostics and error reporting
 
 ⚠️ **Partially Implemented**:
-- Schema versioning (metadata parsed, evolution not fully implemented)
 - Deprecated field handling (parsed but not marked in code)
 
 📋 **Planned Features**:
 - Nested groups (groups within groups)
 - Extended varData types (VarString16, VarString32)
-- Schema evolution with sinceVersion
 - Custom encoding/decoding hooks
 
 See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
@@ -247,6 +247,8 @@ See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 ## Documentation
 
 - **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
+- **[Multiple Schema Support](./docs/MULTIPLE_SCHEMA_SUPPORT.md)** - Working with multiple schemas and version tracking
+- **[Schema Versioning](./docs/SCHEMA_VERSIONING.md)** - Field-level versioning and schema evolution
 - **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
 - **[Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture

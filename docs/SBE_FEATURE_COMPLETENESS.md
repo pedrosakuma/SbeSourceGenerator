@@ -241,34 +241,44 @@ Both automatic and manual field offset calculation is supported.
 
 ---
 
-#### 10. Schema Versioning
-**Status**: ✅ **IMPLEMENTED**
+#### 10. Schema Versioning and Multiple Schema Support
+**Status**: ✅ **FULLY IMPLEMENTED**
 
-Schema versioning with `sinceVersion` attribute is now fully implemented.
+Comprehensive schema versioning and multiple schema support is now fully implemented.
 
 **Implemented Features**:
-- ✅ Schema version attribute parsing
-- ✅ Semantic version attribute
-- ✅ Schema ID in generated code
+- ✅ Schema-level metadata tracking (id, version, semanticVersion, package, description)
+- ✅ SchemaMetadata class generation for each schema
 - ✅ Field-level `sinceVersion` attribute support
 - ✅ Block length extension for schema evolution
 - ✅ Backward compatibility (new decoders read old messages)
 - ✅ Forward compatibility (old decoders skip unknown fields)
 - ✅ Version documentation in generated code
+- ✅ Runtime schema compatibility checking via IsCompatible() method
+- ✅ Schema version information via GetVersionInfo() method
+- ✅ Multi-schema environment support
+
+**Generated Code**:
+- `SchemaMetadata` class with constants: SCHEMA_ID, SCHEMA_VERSION, SEMANTIC_VERSION, PACKAGE, DESCRIPTION, BYTE_ORDER
+- `IsCompatible(schemaId, version)` method for runtime compatibility checking
+- `GetVersionInfo()` method for formatted version information
 
 **Implementation**:
+- `SchemaContext` stores schema-level metadata
+- `SchemaMetadataGenerator` generates metadata classes
 - `SchemaFieldDto` stores `sinceVersion` for each field
 - Field generators include version info in XML documentation
 - TryParse methods accept `blockLength` parameter for version-aware parsing
-- Comprehensive integration tests validate schema evolution scenarios
 
 **Documentation**:
-- [Schema Versioning Guide](./SCHEMA_VERSIONING.md)
-- [Block Length Extension](./BLOCK_LENGTH_EXTENSION.md)
+- [Multiple Schema Support Guide](./MULTIPLE_SCHEMA_SUPPORT.md) - Working with multiple schemas
+- [Schema Versioning Guide](./SCHEMA_VERSIONING.md) - Field-level versioning
+- [Block Length Extension](./BLOCK_LENGTH_EXTENSION.md) - Technical details
 
 **Tests**:
-- 8 integration tests in `VersioningIntegrationTests.cs`
-- Test schema with v0, v1, and v2 fields in `versioning-test-schema.xml`
+- 11 tests in `SchemaMetadataIntegrationTests.cs` for metadata and multi-schema support
+- 8 tests in `VersioningIntegrationTests.cs` for field-level versioning
+- Test schemas with different IDs and versions demonstrating multi-schema scenarios
 
 ---
 
