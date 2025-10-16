@@ -248,6 +248,8 @@ See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 
 - **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
 - **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
+- **[SBE Generators Comparison](./docs/SBE_GENERATORS_COMPARISON.md)** - Competitive analysis vs other SBE generators
+- **[Análise Competitiva SBE](./docs/ANALISE_COMPETITIVA_SBE.md)** - Competitive analysis (Portuguese)
 - **[Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture
 - **[Testing Guide](./docs/TESTING_GUIDE.md)** - How to test the generator
