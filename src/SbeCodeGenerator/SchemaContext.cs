@@ -19,6 +19,12 @@ namespace SbeSourceGenerator
         public Dictionary<string, string> OptionalTypes { get; } = new Dictionary<string, string>();
         
         /// <summary>
+        /// Tracks composite types and their field types.
+        /// Maps "CompositeName.FieldName" -> native type (e.g., "GroupSizeEncoding.numInGroup" -> "ushort").
+        /// </summary>
+        public Dictionary<string, string> CompositeFieldTypes { get; } = new Dictionary<string, string>();
+        
+        /// <summary>
         /// The byte order (endianness) specified in the schema.
         /// Defaults to "littleEndian" if not specified.
         /// </summary>
