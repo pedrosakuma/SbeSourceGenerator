@@ -102,7 +102,7 @@ namespace SbeSourceGenerator
                             if (RemainingBytes < size)
                                 return false;
 
-                            MemoryMarshal.Write(_buffer.Slice(_position), ref value);
+                            MemoryMarshal.Write(_buffer.Slice(_position), in value);
                             _position += size;
                             return true;
                         }
