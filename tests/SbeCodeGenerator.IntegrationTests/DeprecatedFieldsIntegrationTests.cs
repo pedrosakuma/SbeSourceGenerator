@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Deprecated.Test;
+using Deprecated.Test.V2;
 
 namespace SbeCodeGenerator.IntegrationTests
 {

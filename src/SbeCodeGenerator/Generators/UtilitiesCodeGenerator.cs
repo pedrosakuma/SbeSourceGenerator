@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml;
@@ -22,15 +23,20 @@ namespace SbeSourceGenerator.Generators
             new EndianHelpers(ns).AppendFileContent(sb);
             yield return ($"{ns}\\Utilities\\EndianHelpers", sb.ToString());
 
-            // Generate SpanReader
-            sb = new StringBuilder();
-            new SpanReaderGenerator(ns).AppendFileContent(sb);
-            yield return ($"{ns}\\Runtime\\SpanReader", sb.ToString());
+            var runtimeNamespace = ns;
 
-            // Generate SpanWriter
-            sb = new StringBuilder();
-            new SpanWriterGenerator(ns).AppendFileContent(sb);
-            yield return ($"{ns}\\Runtime\\SpanWriter", sb.ToString());
+            if (context.GeneratedRuntimeNamespaces.Add(runtimeNamespace))
+            {
+                // Generate SpanReader once per runtime namespace
+                sb = new StringBuilder();
+                new SpanReaderGenerator(runtimeNamespace).AppendFileContent(sb);
+                yield return ($"{runtimeNamespace}\\Runtime\\SpanReader", sb.ToString());
+
+                // Generate SpanWriter once per runtime namespace
+                sb = new StringBuilder();
+                new SpanWriterGenerator(runtimeNamespace).AppendFileContent(sb);
+                yield return ($"{runtimeNamespace}\\Runtime\\SpanWriter", sb.ToString());
+            }
         }
     }
 }

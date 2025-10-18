@@ -1,24 +1,18 @@
 ﻿using SbeSourceGenerator.Generators.Fields;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace SbeSourceGenerator
 {
-    public record MessageDefinition(string Namespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
+    public record MessageDefinition(string Namespace, string RuntimeNamespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
         List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            // Add namespace.Runtime using for SpanReader (used in TryParse) and groups/data fields
-            // For versioned namespaces (e.g., MySchema.V1), use the base namespace's Runtime (MySchema.Runtime)
-            var baseNamespace = Namespace.Contains(".V") 
-                ? Namespace.Substring(0, Namespace.LastIndexOf(".V"))
-                : Namespace;
-            sb.AppendUsings(tabs, $"{baseNamespace}.Runtime");
-            
+            sb.AppendUsings(tabs, $"{RuntimeNamespace}.Runtime");
+
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
             sb.AppendLine("{", tabs++);
@@ -39,7 +33,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendLine($"return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);", tabs);
             sb.AppendLine("}", --tabs);
-            
+
             // TryParse with blockLength parameter for schema evolution support
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
@@ -70,7 +64,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
-            
+
             // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
             // This method is designed for advanced scenarios where users manage their own SpanReader
             // Caller can access remaining data via reader.Remaining after successful parse
@@ -115,7 +109,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("bytesWritten = MESSAGE_SIZE;", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
-            
+
             // TryEncodeWithWriter - encoding with existing SpanWriter
             sb.AppendLine("/// <summary>", tabs);
             sb.AppendLine($"/// Encodes this {Name} message using an existing SpanWriter.", tabs);
@@ -127,7 +121,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendLine("return writer.TryWrite(this);", tabs);
             sb.AppendLine("}", --tabs);
-            
+
             // Encode - throwing version
             sb.AppendLine("/// <summary>", tabs);
             sb.AppendLine($"/// Encodes this {Name} message to the provided buffer.", tabs);
@@ -143,7 +137,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("", tabs);
             sb.AppendLine("return bytesWritten;", tabs);
             sb.AppendLine("}", --tabs);
-            
+
             // If message has groups or varData, generate encoding methods for them
             if (Groups.Any() || Datas.Any())
             {
@@ -263,7 +257,7 @@ namespace SbeSourceGenerator
                 sb.Remove(sb.Length - 2, 2);
                 sb.AppendLine(");", tabs);
                 sb.AppendLine("}", --tabs);
-                
+
                 // New overload that accepts SpanReader by reference
                 sb.AppendLine("public void ConsumeVariableLengthSegments(ref SpanReader reader, ", tabs);
                 foreach (var group in Groups.Cast<GroupDefinition>())
@@ -329,5 +323,6 @@ namespace SbeSourceGenerator
                 offset = blittableField.Offset.Value + blittableField.Length;
             }
         }
+
     }
 }

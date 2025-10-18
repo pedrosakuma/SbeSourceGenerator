@@ -1,7 +1,5 @@
 using Microsoft.CodeAnalysis;
-using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +16,7 @@ namespace SbeSourceGenerator.Generators
         {
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
             nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
-            
+
             // Generate validation for messages
             var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
             foreach (XmlElement messageNode in messageNodes)
@@ -30,7 +28,7 @@ namespace SbeSourceGenerator.Generators
                     yield return ($"{ns}\\Validation\\{messageDto.Name.FirstCharToUpper()}Validation", validationCode);
                 }
             }
-            
+
             // Generate validation for types with constraints
             var typeNodes = xmlDocument.SelectNodes("//types/type");
             foreach (XmlElement typeNode in typeNodes)
@@ -63,7 +61,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// </summary>");
             sb.AppendLine($"public static class {messageDto.Name.FirstCharToUpper()}Validation");
             sb.AppendLine("{");
-            
+
             // Generate TryValidate method first (contains the core logic)
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Attempts to validate all fields with constraints in {messageDto.Name}.");
@@ -77,7 +75,7 @@ namespace SbeSourceGenerator.Generators
             foreach (var field in fieldsWithConstraints)
             {
                 string fieldName = field.Name.FirstCharToUpper();
-                
+
                 if (!string.IsNullOrEmpty(field.MinValue) && !string.IsNullOrEmpty(field.MaxValue))
                 {
                     sb.AppendLine($"        if (message.{fieldName} < {field.MinValue} || message.{fieldName} > {field.MaxValue})");
@@ -108,7 +106,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("        return true;");
             sb.AppendLine("    }");
             sb.AppendLine();
-            
+
             // Generate Validate method that calls TryValidate
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Validates all fields with constraints in {messageDto.Name}.");
@@ -123,7 +121,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine();
-            
+
             // Generate factory method
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Creates a validated instance of {messageDto.Name.FirstCharToUpper()}.");
@@ -156,7 +154,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// </summary>");
             sb.AppendLine($"public static class {typeDto.Name}Validation");
             sb.AppendLine("{");
-            
+
             // Generate TryValidate method first (contains the core logic)
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Attempts to validate that the value is within the schema-defined constraints.");
@@ -196,7 +194,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("        return true;");
             sb.AppendLine("    }");
             sb.AppendLine();
-            
+
             // Generate Validate method that calls TryValidate
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Validates that the value is within the schema-defined constraints.");
@@ -211,7 +209,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine();
-            
+
             // Generate factory method
             sb.AppendLine($"    /// <summary>");
             sb.AppendLine($"    /// Creates a validated instance of {typeDto.Name}.");

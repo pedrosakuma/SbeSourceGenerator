@@ -235,7 +235,7 @@ namespace SbeSourceGenerator.Runtime
                 _buffer = _buffer.Slice(bytesConsumed);
                 return true;
             }
-            
+
             value = default!;
             return false;
         }

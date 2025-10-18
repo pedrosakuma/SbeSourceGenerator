@@ -18,7 +18,7 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             return element.GetAttribute(attributeName) ?? string.Empty;
         }
 
@@ -29,7 +29,7 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             return string.IsNullOrEmpty(value) ? defaultValue : value;
         }
@@ -42,11 +42,11 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
                 throw new InvalidOperationException($"Required attribute '{attributeName}' is missing or empty in element '{element.Name}'");
-            
+
             return value;
         }
 
@@ -57,14 +57,14 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
                 return null;
-            
+
             if (int.TryParse(value, out int result))
                 return result;
-            
+
             throw new InvalidOperationException($"Attribute '{attributeName}' value '{value}' in element '{element.Name}' is not a valid integer");
         }
 
@@ -75,14 +75,14 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
                 return defaultValue;
-            
+
             if (int.TryParse(value, out int result))
                 return result;
-            
+
             throw new InvalidOperationException($"Attribute '{attributeName}' value '{value}' in element '{element.Name}' is not a valid integer");
         }
 
@@ -93,7 +93,7 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             return element.HasAttribute(attributeName) && !string.IsNullOrEmpty(element.GetAttribute(attributeName));
         }
 
@@ -104,7 +104,7 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 return string.Empty;
-            
+
             return element.InnerText ?? string.Empty;
         }
 
@@ -118,14 +118,14 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
                 return null;
-            
+
             if (int.TryParse(value, out int result))
                 return result;
-            
+
             // Only report diagnostic if context has a valid CancellationToken (not default)
             if (context.CancellationToken != default)
             {
@@ -136,7 +136,7 @@ namespace SbeSourceGenerator.Helpers
                     value,
                     element.Name));
             }
-            
+
             return null;
         }
 
@@ -148,14 +148,14 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
                 return defaultValue;
-            
+
             if (int.TryParse(value, out int result))
                 return result;
-            
+
             // Only report diagnostic if context has a valid CancellationToken (not default)
             if (context.CancellationToken != default)
             {
@@ -166,7 +166,7 @@ namespace SbeSourceGenerator.Helpers
                     value,
                     element.Name));
             }
-            
+
             return defaultValue;
         }
 
@@ -178,7 +178,7 @@ namespace SbeSourceGenerator.Helpers
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element));
-            
+
             var value = element.GetAttribute(attributeName);
             if (string.IsNullOrEmpty(value))
             {
@@ -191,10 +191,10 @@ namespace SbeSourceGenerator.Helpers
                         attributeName,
                         element.Name));
                 }
-                
+
                 return string.Empty;
             }
-            
+
             return value;
         }
 

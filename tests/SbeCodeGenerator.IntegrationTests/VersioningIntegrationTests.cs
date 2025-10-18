@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using V0 = Versioning.Test;
-using V1 = Versioning.Test.V1;
-using V2 = Versioning.Test.V2;
+using V0 = Versioning.Test.V2;
+using V1 = Versioning.Test.V2.V1;
+using V2 = Versioning.Test.V2.V2;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -19,17 +19,23 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Verify that 3 separate types were generated (V0, V1, V2)
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
-            var generatedFiles = Directory.GetFiles(
-                Path.Combine(projectDir, "Generated"),
-                "EvolvingOrder.cs",
-                SearchOption.AllDirectories
-            );
-            
-            // Should have 3 versions: base namespace (V0), V1, and V2
+            var messagesDir = Path.Combine(
+                projectDir,
+                "Generated",
+                "SbeSourceGenerator",
+                "SbeSourceGenerator.SBESourceGenerator",
+                "Versioning.Test.V2",
+                "Messages");
+
+            Assert.True(Directory.Exists(messagesDir), $"Generated messages directory was not found: {messagesDir}");
+
+            var generatedFiles = Directory.GetFiles(messagesDir, "EvolvingOrder*.cs", SearchOption.TopDirectoryOnly);
+
+            // Should have 3 versions: V2 (schema base), V2.V1, and V2.V2
             Assert.Equal(3, generatedFiles.Length);
-            Assert.Contains(generatedFiles, f => f.Contains("Versioning.Test\\Messages\\EvolvingOrder.cs") || f.Contains("Versioning.Test/Messages/EvolvingOrder.cs"));
-            Assert.Contains(generatedFiles, f => f.Contains("Versioning.Test\\V1\\Messages\\EvolvingOrder.cs") || f.Contains("Versioning.Test/V1/Messages/EvolvingOrder.cs"));
-            Assert.Contains(generatedFiles, f => f.Contains("Versioning.Test\\V2\\Messages\\EvolvingOrder.cs") || f.Contains("Versioning.Test/V2/Messages/EvolvingOrder.cs"));
+            Assert.Contains(generatedFiles, f => f.EndsWith("EvolvingOrder.cs", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(generatedFiles, f => f.EndsWith("EvolvingOrderV1.cs", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(generatedFiles, f => f.EndsWith("EvolvingOrderV2.cs", StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
@@ -167,21 +173,23 @@ namespace SbeCodeGenerator.IntegrationTests
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
             
             // V1 file should have "Since version 1" for quantity
-            var v1File = Directory.GetFiles(
-                Path.Combine(projectDir, "Generated"),
-                "EvolvingOrder.cs",
-                SearchOption.AllDirectories
-            ).First(f => f.Contains("V1"));
+            var messagesDir = Path.Combine(
+                projectDir,
+                "Generated",
+                "SbeSourceGenerator",
+                "SbeSourceGenerator.SBESourceGenerator",
+                "Versioning.Test.V2",
+                "Messages");
+
+            Assert.True(Directory.Exists(messagesDir), $"Generated messages directory was not found: {messagesDir}");
+
+            var v1File = Directory.GetFiles(messagesDir, "EvolvingOrderV1.cs", SearchOption.TopDirectoryOnly).Single();
             
             var v1Content = File.ReadAllText(v1File);
             Assert.Contains("Since version 1", v1Content);
             
             // V2 file should have "Since version 2" for side
-            var v2File = Directory.GetFiles(
-                Path.Combine(projectDir, "Generated"),
-                "EvolvingOrder.cs",
-                SearchOption.AllDirectories
-            ).First(f => f.Contains("V2"));
+            var v2File = Directory.GetFiles(messagesDir, "EvolvingOrderV2.cs", SearchOption.TopDirectoryOnly).Single();
             
             var v2Content = File.ReadAllText(v2File);
             Assert.Contains("Since version 2", v2Content);

@@ -32,8 +32,8 @@ namespace SbeSourceGenerator
             AppendSummaryWithVersion(sb, Description, SinceVersion, tabs);
             if (!string.IsNullOrEmpty(Deprecated))
             {
-                var deprecatedSince = string.IsNullOrEmpty(SinceVersion) 
-                    ? "This field is deprecated" 
+                var deprecatedSince = string.IsNullOrEmpty(SinceVersion)
+                    ? "This field is deprecated"
                     : $"This field is deprecated since version {SinceVersion}";
                 sb.AppendLine($"[Obsolete(\"{deprecatedSince}\")]", tabs);
             }

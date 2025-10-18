@@ -9,7 +9,7 @@ namespace SbeSourceGenerator
         {
             // Read the SpanReader.cs file and adapt it for the target namespace
             var spanReaderPath = Path.Combine(Path.GetDirectoryName(typeof(SpanReaderGenerator).Assembly.Location) ?? "", "Runtime", "SpanReader.cs");
-            
+
             // Since we can't read the file at generation time in a source generator,
             // we'll embed the SpanReader code directly
             sb.Append($$"""

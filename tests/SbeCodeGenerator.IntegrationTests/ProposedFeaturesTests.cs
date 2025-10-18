@@ -272,7 +272,7 @@ public class ProposedFeaturesTests
     public void GeneratedTypeDefinition_HasReadonlyStruct()
     {
         // Verify that generated TypeDefinition types are readonly structs
-        var orderIdType = typeof(Integration.Test.OrderId);
+        var orderIdType = typeof(Integration.Test.V0.OrderId);
         Assert.True(orderIdType.IsValueType);
         
         // Check if struct is readonly (using reflection to check attributes/modifiers)
@@ -288,7 +288,7 @@ public class ProposedFeaturesTests
     {
         // Verify that generated TypeDefinition types have a constructor
         // Act - use constructor to create instance
-        var orderId = new Integration.Test.OrderId(123456);
+        var orderId = new Integration.Test.V0.OrderId(123456);
         
         // Assert
         Assert.Equal(123456, orderId.Value);
@@ -299,7 +299,7 @@ public class ProposedFeaturesTests
     {
         // Verify implicit conversion from primitive to wrapper works
         // Act - implicit conversion
-        Integration.Test.OrderId orderId = 123456;
+        Integration.Test.V0.OrderId orderId = 123456;
         
         // Assert
         Assert.Equal(123456, orderId.Value);
@@ -310,7 +310,7 @@ public class ProposedFeaturesTests
     {
         // Verify explicit conversion from wrapper to primitive works
         // Arrange
-        var orderId = new Integration.Test.OrderId(123456);
+        var orderId = new Integration.Test.V0.OrderId(123456);
         
         // Act - explicit conversion
         long value = (long)orderId;
@@ -325,11 +325,11 @@ public class ProposedFeaturesTests
         // Comprehensive test showing all Phase 1 features working together
         
         // 1. Implicit conversion for concise initialization
-        Integration.Test.Price price = 100000;
+        Integration.Test.V0.Price price = 100000;
         Assert.Equal(100000, price.Value);
         
         // 2. Constructor for explicit initialization
-        var quantity = new Integration.Test.OrderId(500);
+        var quantity = new Integration.Test.V0.OrderId(500);
         Assert.Equal(500, quantity.Value);
         
         // 3. Explicit conversion for interop

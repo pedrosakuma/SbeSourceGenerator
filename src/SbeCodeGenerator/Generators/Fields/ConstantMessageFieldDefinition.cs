@@ -7,6 +7,7 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendSummary(Description, tabs, nameof(ConstantMessageFieldDefinition));
+            // Use transformed name to avoid collisions with type names
             sb.AppendLine($"public const {Type} {Name.ToKebabCase()} = {ValueRef};", tabs);
         }
     }

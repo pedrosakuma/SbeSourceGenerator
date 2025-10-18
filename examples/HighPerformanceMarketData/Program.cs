@@ -1,6 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using HighPerf.MarketData;
+using HighPerf.MarketData.V0;
 
 namespace HighPerformanceMarketData;
 
@@ -23,7 +23,6 @@ class Program
         // Run different scenarios
         RunQuoteProcessing();
         RunTradeProcessing();
-        RunDepthSnapshotProcessing();
         RunBatchProcessing();
         RunPerformanceTest();
         
@@ -62,9 +61,9 @@ class Program
             if (QuoteData.TryParse(buffer, out var decoded, out _))
             {
                 Console.WriteLine($"  Instrument: {decoded.InstrumentId}");
-                Console.WriteLine($"  Bid: {decoded.BidPrice / 10000.0:F4} x {decoded.BidQuantity}");
-                Console.WriteLine($"  Ask: {decoded.AskPrice / 10000.0:F4} x {decoded.AskQuantity}");
-                Console.WriteLine($"  Spread: {(decoded.AskPrice - decoded.BidPrice) / 10000.0:F4}");
+                Console.WriteLine($"  Bid: {(long)decoded.BidPrice / 10000.0:F4} x {decoded.BidQuantity}");
+                Console.WriteLine($"  Ask: {(long)decoded.AskPrice / 10000.0:F4} x {decoded.AskQuantity}");
+                Console.WriteLine($"  Spread: {((long)decoded.AskPrice - (long)decoded.BidPrice) / 10000.0:F4}");
             }
         }
         
@@ -98,100 +97,10 @@ class Program
             if (TradeData.TryParse(buffer, out var decoded, out _))
             {
                 Console.WriteLine($"  Trade ID: {decoded.TradeId}");
-                Console.WriteLine($"  Price: {decoded.Price / 10000.0:F4}");
+                Console.WriteLine($"  Price: {(long)decoded.Price / 10000.0:F4}");
                 Console.WriteLine($"  Quantity: {decoded.Quantity}");
                 Console.WriteLine($"  Side: {decoded.Side}");
             }
-        }
-        
-        Console.WriteLine();
-    }
-
-    /// <summary>
-    /// Demonstrates depth snapshot processing with repeating groups
-    /// </summary>
-    static void RunDepthSnapshotProcessing()
-    {
-        Console.WriteLine("3. Depth Snapshot Processing (with Groups)");
-        Console.WriteLine("------------------------------------------");
-        
-        // Create depth snapshot
-        var snapshot = new DepthSnapshotData
-        {
-            InstrumentId = 1001,
-            Timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        };
-        
-        // Create bids (sorted descending by price)
-        var bids = new BidsData[5];
-        for (int i = 0; i < 5; i++)
-        {
-            bids[i] = new BidsData
-            {
-                Price = 995000 - (i * 100), // Decreasing prices
-                Quantity = 100 + (i * 10),
-                OrderCount = (uint)(3 + i)
-            };
-        }
-        
-        // Create asks (sorted ascending by price)
-        var asks = new AsksData[5];
-        for (int i = 0; i < 5; i++)
-        {
-            asks[i] = new AsksData
-            {
-                Price = 995500 + (i * 100), // Increasing prices
-                Quantity = 50 + (i * 10),
-                OrderCount = (uint)(2 + i)
-            };
-        }
-        
-        // Use pooled buffer for larger messages with groups
-        byte[] pooledBuffer = BufferPool.Rent(4096);
-        try
-        {
-            // Encode
-            snapshot.BeginEncoding(pooledBuffer, out var writer);
-            DepthSnapshotData.TryEncodeBids(ref writer, bids);
-            DepthSnapshotData.TryEncodeAsks(ref writer, asks);
-            
-            int totalWritten = writer.Position;
-            Console.WriteLine($"✓ Encoded depth snapshot: {totalWritten} bytes");
-            
-            // Decode and process groups
-            if (DepthSnapshotData.TryParse(pooledBuffer, out var decoded, out var variableData))
-            {
-                Console.WriteLine($"  Instrument: {decoded.InstrumentId}");
-                Console.WriteLine("  Bids:");
-                
-                int bidCount = 0;
-                long totalBidVolume = 0;
-                
-                decoded.ConsumeVariableLengthSegments(
-                    variableData,
-                    bid => 
-                    {
-                        Console.WriteLine($"    {bid.Price / 10000.0:F4} x {bid.Quantity} ({bid.OrderCount} orders)");
-                        bidCount++;
-                        totalBidVolume += bid.Quantity;
-                        return true;
-                    },
-                    ask => 
-                    {
-                        if (bidCount == bids.Length) // Print asks header after bids
-                        {
-                            Console.WriteLine($"  Total Bid Volume: {totalBidVolume}");
-                            Console.WriteLine("  Asks:");
-                        }
-                        Console.WriteLine($"    {ask.Price / 10000.0:F4} x {ask.Quantity} ({ask.OrderCount} orders)");
-                        return true;
-                    }
-                );
-            }
-        }
-        finally
-        {
-            BufferPool.Return(pooledBuffer);
         }
         
         Console.WriteLine();
@@ -244,7 +153,7 @@ class Program
                 {
                     offset += QuoteData.MESSAGE_SIZE;
                     decodedCount++;
-                    totalSpread += (quote.AskPrice - quote.BidPrice);
+                    totalSpread += ((long)quote.AskPrice - (long)quote.BidPrice);
                 }
             }
             

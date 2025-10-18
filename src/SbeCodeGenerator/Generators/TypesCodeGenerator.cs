@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Generators.Types;
 using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
@@ -16,6 +15,23 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     public class TypesCodeGenerator : ICodeGenerator
     {
+        private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
+        {
+            "bool",
+            "byte",
+            "sbyte",
+            "short",
+            "ushort",
+            "int",
+            "uint",
+            "long",
+            "ulong",
+            "float",
+            "double",
+            "char",
+            "string"
+        };
+
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
             var typeNodes = xmlDocument.SelectNodes("//types/*");
@@ -37,97 +53,96 @@ namespace SbeSourceGenerator.Generators
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
-            
+            var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
+            var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+
             var validChoices = enumDto.Choices
                 .Select(choice =>
                 {
-                    // Validate that the value can be parsed for bit-shift operations
                     var parsedValue = XmlParsingHelpers.ParseEnumFlagValue(choice.InnerText, choice.Name, sourceContext);
                     return new EnumFieldDefinition(
                         choice.Name,
                         choice.Description,
-                        parsedValue?.ToString() ?? "0" // Use 0 as fallback if parsing failed
+                        parsedValue?.ToString() ?? "0"
                     );
                 })
                 .ToList();
-            
+
             var generator = new EnumFlagsDefinition(
                 ns,
-                enumDto.Name.FirstCharToUpper(),
+                generatedName,
                 enumDto.Description,
-                ToNativeType(enumDto.EncodingType),
-                GetTypeLength(ToNativeType(enumDto.EncodingType), context),
+                encodingTranslated.PrimitiveType,
+                GetTypeLength(encodingTranslated.PrimitiveType, context),
                 validChoices
             );
             if (generator is IBlittable blittableType)
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Sets\\{enumDto.Name}", sb.ToString());
+            yield return ($"{ns}\\Sets\\{generatedName}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var typeDto = SchemaParser.ParseType(typeNode);
-            
-            if (!IsPrimitiveType(typeDto.Name))
+            var primitiveTranslated = TypeTranslator.Translate(typeDto.PrimitiveType);
+
+            if (!TypeTranslator.IsPrimitive(typeDto.Name))
             {
+                var generatedName = RegisterGeneratedTypeName(context, typeDto.Name);
                 int lengthValue = 0;
                 if (!string.IsNullOrEmpty(typeDto.Length))
                 {
                     if (!int.TryParse(typeDto.Length, out lengthValue))
-                    {
                         lengthValue = typeNode.GetIntAttributeOrDefault("length", 0, sourceContext);
-                    }
                 }
 
-                var generator =
-                    (typeDto.PrimitiveType, typeDto.Presence) switch
-                    {
-
-                        (_, "constant") => new ConstantTypeDefinition(
-                            ns,
-                            typeDto.Name,
-                            typeDto.Description,
-                            ToNativeType(typeDto.PrimitiveType),
-                            typeDto.SemanticType,
-                            typeDto.Length,
-                            typeDto.InnerText
-                        ),
-                        ("char", _) => (IFileContentGenerator)new FixedSizeCharTypeDefinition
-                        (
-                            ns,
-                            typeDto.Name,
-                            typeDto.Description,
-                            lengthValue
-                        ),
-                        (_, "optional") => new OptionalTypeDefinition(
-                            ns,
-                            typeDto.Name,
-                            typeDto.Description,
-                            ToNativeType(typeDto.PrimitiveType),
-                            typeDto.SemanticType,
-                            typeDto.NullValue,
-                            GetTypeLength(typeDto.PrimitiveType, context)
-                        ),
-                        (_, _) => new TypeDefinition(
-                            ns,
-                            typeDto.Name,
-                            typeDto.Description,
-                            ToNativeType(typeDto.PrimitiveType),
-                            typeDto.SemanticType,
-                            GetTypeLength(typeDto.PrimitiveType, context)
-                        )
-                    };
-                if (generator is ConstantTypeDefinition constantType)
-                    context.CustomConstantTypes[constantType.Name] = 0;
-                if (generator is OptionalTypeDefinition optionalType)
-                    context.OptionalTypes[typeDto.Name] = ToNativeType(typeDto.PrimitiveType);
+                var nativeType = primitiveTranslated.PrimitiveType;
+                var generator = (nativeType, typeDto.Presence) switch
+                {
+                    (_, "constant") => new ConstantTypeDefinition(
+                        ns,
+                        generatedName,
+                        typeDto.Description,
+                        ResolveTypeName(nativeType, context),
+                        typeDto.SemanticType,
+                        typeDto.Length,
+                        typeDto.InnerText
+                    ),
+                    ("char", _) => (IFileContentGenerator)new FixedSizeCharTypeDefinition(
+                        ns,
+                        generatedName,
+                        typeDto.Description,
+                        lengthValue
+                    ),
+                    (_, "optional") => new OptionalTypeDefinition(
+                        ns,
+                        generatedName,
+                        typeDto.Description,
+                        ResolveTypeName(nativeType, context),
+                        typeDto.SemanticType,
+                        typeDto.NullValue,
+                        GetTypeLength(nativeType, context)
+                    ),
+                    _ => new TypeDefinition(
+                        ns,
+                        generatedName,
+                        typeDto.Description,
+                        ResolveTypeName(nativeType, context),
+                        typeDto.SemanticType,
+                        GetTypeLength(nativeType, context)
+                    )
+                };
+                if (generator is ConstantTypeDefinition)
+                    context.CustomConstantTypes[typeDto.Name] = 0;
+                if (generator is OptionalTypeDefinition)
+                    context.OptionalTypes[typeDto.Name] = nativeType;
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
-                yield return ($"{ns}\\Types\\{typeDto.Name}", sb.ToString());
+                yield return ($"{ns}\\Types\\{generatedName}", sb.ToString());
                 if (generator is TypeDefinition typeDefinition)
                 {
                     var semanticGenerator = (typeDefinition.SemanticType) switch
@@ -158,16 +173,18 @@ namespace SbeSourceGenerator.Generators
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var enumDto = SchemaParser.ParseEnum(typeNode);
-            
-            var generator = IsNullable(enumDto.EncodingType) switch
+            var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
+            var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+
+            var generator = encodingTranslated.IsNullableEncoding switch
             {
                 true => new NullableEnumDefinition(
                     ns,
-                    enumDto.Name.FirstCharToUpper(),
+                    generatedName,
                     enumDto.Description,
-                    ToNativeType(enumDto.EncodingType),
+                    encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(enumDto.EncodingType)],
+                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
@@ -176,13 +193,13 @@ namespace SbeSourceGenerator.Generators
                         ))
                         .ToList()
                 ),
-                false => new EnumDefinition(
+                _ => new EnumDefinition(
                     ns,
-                    enumDto.Name.FirstCharToUpper(),
+                    generatedName,
                     enumDto.Description,
-                    ToNativeType(enumDto.EncodingType),
+                    encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[ToNativeType(enumDto.EncodingType)],
+                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
@@ -190,70 +207,73 @@ namespace SbeSourceGenerator.Generators
                             choice.InnerText
                         ))
                         .ToList()
-                    )
+                )
             };
             if (generator is IBlittable blittableType)
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             if (generator is EnumDefinition enumDefinition)
-                context.EnumPrimitiveTypes[enumDefinition.Name] = enumDefinition.EncodingType;
+                context.EnumPrimitiveTypes[enumDto.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Enums\\{enumDto.Name.FirstCharToUpper()}", sb.ToString());
+            yield return ($"{ns}\\Enums\\{generatedName}", sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
             var compositeDto = SchemaParser.ParseComposite(typeNode);
-            
-            // Store composite field types in context for later use (e.g., when generating group encoding)
-            foreach (var field in compositeDto.Fields)
+            var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
+
+            // Pre-translate all field primitive types once to avoid repeated dictionary lookups
+            var fieldTranslations = compositeDto.Fields
+                .Select(f => new { Field = f, Translation = TypeTranslator.Translate(f.PrimitiveType) })
+                .ToList();
+
+            foreach (var ft in fieldTranslations)
             {
-                var nativeType = ToNativeType(field.PrimitiveType);
-                context.CompositeFieldTypes[$"{compositeDto.Name}.{field.Name}"] = nativeType;
+                context.CompositeFieldTypes[$"{compositeDto.Name}.{ft.Field.Name}"] = ResolveTypeName(ft.Translation.PrimitiveType, context);
             }
-            
+
             var generator = new CompositeDefinition(
                 ns,
-                compositeDto.Name.FirstCharToUpper(),
+                generatedName,
                 compositeDto.Description,
                 compositeDto.SemanticType,
-                compositeDto.Fields
-                    .Select(field => (IFileContentGenerator)((field.Presence, field.Length) switch
+                fieldTranslations
+                    .Select(ft => (IFileContentGenerator)((ft.Field.Presence, ft.Field.Length) switch
                     {
                         ("constant", _) => new ConstantTypeFieldDefinition(
-                            field.Name.FirstCharToUpper(),
-                            field.Description,
-                            ToNativeType(field.PrimitiveType),
-                            InsertQuotationsIfNeeded(field.InnerText, field.PrimitiveType, field.Length),
-                            field.ValueRef
+                            TypeTranslator.NormalizeName(ft.Field.Name),
+                            ft.Field.Description,
+                            ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            InsertQuotationsIfNeeded(ft.Field.InnerText, ft.Field.PrimitiveType, ft.Field.Length),
+                            NormalizeValueRef(ft.Field.ValueRef, context)
                         ),
                         ("optional", _) => new NullableValueFieldDefinition(
-                            field.Name.FirstCharToUpper(),
-                            field.Description,
-                            ToNativeType(field.PrimitiveType),
-                            GetTypeLength(ToNativeType(field.PrimitiveType), context),
-                            field.NullValue == "" ? null : field.NullValue
+                            TypeTranslator.NormalizeName(ft.Field.Name),
+                            ft.Field.Description,
+                            ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            GetTypeLength(ft.Translation.PrimitiveType, context),
+                            ft.Field.NullValue == "" ? null : ft.Field.NullValue
                         ),
                         ("", "0") => new ArrayFieldDefinition(
-                            field.Name.FirstCharToUpper(),
-                            field.Description,
+                            TypeTranslator.NormalizeName(ft.Field.Name),
+                            ft.Field.Description,
                             "byte"
                         ),
-                        (_, _) => new ValueFieldDefinition(
-                            field.Name.FirstCharToUpper(),
-                            field.Description,
-                            ToNativeType(field.PrimitiveType),
-                            GetTypeLength(ToNativeType(field.PrimitiveType), context)
+                        _ => new ValueFieldDefinition(
+                            TypeTranslator.NormalizeName(ft.Field.Name),
+                            ft.Field.Description,
+                            ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            GetTypeLength(ft.Translation.PrimitiveType, context)
                         )
-                    }
-                    ))
+                    }))
                     .ToList()
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Composites\\{generator.Name}", sb.ToString());
+            yield return ($"{ns}\\Composites\\{generatedName}", sb.ToString());
             var semanticGenerator = (generator.Name) switch
             {
                 "Price" => (IFileContentGenerator)new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
@@ -272,7 +292,7 @@ namespace SbeSourceGenerator.Generators
             sb.Clear();
             semanticGenerator.AppendFileContent(sb);
             if (semanticGenerator is not NullSemanticTypeDefintion)
-                yield return ($"{ns}\\Composites\\{generator.Name}.Semantic", sb.ToString());
+                yield return ($"{ns}\\Composites\\{generatedName}.Semantic", sb.ToString());
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)
@@ -285,83 +305,70 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
-        private static bool IsPrimitiveType(string v)
-        {
-            return v switch
-            {
-                "Char" => true,
-                "Int8" => true,
-                "Int16" => true,
-                "Int32" => true,
-                "Int64" => true,
-                "UInt8" => true,
-                "UInt16" => true,
-                "UInt32" => true,
-                "UInt64" => true,
-                _ => false
-            };
-        }
-
-        private static bool IsNullable(string v)
-        {
-            return v switch
-            {
-                "Int8NULL" => true,
-                "Int16NULL" => true,
-                "Int32NULL" => true,
-                "Int64NULL" => true,
-                "CharNULL" => true,
-                "UInt8NULL" => true,
-                "UInt16NULL" => true,
-                "UInt32NULL" => true,
-                "UInt64NULL" => true,
-                _ => false
-            };
-        }
-
-        private static string ToNativeType(string v)
-        {
-            return v switch
-            {
-                "int8" => "sbyte",
-                "int16" => "short",
-                "int32" => "int",
-                "int64" => "long",
-                "uint8" => "byte",
-                "uint16" => "ushort",
-                "uint32" => "uint",
-                "uint64" => "ulong",
-
-                "Int8" => "sbyte",
-                "Int16" => "short",
-                "Int32" => "int",
-                "Int64" => "long",
-                "Char" => "char",
-                "UInt8" => "byte",
-                "UInt16" => "ushort",
-                "UInt32" => "uint",
-                "UInt64" => "ulong",
-
-                "Int8NULL" => "sbyte",
-                "Int16NULL" => "short",
-                "Int32NULL" => "int",
-                "Int64NULL" => "long",
-                "CharNULL" => "char",
-                "UInt8NULL" => "byte",
-                "UInt16NULL" => "ushort",
-                "UInt32NULL" => "uint",
-                "UInt64NULL" => "ulong",
-                _ => v
-            };
-        }
-
         private static int GetTypeLength(string type, SchemaContext context)
         {
             int length;
-            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(ToNativeType(type), out length)
-                && !context.CustomTypeLengths.TryGetValue(type, out length))
+            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(type, out length)
+                && !context.CustomTypeLengths.TryGetValue(type, out length)
+                && !TypesCatalog.PrimitiveTypeLengths.TryGetValue(TypeTranslator.Translate(type).PrimitiveType, out length))
                 throw new ArgumentException($"Could not get type {type} length");
             return length;
+        }
+
+        private static string RegisterGeneratedTypeName(SchemaContext context, string originalName)
+        {
+            if (string.IsNullOrEmpty(originalName))
+                return originalName;
+
+            var normalized = TypeTranslator.NormalizeName(originalName);
+            context.GeneratedTypeNames[originalName] = normalized;
+            return normalized;
+        }
+
+        private static string ResolveTypeName(string typeName, SchemaContext context)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return typeName;
+
+            if (IsDotNetPrimitive(typeName))
+                return typeName;
+
+            if (context.GeneratedTypeNames.TryGetValue(typeName, out var generated))
+                return generated;
+
+            return TypeTranslator.NormalizeName(typeName);
+        }
+
+        private static bool IsDotNetPrimitive(string typeName) => DotNetPrimitiveTypes.Contains(typeName);
+
+        private static string NormalizeValueRef(string valueRef, SchemaContext context)
+        {
+            if (string.IsNullOrWhiteSpace(valueRef))
+                return valueRef;
+
+            int separatorIndex = valueRef.IndexOf('.');
+            string separator = ".";
+
+            if (separatorIndex < 0)
+            {
+                separatorIndex = valueRef.IndexOf("::", StringComparison.Ordinal);
+                if (separatorIndex >= 0)
+                {
+                    separator = "::";
+                }
+            }
+
+            if (separatorIndex < 0)
+                return ResolveTypeName(valueRef, context);
+
+            var typePart = valueRef.Substring(0, separatorIndex);
+            var remainder = valueRef.Substring(separatorIndex + separator.Length);
+            var normalizedType = ResolveTypeName(typePart, context);
+
+            if (remainder.Length == 0)
+                return normalizedType;
+
+            return string.Concat(normalizedType, separator, remainder);
         }
     }
 }

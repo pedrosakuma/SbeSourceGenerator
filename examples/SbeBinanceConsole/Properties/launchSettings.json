@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SbeBinanceConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "depth P2LxA2r2yYFRVi425kOVV4FIDsea5s5AOjjiuFhxkDMpo66npsEf2Bk1ZWNs8h4f ethusdt"
+    }
+  }
+}
