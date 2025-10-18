@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
-using Integration.Test;
+using Integration.Test.V0;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -21,21 +21,21 @@ namespace SbeCodeGenerator.IntegrationTests
             // If the generator didn't work, these types wouldn't exist and the test wouldn't compile
             
             // Verify types from integration-test-schema.xml are generated
-            Assert.NotNull(typeof(Integration.Test.OrderSide));
-            Assert.NotNull(typeof(Integration.Test.OrderType));
-            Assert.NotNull(typeof(Integration.Test.MessageHeader));
-            Assert.NotNull(typeof(Integration.Test.NewOrderData));
-            Assert.NotNull(typeof(Integration.Test.OrderBookData));
+            Assert.NotNull(typeof(Integration.Test.V0.OrderSide));
+            Assert.NotNull(typeof(Integration.Test.V0.OrderType));
+            Assert.NotNull(typeof(Integration.Test.V0.MessageHeader));
+            Assert.NotNull(typeof(Integration.Test.V0.NewOrderData));
+            Assert.NotNull(typeof(Integration.Test.V0.OrderBookData));
         }
 
         [Fact]
         public void GeneratedEnum_CanBeUsedInCode()
         {
             // Verify enums can be instantiated and used
-            var orderSide = Integration.Test.OrderSide.Buy;
+            var orderSide = Integration.Test.V0.OrderSide.Buy;
             Assert.Equal((byte)1, (byte)orderSide);
             
-            var orderType = Integration.Test.OrderType.Limit;
+            var orderType = Integration.Test.V0.OrderType.Limit;
             Assert.Equal((byte)2, (byte)orderType);
         }
 
@@ -44,24 +44,24 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Verify we can create and access generated message structures
             // Verify the struct has the expected size (calculated based on fields)
-            Assert.True(Marshal.SizeOf<Integration.Test.NewOrderData>() > 0);
+            Assert.True(Marshal.SizeOf<Integration.Test.V0.NewOrderData>() > 0);
             
             // Verify we can set and get fields through the generated properties
             Span<byte> buffer = stackalloc byte[1024];
-            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            ref Integration.Test.V0.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             
             // Use implicit conversions and constructors
             orderRef.OrderId = 123456;  // Implicit conversion from long
             orderRef.Price = 100000;    // Implicit conversion from long
             orderRef.Quantity = 500;
-            orderRef.Side = Integration.Test.OrderSide.Buy;
-            orderRef.OrderType = Integration.Test.OrderType.Limit;
+            orderRef.Side = Integration.Test.V0.OrderSide.Buy;
+            orderRef.OrderType = Integration.Test.V0.OrderType.Limit;
             
             Assert.Equal(123456, orderRef.OrderId.Value);
             Assert.Equal(100000, orderRef.Price.Value);
             Assert.Equal(500, orderRef.Quantity);
-            Assert.Equal(Integration.Test.OrderSide.Buy, orderRef.Side);
-            Assert.Equal(Integration.Test.OrderType.Limit, orderRef.OrderType);
+            Assert.Equal(Integration.Test.V0.OrderSide.Buy, orderRef.Side);
+            Assert.Equal(Integration.Test.V0.OrderType.Limit, orderRef.OrderType);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Verify MessageHeader composite is generated correctly
             Span<byte> buffer = stackalloc byte[128];
-            ref Integration.Test.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.MessageHeader>(buffer);
+            ref Integration.Test.V0.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.V0.MessageHeader>(buffer);
             
             header.BlockLength = 100;
             header.TemplateId = 10;
@@ -87,16 +87,16 @@ namespace SbeCodeGenerator.IntegrationTests
         public void GeneratedMessage_TryParseReturnsStructCopy()
         {
             // Prepare a buffer with the raw bytes of NewOrderData
-            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
-            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.NewOrderData.MESSAGE_SIZE];
+            ref Integration.Test.V0.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             orderRef.OrderId = 999;      // Implicit conversion
             orderRef.Price = 50000;      // Implicit conversion
             orderRef.Quantity = 100;
-            orderRef.Side = Integration.Test.OrderSide.Sell;
-            orderRef.OrderType = Integration.Test.OrderType.Market;
+            orderRef.Side = Integration.Test.V0.OrderSide.Sell;
+            orderRef.OrderType = Integration.Test.V0.OrderType.Market;
 
             // Act
-            var success = Integration.Test.NewOrderData.TryParse(buffer, out var parsedOrder, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedOrder, out var variableData);
 
             // Assert
             Assert.True(success);
@@ -104,37 +104,37 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(999, parsedOrder.OrderId.Value);
             Assert.Equal(50000, parsedOrder.Price.Value);
             Assert.Equal(100, parsedOrder.Quantity);
-            Assert.Equal(Integration.Test.OrderSide.Sell, parsedOrder.Side);
-            Assert.Equal(Integration.Test.OrderType.Market, parsedOrder.OrderType);
+            Assert.Equal(Integration.Test.V0.OrderSide.Sell, parsedOrder.Side);
+            Assert.Equal(Integration.Test.V0.OrderType.Market, parsedOrder.OrderType);
         }
 
         [Fact]
         public void GeneratedMessageHeader_TryParseExposesPayload()
         {
-            Span<byte> buffer = stackalloc byte[Integration.Test.MessageHeader.MESSAGE_SIZE + Integration.Test.NewOrderData.MESSAGE_SIZE];
-            var bodyOffset = Integration.Test.MessageHeader.MESSAGE_SIZE;
-            ref Integration.Test.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.MessageHeader>(buffer);
-            header.BlockLength = (ushort)Integration.Test.NewOrderData.MESSAGE_SIZE;
-            header.TemplateId = (ushort)Integration.Test.NewOrderData.MESSAGE_ID;
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.MessageHeader.MESSAGE_SIZE + Integration.Test.V0.NewOrderData.MESSAGE_SIZE];
+            var bodyOffset = Integration.Test.V0.MessageHeader.MESSAGE_SIZE;
+            ref Integration.Test.V0.MessageHeader header = ref MemoryMarshal.AsRef<Integration.Test.V0.MessageHeader>(buffer);
+            header.BlockLength = (ushort)Integration.Test.V0.NewOrderData.MESSAGE_SIZE;
+            header.TemplateId = (ushort)Integration.Test.V0.NewOrderData.MESSAGE_ID;
             header.SchemaId = 2;
             header.Version = 0;
-            ref Integration.Test.NewOrderData order = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer.Slice(bodyOffset));
+            ref Integration.Test.V0.NewOrderData order = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer.Slice(bodyOffset));
             order.OrderId = 42;  // Implicit conversion
 
-            var success = Integration.Test.MessageHeader.TryParse(buffer, out var parsedHeader, out var payload);
+            var success = Integration.Test.V0.MessageHeader.TryParse(buffer, out var parsedHeader, out var payload);
 
             Assert.True(success);
-            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_ID, parsedHeader.TemplateId);
-            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE, parsedHeader.BlockLength);
-            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE, payload.Length);
-            Assert.Equal(42, MemoryMarshal.AsRef<Integration.Test.NewOrderData>(payload).OrderId.Value);
+            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_ID, parsedHeader.TemplateId);
+            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_SIZE, parsedHeader.BlockLength);
+            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_SIZE, payload.Length);
+            Assert.Equal(42, MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(payload).OrderId.Value);
         }
 
         [Fact]
         public void GeneratedUtilities_NumberExtensionsExist()
         {
             // Verify NumberExtensions utility class is generated
-            Assert.NotNull(typeof(Integration.Test.NumberExtensions));
+            Assert.NotNull(typeof(Integration.Test.V0.NumberExtensions));
         }
 
         [Fact]
@@ -142,17 +142,17 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Verify namespace generation from file names
             // integration-test-schema.xml -> Integration.Test
-            Assert.Equal("Integration.Test", typeof(Integration.Test.OrderSide).Namespace);
+            Assert.Equal("Integration.Test", typeof(Integration.Test.V0.OrderSide).Namespace);
         }
 
         [Fact]
         public unsafe void GeneratedMessageWithGroups_CanBeAccessed()
         {
             // Verify messages with groups are generated (OrderBook has bids/asks groups)
-            Assert.True(Marshal.SizeOf<Integration.Test.OrderBookData>() > 0);
+            Assert.True(Marshal.SizeOf<Integration.Test.V0.OrderBookData>() > 0);
             
             Span<byte> buffer = stackalloc byte[1024];
-            ref Integration.Test.OrderBookData bookRef = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData>(buffer);
+            ref Integration.Test.V0.OrderBookData bookRef = ref MemoryMarshal.AsRef<Integration.Test.V0.OrderBookData>(buffer);
             
             bookRef.InstrumentId = 42;
             Assert.Equal(42, bookRef.InstrumentId);
@@ -164,19 +164,19 @@ namespace SbeCodeGenerator.IntegrationTests
             // Test the new TryParse overload that accepts a blockLength parameter
             // This is the foundation for schema evolution support
             
-            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 32]; // Extra space
-            ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 32]; // Extra space
+            ref Integration.Test.V0.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             
             message.OrderId = 123;    // Implicit conversion
             message.Price = 9950;     // Implicit conversion
             message.Quantity = 100;
-            message.Side = Integration.Test.OrderSide.Buy;
-            message.OrderType = Integration.Test.OrderType.Limit;
+            message.Side = Integration.Test.V0.OrderSide.Buy;
+            message.OrderType = Integration.Test.V0.OrderType.Limit;
             
             // Test with exact block length (standard case)
-            var success1 = Integration.Test.NewOrderData.TryParse(
+            var success1 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
-                Integration.Test.NewOrderData.MESSAGE_SIZE, 
+                Integration.Test.V0.NewOrderData.MESSAGE_SIZE, 
                 out var parsedMsg1, 
                 out var remaining1);
             
@@ -185,8 +185,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(32, remaining1.Length); // 32 bytes remain for variable data
             
             // Test with larger block length (simulates newer schema with additional fields)
-            int extendedBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE + 16;
-            var success2 = Integration.Test.NewOrderData.TryParse(
+            int extendedBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 16;
+            var success2 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
                 extendedBlockLength, 
                 out var parsedMsg2, 
@@ -197,8 +197,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(16, remaining2.Length); // 16 bytes remain for variable data
             
             // Test with smaller block length (simulates older schema with fewer fields)
-            int smallerBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE - 2;
-            var success3 = Integration.Test.NewOrderData.TryParse(
+            int smallerBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE - 2;
+            var success3 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
                 smallerBlockLength, 
                 out var parsedMsg3, 
@@ -215,14 +215,14 @@ namespace SbeCodeGenerator.IntegrationTests
             // Verify that the original TryParse (without blockLength) still works
             // This ensures backward compatibility with existing code
             
-            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE];
-            ref Integration.Test.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.NewOrderData.MESSAGE_SIZE];
+            ref Integration.Test.V0.NewOrderData message = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             
             message.OrderId = 456;    // Implicit conversion
             message.Price = 10050;    // Implicit conversion
             
             // Use the original TryParse method (calls the new one internally with MESSAGE_SIZE)
-            var success = Integration.Test.NewOrderData.TryParse(buffer, out var parsedMsg, out var remaining);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedMsg, out var remaining);
             
             Assert.True(success);
             Assert.Equal(456, parsedMsg.OrderId.Value);
@@ -234,7 +234,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidatePrice_ThrowsOnNegativeValue()
         {
             // Arrange
-            Integration.Test.Price price = -100;  // Implicit conversion
+            Integration.Test.V0.Price price = -100;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.Validate());
@@ -245,7 +245,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidatePrice_PassesOnValidValue()
         {
             // Arrange
-            Integration.Test.Price price = 1000;  // Implicit conversion
+            Integration.Test.V0.Price price = 1000;  // Implicit conversion
 
             // Act & Assert (should not throw)
             price.Validate();
@@ -255,7 +255,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidateOrderId_ThrowsOnZeroValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = 0;  // Implicit conversion
+            Integration.Test.V0.OrderId orderId = 0;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.Validate());
@@ -266,7 +266,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_ValidateOrderId_PassesOnValidValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = 123;  // Implicit conversion
+            Integration.Test.V0.OrderId orderId = 123;  // Implicit conversion
 
             // Act & Assert (should not throw)
             orderId.Validate();
@@ -276,7 +276,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidatePrice_ReturnsFalseOnNegativeValue()
         {
             // Arrange
-            Integration.Test.Price price = -100;  // Implicit conversion
+            Integration.Test.V0.Price price = -100;  // Implicit conversion
 
             // Act
             bool result = price.TryValidate(out string? errorMessage);
@@ -292,7 +292,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidatePrice_ReturnsTrueOnValidValue()
         {
             // Arrange
-            Integration.Test.Price price = 1000;  // Implicit conversion
+            Integration.Test.V0.Price price = 1000;  // Implicit conversion
 
             // Act
             bool result = price.TryValidate(out string? errorMessage);
@@ -306,7 +306,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_TryValidateOrderId_ReturnsFalseOnZeroValue()
         {
             // Arrange
-            Integration.Test.OrderId orderId = 0;  // Implicit conversion
+            Integration.Test.V0.OrderId orderId = 0;  // Implicit conversion
 
             // Act
             bool result = orderId.TryValidate(out string? errorMessage);
@@ -321,7 +321,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedPrice_ReturnsValueOnValid()
         {
             // Arrange
-            Integration.Test.Price price = 1000;  // Implicit conversion
+            Integration.Test.V0.Price price = 1000;  // Implicit conversion
 
             // Act
             var validatedPrice = price.CreateValidated();
@@ -334,7 +334,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedPrice_ThrowsOnInvalid()
         {
             // Arrange
-            Integration.Test.Price price = -100;  // Implicit conversion
+            Integration.Test.V0.Price price = -100;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => price.CreateValidated());
@@ -345,7 +345,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedOrderId_ReturnsValueOnValid()
         {
             // Arrange
-            Integration.Test.OrderId orderId = 123;  // Implicit conversion
+            Integration.Test.V0.OrderId orderId = 123;  // Implicit conversion
 
             // Act
             var validatedOrderId = orderId.CreateValidated();
@@ -358,7 +358,7 @@ namespace SbeCodeGenerator.IntegrationTests
         public void ValidationExtensions_CreateValidatedOrderId_ThrowsOnInvalid()
         {
             // Arrange
-            Integration.Test.OrderId orderId = 0;  // Implicit conversion
+            Integration.Test.V0.OrderId orderId = 0;  // Implicit conversion
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => orderId.CreateValidated());
@@ -373,33 +373,33 @@ namespace SbeCodeGenerator.IntegrationTests
             int offset = 0;
             
             // Write bids group header (3 bids)
-            ref Integration.Test.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
-            bidsHeader.BlockLength = (ushort)Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+            ref Integration.Test.V0.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
+            bidsHeader.BlockLength = (ushort)Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE;
             bidsHeader.NumInGroup = 3;
-            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            offset += Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE;
             
             // Write bid entries
             for (int i = 0; i < 3; i++)
             {
-                ref Integration.Test.OrderBookData.BidsData bid = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.BidsData>(buffer.Slice(offset));
+                ref Integration.Test.V0.OrderBookData.BidsData bid = ref MemoryMarshal.AsRef<Integration.Test.V0.OrderBookData.BidsData>(buffer.Slice(offset));
                 bid.Price = 1000 + i * 10;  // Implicit conversion
                 bid.Quantity = 100 + i;
-                offset += Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+                offset += Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE;
             }
             
             // Write asks group header (2 asks)
-            ref Integration.Test.GroupSizeEncoding asksHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
-            asksHeader.BlockLength = (ushort)Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+            ref Integration.Test.V0.GroupSizeEncoding asksHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
+            asksHeader.BlockLength = (ushort)Integration.Test.V0.OrderBookData.AsksData.MESSAGE_SIZE;
             asksHeader.NumInGroup = 2;
-            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            offset += Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE;
             
             // Write ask entries
             for (int i = 0; i < 2; i++)
             {
-                ref Integration.Test.OrderBookData.AsksData ask = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.AsksData>(buffer.Slice(offset));
+                ref Integration.Test.V0.OrderBookData.AsksData ask = ref MemoryMarshal.AsRef<Integration.Test.V0.OrderBookData.AsksData>(buffer.Slice(offset));
                 ask.Price = 2000 + i * 10;  // Implicit conversion
                 ask.Quantity = 200 + i;
-                offset += Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+                offset += Integration.Test.V0.OrderBookData.AsksData.MESSAGE_SIZE;
             }
             
             // Act
@@ -409,7 +409,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var askQuantities = new System.Collections.Generic.List<long>();
             
             // Create a dummy OrderBookData and call ConsumeVariableLengthSegments
-            var orderBook = new Integration.Test.OrderBookData();
+            var orderBook = new Integration.Test.V0.OrderBookData();
             orderBook.ConsumeVariableLengthSegments(
                 buffer.Slice(0, offset),
                 bid => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
@@ -453,7 +453,7 @@ namespace SbeCodeGenerator.IntegrationTests
             // Act
             byte symbolLength = 0;
             string symbolStr = "";
-            var order = new Integration.Test.NewOrderData();
+            var order = new Integration.Test.V0.NewOrderData();
             order.ConsumeVariableLengthSegments(
                 buffer.Slice(0, offset),
                 symbol => { 
@@ -477,11 +477,11 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> smallBuffer = stackalloc byte[10]; // Less than MESSAGE_SIZE (26)
             
             // Act
-            var success = Integration.Test.NewOrderData.TryParse(smallBuffer, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(smallBuffer, out var message, out var variableData);
             
             // Assert
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
             Assert.True(variableData.IsEmpty);
         }
 
@@ -491,24 +491,24 @@ namespace SbeCodeGenerator.IntegrationTests
             // Test that TryParse using SpanReader reads the message struct correctly
             
             // Arrange
-            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 16];
-            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 16];
+            ref Integration.Test.V0.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             orderRef.OrderId = 12345;    // Implicit conversion
             orderRef.Price = 99999;      // Implicit conversion
             orderRef.Quantity = 500;
-            orderRef.Side = Integration.Test.OrderSide.Buy;
-            orderRef.OrderType = Integration.Test.OrderType.Limit;
+            orderRef.Side = Integration.Test.V0.OrderSide.Buy;
+            orderRef.OrderType = Integration.Test.V0.OrderType.Limit;
             
             // Act
-            var success = Integration.Test.NewOrderData.TryParse(buffer, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var message, out var variableData);
             
             // Assert
             Assert.True(success);
             Assert.Equal(12345, message.OrderId.Value);
             Assert.Equal(99999, message.Price.Value);
             Assert.Equal(500, message.Quantity);
-            Assert.Equal(Integration.Test.OrderSide.Buy, message.Side);
-            Assert.Equal(Integration.Test.OrderType.Limit, message.OrderType);
+            Assert.Equal(Integration.Test.V0.OrderSide.Buy, message.Side);
+            Assert.Equal(Integration.Test.V0.OrderType.Limit, message.OrderType);
             Assert.Equal(16, variableData.Length); // Remaining bytes after MESSAGE_SIZE
         }
 
@@ -519,14 +519,14 @@ namespace SbeCodeGenerator.IntegrationTests
             // when blockLength > MESSAGE_SIZE (newer schema version)
             
             // Arrange
-            int extendedBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE + 8;
+            int extendedBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 8;
             Span<byte> buffer = stackalloc byte[extendedBlockLength + 10]; // Extra space for variable data
-            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            ref Integration.Test.V0.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             orderRef.OrderId = 777;
             orderRef.Price = 5000;
             
             // Act - Parse with larger block length
-            var success = Integration.Test.NewOrderData.TryParse(buffer, extendedBlockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, extendedBlockLength, out var message, out var variableData);
             
             // Assert
             Assert.True(success);
@@ -543,21 +543,21 @@ namespace SbeCodeGenerator.IntegrationTests
             // when blockLength < MESSAGE_SIZE
             
             // Arrange
-            int smallerBlockLength = Integration.Test.NewOrderData.MESSAGE_SIZE - 4;
-            Span<byte> buffer = stackalloc byte[Integration.Test.NewOrderData.MESSAGE_SIZE + 20];
-            ref Integration.Test.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.NewOrderData>(buffer);
+            int smallerBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE - 4;
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 20];
+            ref Integration.Test.V0.NewOrderData orderRef = ref MemoryMarshal.AsRef<Integration.Test.V0.NewOrderData>(buffer);
             orderRef.OrderId = 888;
             orderRef.Price = 6000;
             
             // Act - Parse with smaller block length
-            var success = Integration.Test.NewOrderData.TryParse(buffer, smallerBlockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, smallerBlockLength, out var message, out var variableData);
             
             // Assert
             Assert.True(success);
             Assert.Equal(888, message.OrderId.Value);
             Assert.Equal(6000, message.Price.Value);
             // Variable data should start at smallerBlockLength, overlapping with message
-            Assert.Equal(Integration.Test.NewOrderData.MESSAGE_SIZE + 20 - smallerBlockLength, variableData.Length);
+            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 20 - smallerBlockLength, variableData.Length);
         }
 
         [Fact]
@@ -571,11 +571,11 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[40]; // Less than blockLength
             
             // Act
-            var success = Integration.Test.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
             
             // Assert
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
             Assert.True(variableData.IsEmpty);
         }
 
@@ -590,11 +590,11 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[10]; // Same as blockLength, but less than MESSAGE_SIZE
             
             // Act
-            var success = Integration.Test.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
             
             // Assert
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.NewOrderData), message);
+            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
             Assert.True(variableData.IsEmpty);
         }
 
@@ -607,33 +607,33 @@ namespace SbeCodeGenerator.IntegrationTests
             int offset = 0;
             
             // Write bids group header (3 bids)
-            ref Integration.Test.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
-            bidsHeader.BlockLength = (ushort)Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+            ref Integration.Test.V0.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
+            bidsHeader.BlockLength = (ushort)Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE;
             bidsHeader.NumInGroup = 3;
-            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            offset += Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE;
             
             // Write bid entries
             for (int i = 0; i < 3; i++)
             {
-                ref Integration.Test.OrderBookData.BidsData bid = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.BidsData>(buffer.Slice(offset));
+                ref Integration.Test.V0.OrderBookData.BidsData bid = ref MemoryMarshal.AsRef<Integration.Test.V0.OrderBookData.BidsData>(buffer.Slice(offset));
                 bid.Price = 1000 + i * 10;  // Implicit conversion
                 bid.Quantity = 100 + i;
-                offset += Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE;
+                offset += Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE;
             }
             
             // Write asks group header (2 asks)
-            ref Integration.Test.GroupSizeEncoding asksHeader = ref MemoryMarshal.AsRef<Integration.Test.GroupSizeEncoding>(buffer.Slice(offset));
-            asksHeader.BlockLength = (ushort)Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+            ref Integration.Test.V0.GroupSizeEncoding asksHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
+            asksHeader.BlockLength = (ushort)Integration.Test.V0.OrderBookData.AsksData.MESSAGE_SIZE;
             asksHeader.NumInGroup = 2;
-            offset += Integration.Test.GroupSizeEncoding.MESSAGE_SIZE;
+            offset += Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE;
             
             // Write ask entries
             for (int i = 0; i < 2; i++)
             {
-                ref Integration.Test.OrderBookData.AsksData ask = ref MemoryMarshal.AsRef<Integration.Test.OrderBookData.AsksData>(buffer.Slice(offset));
+                ref Integration.Test.V0.OrderBookData.AsksData ask = ref MemoryMarshal.AsRef<Integration.Test.V0.OrderBookData.AsksData>(buffer.Slice(offset));
                 ask.Price = 2000 + i * 10;  // Implicit conversion
                 ask.Quantity = 200 + i;
-                offset += Integration.Test.OrderBookData.AsksData.MESSAGE_SIZE;
+                offset += Integration.Test.V0.OrderBookData.AsksData.MESSAGE_SIZE;
             }
             
             // Add extra data after the variable length segments to verify reader position advancement
@@ -647,8 +647,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var askQuantities = new System.Collections.Generic.List<long>();
             
             // Create SpanReader and use the new overload
-            var reader = new Integration.Test.Runtime.SpanReader(buffer.Slice(0, offset));
-            var orderBook = new Integration.Test.OrderBookData();
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer.Slice(0, offset));
+            var orderBook = new Integration.Test.V0.OrderBookData();
             orderBook.ConsumeVariableLengthSegments(
                 ref reader,
                 bid => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
@@ -704,8 +704,8 @@ namespace SbeCodeGenerator.IntegrationTests
             // Act
             byte symbolLength = 0;
             string symbolStr = "";
-            var reader = new Integration.Test.Runtime.SpanReader(buffer.Slice(0, offset));
-            var order = new Integration.Test.NewOrderData();
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer.Slice(0, offset));
+            var order = new Integration.Test.V0.NewOrderData();
             order.ConsumeVariableLengthSegments(
                 ref reader,
                 symbol => { 

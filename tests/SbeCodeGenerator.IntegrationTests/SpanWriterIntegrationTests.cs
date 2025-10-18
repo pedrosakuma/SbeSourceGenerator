@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
-using Integration.Test;
+using Integration.Test.V0;
 using Xunit;
 
 namespace SbeCodeGenerator.IntegrationTests
@@ -131,7 +131,7 @@ namespace SbeCodeGenerator.IntegrationTests
             };
 
             var buffer = new byte[100]; // Larger buffer for demonstration
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
 
             // Act
             bool result = message.TryEncodeWithWriter(ref writer);
@@ -187,7 +187,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Encode multiple messages into one buffer
             var buffer = new byte[NewOrderData.MESSAGE_SIZE * 3];
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
 
             var message1 = new NewOrderData { OrderId = 1, Price = 100, Quantity = 10, Side = OrderSide.Buy, OrderType = OrderType.Limit };
             var message2 = new NewOrderData { OrderId = 2, Price = 200, Quantity = 20, Side = OrderSide.Sell, OrderType = OrderType.Market };
@@ -201,7 +201,7 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(NewOrderData.MESSAGE_SIZE * 3, writer.BytesWritten);
 
             // Act - Decode all three messages
-            var reader = new Integration.Test.Runtime.SpanReader(buffer);
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer);
 
             Assert.True(reader.TryRead<NewOrderData>(out var decoded1));
             Assert.True(reader.TryRead<NewOrderData>(out var decoded2));
@@ -247,7 +247,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // This test verifies that SpanWriter and SpanReader are truly symmetric
             var buffer = new byte[100];
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
 
             // Write various types in sequence
             writer.Write((int)42);
@@ -258,7 +258,7 @@ namespace SbeCodeGenerator.IntegrationTests
             int totalWritten = writer.BytesWritten;
 
             // Read them back in the same sequence
-            var reader = new Integration.Test.Runtime.SpanReader(buffer);
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer);
 
             Assert.True(reader.TryRead<int>(out var intVal));
             Assert.True(reader.TryRead<long>(out var longVal));

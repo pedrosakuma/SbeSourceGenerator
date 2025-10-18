@@ -40,8 +40,7 @@ namespace SbeSourceGenerator.Schema
         /// </summary>
         public static SchemaCompositeDto ParseComposite(XmlElement compositeElement)
         {
-            var fields = compositeElement.ChildNodes
-                .Cast<XmlElement>()
+            var fields = EnumerateElements(compositeElement.ChildNodes)
                 .Select(ParseField)
                 .ToList();
 
@@ -58,8 +57,7 @@ namespace SbeSourceGenerator.Schema
         /// </summary>
         public static SchemaEnumDto ParseEnum(XmlElement enumElement)
         {
-            var choices = enumElement.ChildNodes
-                .Cast<XmlElement>()
+            var choices = EnumerateElements(enumElement.ChildNodes)
                 .Select(ParseField)
                 .ToList();
 
@@ -96,16 +94,14 @@ namespace SbeSourceGenerator.Schema
         /// </summary>
         public static SchemaGroupDto ParseGroup(XmlElement groupElement, SchemaContext context)
         {
-            var fields = groupElement.ChildNodes
-                .Cast<XmlElement>()
+            var fields = EnumerateElements(groupElement.ChildNodes)
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
                 .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
                 .Select(ParseField)
                 .ToList();
 
-            var constants = groupElement.ChildNodes
-                .Cast<XmlElement>()
+            var constants = EnumerateElements(groupElement.ChildNodes)
                 .Where(x => x.Name == "field" && x.GetAttributeOrEmpty("presence") == "constant")
                 .Select(ParseField)
                 .ToList();
@@ -138,28 +134,25 @@ namespace SbeSourceGenerator.Schema
         /// </summary>
         public static SchemaMessageDto ParseMessage(XmlElement messageElement, SchemaContext context)
         {
-            var fields = messageElement.ChildNodes
-                .Cast<XmlElement>()
+
+            var fields = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
                 .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
                 .Select(ParseField)
                 .ToList();
 
-            var constants = messageElement.ChildNodes
-                .Cast<XmlElement>()
+            var constants = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "field" && x.GetAttributeOrEmpty("presence") == "constant" && x.GetAttributeOrEmpty("valueRef") != "")
                 .Select(ParseField)
                 .ToList();
 
-            var groups = messageElement.ChildNodes
-                .Cast<XmlElement>()
+            var groups = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "group")
                 .Select(x => ParseGroup(x, context))
                 .ToList();
 
-            var data = messageElement.ChildNodes
-                .Cast<XmlElement>()
+            var data = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "data")
                 .Select(ParseData)
                 .ToList();
@@ -175,6 +168,14 @@ namespace SbeSourceGenerator.Schema
                 Groups: groups,
                 Data: data
             );
+        }
+
+        private static IEnumerable<XmlElement> EnumerateElements(XmlNodeList nodeList)
+        {
+            return nodeList
+                .Cast<XmlNode>()
+                .Where(n => n.NodeType == XmlNodeType.Element)
+                .Cast<XmlElement>();
         }
     }
 }

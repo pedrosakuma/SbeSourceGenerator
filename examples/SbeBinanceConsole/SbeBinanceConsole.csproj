@@ -16,11 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="binance-stream-1.0.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.0-rc.1.25451.107" />
+  </ItemGroup>
+  <ItemGroup>
+      <AdditionalFiles Include="binance-spot-1.0.xml" />
+      <AdditionalFiles Include="binance-spot-3.1.xml" />
   </ItemGroup>
 
   <ItemGroup>

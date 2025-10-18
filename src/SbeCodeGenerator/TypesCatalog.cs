@@ -36,6 +36,9 @@ namespace SbeSourceGenerator
             { "ushort", sizeof(ushort) },
             { "uint", sizeof(uint) },
             { "ulong", sizeof(ulong) },
+
+            { "float", sizeof(float)},
+            { "double", sizeof(double)},
         };
     }
 }

@@ -1,8 +1,6 @@
 using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Fields;
-using SbeSourceGenerator.Generators.Types;
-using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
@@ -17,6 +15,23 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     public class MessagesCodeGenerator : ICodeGenerator
     {
+        private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
+        {
+            "bool",
+            "byte",
+            "sbyte",
+            "short",
+            "ushort",
+            "int",
+            "uint",
+            "long",
+            "ulong",
+            "float",
+            "double",
+            "char",
+            "string"
+        };
+
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
@@ -25,84 +40,100 @@ namespace SbeSourceGenerator.Generators
             foreach (XmlElement messageNode in messageNodes)
             {
                 var messageDto = SchemaParser.ParseMessage(messageNode, context);
-                
-                // Determine all versions for this message based on sinceVersion attributes
+
+                var generatedMessageName = RegisterGeneratedTypeName(context, messageDto.Name);
+
                 var versions = GetMessageVersions(messageDto);
-                
-                // Generate a separate type for each version
+
                 foreach (var version in versions)
                 {
                     var versionNamespace = version == 0 ? ns : $"{ns}.V{version}";
                     var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
-                    
+
                     var generator = new MessageDefinition(
-                            versionNamespace,
-                            messageDto.Name.FirstCharToUpper(),
-                            messageDto.Id,
-                            $"{messageDto.Description} (Version {version})",
-                            messageDto.SemanticType,
-                            messageDto.Deprecated,
-                            fieldsForVersion,
+                        versionNamespace,
+                        ns,
+                        generatedMessageName,
+                        messageDto.Id,
+                        $"{messageDto.Description} (Version {version})",
+                        messageDto.SemanticType,
+                        messageDto.Deprecated,
+                        fieldsForVersion,
                         messageDto.Constants
                             .Select(constant => (IFileContentGenerator)
                                 new ConstantMessageFieldDefinition(
-                                    constant.Name.FirstCharToUpper(),
+                                    TypeTranslator.NormalizeName(constant.Name),
                                     constant.Id,
-                                    constant.Type,
+                                    ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
                                     constant.Description != "" ? constant.Description : constant.Type,
-                                    constant.ValueRef
+                                    NormalizeValueRef(constant.ValueRef, context)
                                 )
                             )
                             .ToList(),
                         messageDto.Groups
-                            .Select(group => (IFileContentGenerator)
-                                new GroupDefinition(
+                            .Select(group =>
+                            {
+                                var groupName = RegisterGeneratedTypeName(context, group.Name);
+                                var groupFields = group.Fields
+                                    .Select(field =>
+                                    {
+                                        var translatedField = TypeTranslator.Translate(field.Type);
+                                        var resolvedFieldType = ResolveTypeName(translatedField.PrimitiveType, context);
+                                        var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
+                                        return (IFileContentGenerator)new MessageFieldDefinition(
+                                            generatedFieldName,
+                                            field.Id,
+                                            resolvedFieldType,
+                                            field.Description,
+                                            ParseOffset(field.Offset, field.Name, sourceContext),
+                                            GetTypeLength(field.Type, context),
+                                            field.SinceVersion,
+                                            field.Deprecated
+                                        );
+                                    })
+                                    .ToList();
+
+                                var groupConstants = group.Constants
+                                    .Select(constant => (IFileContentGenerator)
+                                        new ConstantMessageFieldDefinition(
+                                            TypeTranslator.NormalizeName(constant.Name),
+                                            constant.Id,
+                                            ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
+                                            constant.Description,
+                                            NormalizeValueRef(constant.ValueRef, context)
+                                        )
+                                    )
+                                    .ToList();
+
+                                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context), context);
+
+                                return (IFileContentGenerator)new GroupDefinition(
                                     versionNamespace,
-                                    group.Name.FirstCharToUpper(),
+                                    groupName,
                                     group.Id,
-                                    group.DimensionType,
+                                    ResolveTypeName(group.DimensionType, context),
                                     group.Description,
-                                    group.Fields
-                                        .Select(field => (IFileContentGenerator)
-                                            new MessageFieldDefinition(
-                                                field.Name.FirstCharToUpper(),
-                                                field.Id,
-                                                ToNativeType(field.Type),
-                                                field.Description,
-                                                ParseOffset(field.Offset, field.Name, sourceContext),
-                                                GetTypeLength(field.Type, context),
-                                                field.SinceVersion,
-                                                field.Deprecated
-                                            )
-                                        ).ToList(),
-                                    group.Constants
-                                        .Select(constant => (IFileContentGenerator)
-                                            new ConstantMessageFieldDefinition(
-                                                constant.Name.FirstCharToUpper(),
-                                                constant.Id,
-                                                constant.Type,
-                                                constant.Description,
-                                                constant.ValueRef
-                                            )
-                                        ).ToList(),
-                                    GetNumInGroupType(group.DimensionType, context)
-                                )
-                            ).ToList(),
+                                    groupFields,
+                                    groupConstants,
+                                    numInGroupType
+                                );
+                            })
+                            .ToList(),
                         messageDto.Data
                             .Select(data => (IFileContentGenerator)
                                 new DataFieldDefinition(
-                                    data.Name.FirstCharToUpper(),
+                                    TypeTranslator.NormalizeName(data.Name),
                                     data.Id,
-                                    data.Type,
+                                    ResolveTypeName(data.Type, context),
                                     data.Description
                                 )
                             ).ToList()
                     );
                     StringBuilder sb = new StringBuilder();
                     generator.AppendFileContent(sb);
-                    var fileName = version == 0 
+                    var fileName = version == 0
                         ? $"{ns}\\Messages\\{generator.Name}"
-                        : $"{ns}\\V{version}\\Messages\\{generator.Name}";
+                        : $"{ns}\\Messages\\{generator.Name}V{version}";
                     yield return (fileName, sb.ToString());
                 }
             }
@@ -115,7 +146,7 @@ namespace SbeSourceGenerator.Generators
         private static List<int> GetMessageVersions(SchemaMessageDto messageDto)
         {
             var versions = new HashSet<int> { 0 }; // Always generate version 0
-            
+
             foreach (var field in messageDto.Fields)
             {
                 if (!string.IsNullOrEmpty(field.SinceVersion) && int.TryParse(field.SinceVersion, out int sinceVersion))
@@ -127,7 +158,7 @@ namespace SbeSourceGenerator.Generators
                     }
                 }
             }
-            
+
             return versions.OrderBy(v => v).ToList();
         }
 
@@ -136,8 +167,8 @@ namespace SbeSourceGenerator.Generators
         /// Only includes fields where sinceVersion is less than or equal to version.
         /// </summary>
         private static List<IFileContentGenerator> GetFieldsForVersion(
-            List<SchemaFieldDto> fields, 
-            int version, 
+            List<SchemaFieldDto> fields,
+            int version,
             SourceProductionContext sourceContext,
             SchemaContext context)
         {
@@ -147,10 +178,10 @@ namespace SbeSourceGenerator.Generators
                     // Include field if it has no sinceVersion or if sinceVersion <= current version
                     if (string.IsNullOrEmpty(field.SinceVersion))
                         return true;
-                    
+
                     if (int.TryParse(field.SinceVersion, out int sinceVersion))
                         return sinceVersion <= version;
-                    
+
                     return true; // Include if we can't parse the version
                 })
                 .Select(field =>
@@ -159,12 +190,15 @@ namespace SbeSourceGenerator.Generators
                     // 1. Having presence="optional" attribute
                     // 2. Using a type that is defined as optional (e.g., Int64NULL)
                     bool isOptional = field.Presence == "optional" || context.OptionalTypes.ContainsKey(field.Type);
-                    
+                    var translated = TypeTranslator.Translate(field.Type);
+                    var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
+                    var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
+
                     return isOptional
                         ? new OptionalMessageFieldDefinition(
-                            field.Name.FirstCharToUpper(),
+                            generatedFieldName,
                             field.Id,
-                            ToNativeType(field.Type),
+                            resolvedType,
                             GetUnderlyingType(field.Type, context),
                             field.Description,
                             ParseOffset(field.Offset, field.Name, sourceContext),
@@ -173,9 +207,9 @@ namespace SbeSourceGenerator.Generators
                             field.Deprecated
                         )
                         : (IFileContentGenerator)new MessageFieldDefinition(
-                            field.Name.FirstCharToUpper(),
+                            generatedFieldName,
                             field.Id,
-                            ToNativeType(field.Type),
+                            resolvedType,
                             field.Description,
                             ParseOffset(field.Offset, field.Name, sourceContext),
                             GetTypeLength(field.Type, context),
@@ -191,18 +225,19 @@ namespace SbeSourceGenerator.Generators
             // Check if it's an enum type first
             if (context.EnumPrimitiveTypes.TryGetValue(type, out string? underlyingType))
                 return underlyingType;
-            
+
             // Check if it's an optional type (e.g., Int64NULL)
             if (context.OptionalTypes.TryGetValue(type, out underlyingType))
                 return underlyingType;
-            
+
             return null;
         }
 
         private static int GetTypeLength(string type, SchemaContext context)
         {
             int length;
-            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(ToNativeType(type), out length)
+            var translated = TypeTranslator.Translate(type).PrimitiveType;
+            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(translated, out length)
                 && !context.CustomTypeLengths.TryGetValue(type, out length))
                 throw new ArgumentException($"Could not get type {type} length");
             return length;
@@ -221,40 +256,58 @@ namespace SbeSourceGenerator.Generators
             return "uint";
         }
 
-        private static string ToNativeType(string v)
+        private static string RegisterGeneratedTypeName(SchemaContext context, string originalName)
         {
-            return v switch
+            if (string.IsNullOrEmpty(originalName))
+                return originalName;
+
+            var normalized = TypeTranslator.NormalizeName(originalName);
+            context.GeneratedTypeNames[originalName] = normalized;
+            return normalized;
+        }
+
+        private static string ResolveTypeName(string typeName, SchemaContext context)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return typeName;
+
+            if (IsDotNetPrimitive(typeName))
+                return typeName;
+
+            if (context.GeneratedTypeNames.TryGetValue(typeName, out var generated))
+                return generated;
+
+            return TypeTranslator.NormalizeName(typeName);
+        }
+
+        private static bool IsDotNetPrimitive(string typeName) => DotNetPrimitiveTypes.Contains(typeName);
+
+        private static string NormalizeValueRef(string valueRef, SchemaContext context)
+        {
+            if (string.IsNullOrWhiteSpace(valueRef))
+                return valueRef;
+
+            int separatorIndex = valueRef.IndexOf('.');
+            string separator = ".";
+
+            if (separatorIndex < 0)
             {
-                "int8" => "sbyte",
-                "int16" => "short",
-                "int32" => "int",
-                "int64" => "long",
-                "uint8" => "byte",
-                "uint16" => "ushort",
-                "uint32" => "uint",
-                "uint64" => "ulong",
+                separatorIndex = valueRef.IndexOf("::", StringComparison.Ordinal);
+                if (separatorIndex >= 0)
+                    separator = "::";
+            }
 
-                "Int8" => "sbyte",
-                "Int16" => "short",
-                "Int32" => "int",
-                "Int64" => "long",
-                "Char" => "char",
-                "UInt8" => "byte",
-                "UInt16" => "ushort",
-                "UInt32" => "uint",
-                "UInt64" => "ulong",
+            if (separatorIndex < 0)
+                return ResolveTypeName(valueRef, context);
 
-                "Int8NULL" => "sbyte",
-                "Int16NULL" => "short",
-                "Int32NULL" => "int",
-                "Int64NULL" => "long",
-                "CharNULL" => "char",
-                "UInt8NULL" => "byte",
-                "UInt16NULL" => "ushort",
-                "UInt32NULL" => "uint",
-                "UInt64NULL" => "ulong",
-                _ => v
-            };
+            var typePart = valueRef.Substring(0, separatorIndex);
+            var remainder = valueRef.Substring(separatorIndex + separator.Length);
+            var normalizedType = ResolveTypeName(typePart, context);
+
+            if (remainder.Length == 0)
+                return normalizedType;
+
+            return string.Concat(normalizedType, separator, remainder);
         }
 
         private static int? ParseOffset(string offset, string fieldName, SourceProductionContext sourceContext)

@@ -3,9 +3,10 @@ using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using System.Text;
 using System.Xml;
 
 namespace SbeSourceGenerator
@@ -13,92 +14,211 @@ namespace SbeSourceGenerator
     [Generator]
     public class SBESourceGenerator : IIncrementalGenerator
     {
-    /// <summary>
-    /// Initializes the source generator by configuring the incremental pipeline.
-    /// </summary>
+        /// <summary>
+        /// Initializes the source generator by configuring the incremental pipeline.
+        /// </summary>
         public void Initialize(IncrementalGeneratorInitializationContext initContext)
         {
             // Stage 1: Collect XML schema files from additional files
             IncrementalValuesProvider<AdditionalText> xmlSchemaFiles = CollectXmlSchemaFiles(initContext);
 
             // Stage 2 & 3: Register source generation with diagnostic support
-            RegisterSourceGeneration(initContext, xmlSchemaFiles);
+            RegisterSourceGeneration(initContext, xmlSchemaFiles.Collect());
         }
 
-    /// <summary>
-    /// Collects SBE XML schema files from the project's additional files.
-    /// </summary>
+        /// <summary>
+        /// Collects SBE XML schema files from the project's additional files.
+        /// </summary>
         private static IncrementalValuesProvider<AdditionalText> CollectXmlSchemaFiles(IncrementalGeneratorInitializationContext initContext)
         {
             return initContext.AdditionalTextsProvider.Where(file => file.Path.EndsWith(".xml"));
         }
 
-    /// <summary>
-    /// Registers source output for each XML schema with diagnostic reporting.
-    /// </summary>
-        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValuesProvider<AdditionalText> xmlFiles)
+        /// <summary>
+        /// Registers source output for each XML schema with diagnostic reporting.
+        /// </summary>
+        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValueProvider<ImmutableArray<AdditionalText>> xmlFiles)
         {
             initContext.RegisterSourceOutput(xmlFiles, (sourceContext, text) =>
             {
-                try
+                if (text.IsDefaultOrEmpty)
+                    return;
+
+                var emittedRuntimeNamespaces = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (var additionalText in text)
                 {
-                    string path = text.Path;
-                    string ns = GetNamespaceFromPath(path);
-                    var d = new XmlDocument();
-                    d.Load(path);
-                    
-                    // Create a per-schema context to hold mutable state
-                    var context = new SchemaContext();
-                    
-                    // Parse byteOrder attribute from messageSchema element
-                    var messageSchemaNode = d.DocumentElement;
-                    if (messageSchemaNode != null)
+                    try
                     {
-                        var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-                        if (!string.IsNullOrEmpty(byteOrderAttr))
+                        string path = additionalText.Path;
+                        var d = new XmlDocument();
+                        d.Load(path);
+
+                        string ns = GetNamespaceFromSchema(d, path);
+
+                        // Create a per-schema context to hold mutable state (sharing runtime tracking)
+                        var context = new SchemaContext(emittedRuntimeNamespaces);
+
+                        // Parse byteOrder attribute from messageSchema element
+                        var messageSchemaNode = d.DocumentElement;
+                        if (messageSchemaNode != null)
                         {
-                            context.ByteOrder = byteOrderAttr;
+                            var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
+                            if (!string.IsNullOrEmpty(byteOrderAttr))
+                            {
+                                context.ByteOrder = byteOrderAttr;
+                            }
                         }
+
+                        // Use specialized generators to handle different categories
+                        var typesGenerator = new TypesCodeGenerator();
+                        var messagesGenerator = new MessagesCodeGenerator();
+                        var utilitiesGenerator = new UtilitiesCodeGenerator();
+                        var validationGenerator = new ValidationGenerator();
+
+                        foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
+                            sourceContext.AddSource(item.name, item.content);
+                        foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
+                            sourceContext.AddSource(item.name, item.content);
+                        foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
+                            sourceContext.AddSource(item.name, item.content);
+                        foreach (var item in validationGenerator.Generate(ns, d, context, sourceContext))
+                            sourceContext.AddSource(item.name, item.content);
                     }
-                    
-                    // Use specialized generators to handle different categories
-                    var typesGenerator = new TypesCodeGenerator();
-                    var messagesGenerator = new MessagesCodeGenerator();
-                    var utilitiesGenerator = new UtilitiesCodeGenerator();
-                    var validationGenerator = new ValidationGenerator();
-                    
-                    foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
-                        sourceContext.AddSource(item.name, item.content);
-                    foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
-                        sourceContext.AddSource(item.name, item.content);
-                    foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
-                        sourceContext.AddSource(item.name, item.content);
-                    foreach (var item in validationGenerator.Generate(ns, d, context, sourceContext))
-                        sourceContext.AddSource(item.name, item.content);
-                }
-                catch (Exception ex)
-                {
-                    // Only report diagnostic if context has a valid CancellationToken (not default)
-                    if (sourceContext.CancellationToken != default)
+                    catch (Exception ex)
                     {
-                        sourceContext.ReportDiagnostic(Diagnostic.Create(
-                            SbeDiagnostics.MalformedSchema,
-                            Location.None,
-                            text.Path,
-                            ex.Message));
+                        if (!sourceContext.CancellationToken.IsCancellationRequested)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.MalformedSchema,
+                                Location.None,
+                                additionalText.Path,
+                                ex.Message));
+                        }
                     }
                 }
             });
         }
 
 
+        private static string GetNamespaceFromSchema(XmlDocument document, string path)
+        {
+            var baseNamespaceFromPath = GetNamespaceFromPath(path);
+
+            XmlElement? root = document.DocumentElement;
+            if (root is null)
+                return baseNamespaceFromPath;
+
+            string package = root.GetAttribute("package");
+            string version = root.GetAttribute("version");
+
+            string packageNamespace = NormalizePackage(package);
+
+            string baseNamespace;
+            if (string.IsNullOrWhiteSpace(packageNamespace))
+            {
+                baseNamespace = baseNamespaceFromPath;
+            }
+            else if (string.IsNullOrWhiteSpace(baseNamespaceFromPath))
+            {
+                baseNamespace = packageNamespace;
+            }
+            else
+            {
+                int packageSegments = packageNamespace.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                int pathSegments = baseNamespaceFromPath.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                baseNamespace = pathSegments > packageSegments ? baseNamespaceFromPath : packageNamespace;
+            }
+
+            string versionSegment = NormalizeVersion(version);
+            if (string.IsNullOrWhiteSpace(versionSegment))
+                return baseNamespace;
+
+            if (string.IsNullOrWhiteSpace(baseNamespace))
+                return $"V{versionSegment}";
+
+            return string.Concat(baseNamespace, ".V", versionSegment);
+        }
+
         private static string GetNamespaceFromPath(string path)
         {
             return string.Join(".", Path.GetFileName(path)
-                .Split('-')
-                .Where(part => !part.Contains(".xml"))
+                .Split(new[] { '-' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => !part.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                .Where(part => !part.Equals("schema", StringComparison.OrdinalIgnoreCase))
                 .Select(part => part.FirstCharToUpper())
             );
+        }
+
+        private static string NormalizePackage(string package)
+        {
+            var separators = new[] { '.', '-', '_', ' ' };
+            var segments = package
+                .Split(separators, StringSplitOptions.RemoveEmptyEntries)
+                .Select(segment => NormalizeIdentifier(segment.Trim()))
+                .Where(segment => segment.Length > 0)
+                .ToArray();
+
+            if (segments.Length == 0)
+                return NormalizeIdentifier(package);
+
+            return string.Join(".", segments);
+        }
+
+        private static string NormalizeVersion(string version)
+        {
+            var sb = new StringBuilder();
+            bool appendedUnderscore = false;
+            foreach (char ch in version)
+            {
+                if (char.IsLetterOrDigit(ch))
+                {
+                    sb.Append(ch);
+                    appendedUnderscore = false;
+                }
+                else
+                {
+                    if (!appendedUnderscore)
+                    {
+                        sb.Append('_');
+                        appendedUnderscore = true;
+                    }
+                }
+            }
+
+            string normalized = sb.ToString().Trim('_');
+            return string.IsNullOrEmpty(normalized) ? "0" : normalized;
+        }
+
+        private static string NormalizeIdentifier(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "_";
+
+            var sb = new StringBuilder(value.Length);
+            bool capitalizeNext = true;
+            foreach (char ch in value)
+            {
+                if (char.IsLetterOrDigit(ch))
+                {
+                    char toAppend = capitalizeNext ? char.ToUpperInvariant(ch) : ch;
+                    sb.Append(toAppend);
+                    capitalizeNext = false;
+                }
+                else
+                {
+                    capitalizeNext = true;
+                }
+            }
+
+            if (sb.Length == 0)
+                return "_";
+
+            if (!char.IsLetter(sb[0]) && sb[0] != '_')
+                sb.Insert(0, '_');
+
+            return sb.ToString();
         }
     }
 }

@@ -13,7 +13,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendLine($"public readonly {PrimitiveType} Value;", tabs);
             sb.AppendLine("", tabs);
-            
+
             // Constructor
             sb.AppendSummary($"Initializes a new instance of {Name} with the specified value.", tabs, nameof(TypeDefinition));
             sb.AppendLine($"public {Name}({PrimitiveType} value)", tabs);
@@ -21,16 +21,16 @@ namespace SbeSourceGenerator
             sb.AppendLine("Value = value;", tabs);
             sb.AppendLine("}", --tabs);
             sb.AppendLine("", tabs);
-            
+
             // Implicit conversion from primitive to wrapper
             sb.AppendSummary($"Implicitly converts a {PrimitiveType} to {Name}.", tabs, nameof(TypeDefinition));
             sb.AppendLine($"public static implicit operator {Name}({PrimitiveType} value) => new {Name}(value);", tabs);
             sb.AppendLine("", tabs);
-            
+
             // Explicit conversion from wrapper to primitive
             sb.AppendSummary($"Explicitly converts a {Name} to {PrimitiveType}.", tabs, nameof(TypeDefinition));
             sb.AppendLine($"public static explicit operator {PrimitiveType}({Name} value) => value.Value;", tabs);
-            
+
             sb.AppendLine("}", --tabs);
         }
     }

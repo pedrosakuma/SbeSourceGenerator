@@ -1,5 +1,5 @@
 using System;
-using Optional.Fields.Test;
+using Optional.Fields.Test.V0;
 using Xunit;
 
 namespace SbeCodeGenerator.IntegrationTests
@@ -130,7 +130,7 @@ namespace SbeCodeGenerator.IntegrationTests
             message.SetOptionalValue(null);
 
             var buffer = new byte[100]; // Larger buffer for demonstration
-            var writer = new Optional.Fields.Test.Runtime.SpanWriter(buffer);
+            var writer = new Optional.Fields.Test.V0.Runtime.SpanWriter(buffer);
 
             // Act
             bool result = message.TryEncodeWithWriter(ref writer);
@@ -191,7 +191,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Encode multiple messages into one buffer
             var buffer = new byte[SimpleOptionalData.MESSAGE_SIZE * 3];
-            var writer = new Optional.Fields.Test.Runtime.SpanWriter(buffer);
+            var writer = new Optional.Fields.Test.V0.Runtime.SpanWriter(buffer);
 
             var message1 = new SimpleOptionalData { Id = 1 };
             message1.SetOptionalValue(100);
@@ -210,7 +210,7 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(SimpleOptionalData.MESSAGE_SIZE * 3, writer.BytesWritten);
 
             // Act - Decode all three messages
-            var reader = new Optional.Fields.Test.Runtime.SpanReader(buffer);
+            var reader = new Optional.Fields.Test.V0.Runtime.SpanReader(buffer);
 
             Assert.True(reader.TryRead<SimpleOptionalData>(out var decoded1));
             Assert.True(reader.TryRead<SimpleOptionalData>(out var decoded2));

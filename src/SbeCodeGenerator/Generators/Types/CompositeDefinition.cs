@@ -65,7 +65,7 @@ namespace SbeSourceGenerator
                     field.AppendFileContent(sb, tabs);
                 }
             }
-            
+
             if (!blittable)
             {
                 string varDataType = Fields.Where(f => f is ArrayFieldDefinition)
@@ -75,7 +75,7 @@ namespace SbeSourceGenerator
                 // Generate constructor for readonly ref struct
                 var valueField = Fields.Where(f => f is ValueFieldDefinition).Cast<ValueFieldDefinition>().First();
                 var arrayField = Fields.Where(f => f is ArrayFieldDefinition).Cast<ArrayFieldDefinition>().First();
-                
+
                 sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs, nameof(CompositeDefinition));
                 sb.AppendLine($"public {Name}({valueField.PrimitiveType} {valueField.Name.FirstCharToLower()}, ReadOnlySpan<{arrayField.PrimitiveType}> {arrayField.Name.FirstCharToLower()})", tabs);
                 sb.AppendLine("{", tabs++);

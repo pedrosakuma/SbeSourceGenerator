@@ -16,30 +16,30 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Create buffer and bids data
             Span<byte> buffer = stackalloc byte[512];
-            var bids = new Integration.Test.OrderBookData.BidsData[]
+            var bids = new Integration.Test.V0.OrderBookData.BidsData[]
             {
-                new Integration.Test.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
-                new Integration.Test.OrderBookData.BidsData { Price = 1010, Quantity = 101 },
-                new Integration.Test.OrderBookData.BidsData { Price = 1020, Quantity = 102 }
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1010, Quantity = 101 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1020, Quantity = 102 }
             };
 
             // Act - Encode using TryEncodeBids
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.OrderBookData.TryEncodeBids(ref writer, bids);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.OrderBookData.TryEncodeBids(ref writer, bids);
 
             // Assert
             Assert.True(success);
-            Assert.Equal(Integration.Test.GroupSizeEncoding.MESSAGE_SIZE + 3 * Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE, writer.BytesWritten);
+            Assert.Equal(Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE + 3 * Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE, writer.BytesWritten);
 
             // Verify the encoded data can be read back
-            var reader = new Integration.Test.Runtime.SpanReader(buffer);
-            Assert.True(reader.TryRead<Integration.Test.GroupSizeEncoding>(out var header));
-            Assert.Equal((ushort)Integration.Test.OrderBookData.BidsData.MESSAGE_SIZE, header.BlockLength);
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer);
+            Assert.True(reader.TryRead<Integration.Test.V0.GroupSizeEncoding>(out var header));
+            Assert.Equal((ushort)Integration.Test.V0.OrderBookData.BidsData.MESSAGE_SIZE, header.BlockLength);
             Assert.Equal(3u, header.NumInGroup);
 
             for (int i = 0; i < 3; i++)
             {
-                Assert.True(reader.TryRead<Integration.Test.OrderBookData.BidsData>(out var bid));
+                Assert.True(reader.TryRead<Integration.Test.V0.OrderBookData.BidsData>(out var bid));
                 Assert.Equal(bids[i].Price.Value, bid.Price.Value);
                 Assert.Equal(bids[i].Quantity, bid.Quantity);
             }
@@ -50,19 +50,19 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Empty group
             Span<byte> buffer = stackalloc byte[512];
-            var bids = Array.Empty<Integration.Test.OrderBookData.BidsData>();
+            var bids = Array.Empty<Integration.Test.V0.OrderBookData.BidsData>();
 
             // Act
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.OrderBookData.TryEncodeBids(ref writer, bids);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.OrderBookData.TryEncodeBids(ref writer, bids);
 
             // Assert
             Assert.True(success);
-            Assert.Equal(Integration.Test.GroupSizeEncoding.MESSAGE_SIZE, writer.BytesWritten);
+            Assert.Equal(Integration.Test.V0.GroupSizeEncoding.MESSAGE_SIZE, writer.BytesWritten);
 
             // Verify header
-            var reader = new Integration.Test.Runtime.SpanReader(buffer);
-            Assert.True(reader.TryRead<Integration.Test.GroupSizeEncoding>(out var header));
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer);
+            Assert.True(reader.TryRead<Integration.Test.V0.GroupSizeEncoding>(out var header));
             Assert.Equal(0u, header.NumInGroup);
         }
 
@@ -71,37 +71,37 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Create buffer and data for both bids and asks
             Span<byte> buffer = stackalloc byte[512];
-            var bids = new Integration.Test.OrderBookData.BidsData[]
+            var bids = new Integration.Test.V0.OrderBookData.BidsData[]
             {
-                new Integration.Test.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
-                new Integration.Test.OrderBookData.BidsData { Price = 1010, Quantity = 101 }
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1010, Quantity = 101 }
             };
-            var asks = new Integration.Test.OrderBookData.AsksData[]
+            var asks = new Integration.Test.V0.OrderBookData.AsksData[]
             {
-                new Integration.Test.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
+                new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
             };
 
             // Act - Encode both groups
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            Assert.True(Integration.Test.OrderBookData.TryEncodeBids(ref writer, bids));
-            Assert.True(Integration.Test.OrderBookData.TryEncodeAsks(ref writer, asks));
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeBids(ref writer, bids));
+            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeAsks(ref writer, asks));
 
             // Assert - Verify both groups are encoded correctly
-            var reader = new Integration.Test.Runtime.SpanReader(buffer);
+            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer);
             
             // Verify bids
-            Assert.True(reader.TryRead<Integration.Test.GroupSizeEncoding>(out var bidsHeader));
+            Assert.True(reader.TryRead<Integration.Test.V0.GroupSizeEncoding>(out var bidsHeader));
             Assert.Equal(2u, bidsHeader.NumInGroup);
             for (int i = 0; i < 2; i++)
             {
-                Assert.True(reader.TryRead<Integration.Test.OrderBookData.BidsData>(out var bid));
+                Assert.True(reader.TryRead<Integration.Test.V0.OrderBookData.BidsData>(out var bid));
                 Assert.Equal(bids[i].Price.Value, bid.Price.Value);
             }
 
             // Verify asks
-            Assert.True(reader.TryRead<Integration.Test.GroupSizeEncoding>(out var asksHeader));
+            Assert.True(reader.TryRead<Integration.Test.V0.GroupSizeEncoding>(out var asksHeader));
             Assert.Equal(1u, asksHeader.NumInGroup);
-            Assert.True(reader.TryRead<Integration.Test.OrderBookData.AsksData>(out var ask));
+            Assert.True(reader.TryRead<Integration.Test.V0.OrderBookData.AsksData>(out var ask));
             Assert.Equal(2000, ask.Price.Value);
         }
 
@@ -110,14 +110,14 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Buffer too small
             Span<byte> buffer = stackalloc byte[10]; // Too small for group header
-            var bids = new Integration.Test.OrderBookData.BidsData[]
+            var bids = new Integration.Test.V0.OrderBookData.BidsData[]
             {
-                new Integration.Test.OrderBookData.BidsData { Price = 1000, Quantity = 100 }
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 }
             };
 
             // Act
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.OrderBookData.TryEncodeBids(ref writer, bids);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.OrderBookData.TryEncodeBids(ref writer, bids);
 
             // Assert
             Assert.False(success);
@@ -132,8 +132,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var symbolBytes = Encoding.UTF8.GetBytes(symbol);
 
             // Act - Encode varData
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
 
             // Assert
             Assert.True(success);
@@ -154,8 +154,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var emptyData = Array.Empty<byte>();
 
             // Act
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.NewOrderData.TryEncodeSymbol(ref writer, emptyData);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.NewOrderData.TryEncodeSymbol(ref writer, emptyData);
 
             // Assert
             Assert.True(success);
@@ -171,8 +171,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var tooLongData = new byte[256]; // 256 > 255
 
             // Act
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.NewOrderData.TryEncodeSymbol(ref writer, tooLongData);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.NewOrderData.TryEncodeSymbol(ref writer, tooLongData);
 
             // Assert
             Assert.False(success); // Should fail because length > 255
@@ -186,8 +186,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var data = new byte[5]; // Need 6 bytes total
 
             // Act
-            var writer = new Integration.Test.Runtime.SpanWriter(buffer);
-            var success = Integration.Test.NewOrderData.TryEncodeSymbol(ref writer, data);
+            var writer = new Integration.Test.V0.Runtime.SpanWriter(buffer);
+            var success = Integration.Test.V0.NewOrderData.TryEncodeSymbol(ref writer, data);
 
             // Assert
             Assert.False(success);
@@ -199,38 +199,38 @@ namespace SbeCodeGenerator.IntegrationTests
             // Arrange - Create a complete OrderBook message with groups
             Span<byte> buffer = stackalloc byte[1024];
             
-            var orderBook = new Integration.Test.OrderBookData
+            var orderBook = new Integration.Test.V0.OrderBookData
             {
                 InstrumentId = 42
             };
 
-            var bids = new Integration.Test.OrderBookData.BidsData[]
+            var bids = new Integration.Test.V0.OrderBookData.BidsData[]
             {
-                new Integration.Test.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
-                new Integration.Test.OrderBookData.BidsData { Price = 1010, Quantity = 101 },
-                new Integration.Test.OrderBookData.BidsData { Price = 1020, Quantity = 102 }
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1010, Quantity = 101 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1020, Quantity = 102 }
             };
 
-            var asks = new Integration.Test.OrderBookData.AsksData[]
+            var asks = new Integration.Test.V0.OrderBookData.AsksData[]
             {
-                new Integration.Test.OrderBookData.AsksData { Price = 2000, Quantity = 200 },
-                new Integration.Test.OrderBookData.AsksData { Price = 2010, Quantity = 201 }
+                new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 },
+                new Integration.Test.V0.OrderBookData.AsksData { Price = 2010, Quantity = 201 }
             };
 
             // Act - Encode message with groups using BeginEncoding
             Assert.True(orderBook.BeginEncoding(buffer, out var writer));
-            Assert.True(Integration.Test.OrderBookData.TryEncodeBids(ref writer, bids));
-            Assert.True(Integration.Test.OrderBookData.TryEncodeAsks(ref writer, asks));
+            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeBids(ref writer, bids));
+            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeAsks(ref writer, asks));
 
             int totalBytesWritten = writer.BytesWritten;
 
             // Decode the fixed part
-            Assert.True(Integration.Test.OrderBookData.TryParse(buffer, out var decodedMessage, out var variableData));
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decodedMessage, out var variableData));
             Assert.Equal(42, decodedMessage.InstrumentId);
 
             // Decode the groups using ConsumeVariableLengthSegments
-            var decodedBids = new List<Integration.Test.OrderBookData.BidsData>();
-            var decodedAsks = new List<Integration.Test.OrderBookData.AsksData>();
+            var decodedBids = new List<Integration.Test.V0.OrderBookData.BidsData>();
+            var decodedAsks = new List<Integration.Test.V0.OrderBookData.AsksData>();
 
             decodedMessage.ConsumeVariableLengthSegments(
                 variableData,
@@ -261,13 +261,13 @@ namespace SbeCodeGenerator.IntegrationTests
             // Arrange - Create a complete NewOrder message with varData
             Span<byte> buffer = stackalloc byte[1024];
             
-            var order = new Integration.Test.NewOrderData
+            var order = new Integration.Test.V0.NewOrderData
             {
                 OrderId = 123,
                 Price = 9950,
                 Quantity = 100,
-                Side = Integration.Test.OrderSide.Buy,
-                OrderType = Integration.Test.OrderType.Limit
+                Side = Integration.Test.V0.OrderSide.Buy,
+                OrderType = Integration.Test.V0.OrderType.Limit
             };
 
             string symbol = "AAPL";
@@ -275,10 +275,10 @@ namespace SbeCodeGenerator.IntegrationTests
 
             // Act - Encode message with varData using BeginEncoding
             Assert.True(order.BeginEncoding(buffer, out var writer));
-            Assert.True(Integration.Test.NewOrderData.TryEncodeSymbol(ref writer, symbolBytes));
+            Assert.True(Integration.Test.V0.NewOrderData.TryEncodeSymbol(ref writer, symbolBytes));
 
             // Decode the fixed part
-            Assert.True(Integration.Test.NewOrderData.TryParse(buffer, out var decodedOrder, out var variableData));
+            Assert.True(Integration.Test.V0.NewOrderData.TryParse(buffer, out var decodedOrder, out var variableData));
             Assert.Equal(123, decodedOrder.OrderId.Value);
             Assert.Equal(9950, decodedOrder.Price.Value);
             Assert.Equal(100, decodedOrder.Quantity);
@@ -305,7 +305,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Arrange - Buffer too small for message header
             Span<byte> buffer = stackalloc byte[2];
-            var orderBook = new Integration.Test.OrderBookData { InstrumentId = 42 };
+            var orderBook = new Integration.Test.V0.OrderBookData { InstrumentId = 42 };
 
             // Act
             var success = orderBook.BeginEncoding(buffer, out var writer);

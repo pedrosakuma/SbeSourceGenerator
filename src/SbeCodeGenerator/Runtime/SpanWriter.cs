@@ -179,7 +179,7 @@ namespace SbeSourceGenerator.Runtime
 
             if (clear)
                 _buffer.Slice(_position, count).Clear();
-            
+
             _position += count;
             return true;
         }
@@ -231,7 +231,7 @@ namespace SbeSourceGenerator.Runtime
         {
             if (position < 0 || position > _buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(position), position, $"Position must be between 0 and {_buffer.Length}");
-            
+
             _position = position;
         }
 
@@ -274,7 +274,7 @@ namespace SbeSourceGenerator.Runtime
                 _position += bytesWritten;
                 return true;
             }
-            
+
             return false;
         }
 

@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="Schemas/*.xml" />
+    <AdditionalFiles Include="Schemas/marketdata-1.0.xml" />
   </ItemGroup>
 
 </Project>
