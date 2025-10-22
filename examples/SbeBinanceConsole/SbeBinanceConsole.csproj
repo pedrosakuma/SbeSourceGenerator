@@ -21,6 +21,7 @@
   <ItemGroup>
       <AdditionalFiles Include="binance-spot-1.0.xml" />
       <AdditionalFiles Include="binance-spot-3.1.xml" />
+      <AdditionalFiles Include="binance-spot-stream-1.0.xml" />
   </ItemGroup>
 
   <ItemGroup>

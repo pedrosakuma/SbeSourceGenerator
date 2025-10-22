@@ -1,5 +1,5 @@
-﻿using Binance.Spot.V0;
-using Binance.Spot.V0.Runtime;
+﻿using Binance.Spot.Stream.V0;
+using Binance.Spot.Stream.V0.Runtime;
 using System.CommandLine;
 using System.Net;
 using System.Net.Http.Json;
@@ -93,7 +93,6 @@ namespace SbeBinanceConsole
         }
         private static Task Trade(string key, string instrument, CancellationToken token)
         {
-#if false
             return SubscribeAsync(key, "trade", instrument,
                 (header, reader) =>
                 {
@@ -121,14 +120,9 @@ namespace SbeBinanceConsole
                             break;
                     }
                 }, token);
-#else
-            Console.WriteLine("Trade stream handling is disabled because the current schema no longer provides the expected message definitions.");
-            return Task.CompletedTask;
-#endif
         }
         private static Task BestBidAsk(string key, string instrument, CancellationToken token)
         {
-#if false
             return SubscribeAsync(key, "bestBidAsk", instrument,
                 (header, reader) =>
                 {
@@ -153,15 +147,10 @@ namespace SbeBinanceConsole
                             break;
                     }
                 }, token);
-#else
-            Console.WriteLine("Best bid/ask stream handling is disabled because the current schema no longer provides the expected message definitions.");
-            return Task.CompletedTask;
-#endif
         }
 
         private static async Task OrderBook(string key, string instrument, CancellationToken token)
         {
-#if false
             ManualResetEventSlim mres = new ManualResetEventSlim();
             List<OrderBookEntry> bids = new List<OrderBookEntry>(5000);
             List<OrderBookEntry> asks = new List<OrderBookEntry>(5000);
@@ -290,13 +279,7 @@ namespace SbeBinanceConsole
                 mres.Set();
             }
             await task;
-#else
-            Console.WriteLine("Order book streaming is disabled because the current schema no longer provides the expected message definitions.");
-            await Task.CompletedTask;
-            return;
-#endif
         }
-
     }
     public class BidsComparer : IComparer<OrderBookEntry>
     {
