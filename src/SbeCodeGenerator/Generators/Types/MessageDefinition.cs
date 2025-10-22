@@ -11,7 +11,7 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendUsings(tabs, $"{RuntimeNamespace}.Runtime");
+            sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime");
 
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 

@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Deprecated.Test.V2;
+using Deprecated.Test.V0;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -21,7 +21,6 @@ namespace SbeCodeGenerator.IntegrationTests
                 "OrderWithDeprecated.cs",
                 SearchOption.AllDirectories
             );
-            
             Assert.NotEmpty(generatedFiles);
             
             // Check all versions for deprecated field markers

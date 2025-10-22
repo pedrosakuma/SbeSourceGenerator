@@ -1,6 +1,7 @@
-﻿using TestNamespace.Runtime;
+﻿using TestNamespace;
+using TestNamespace.Runtime;
 using System.Runtime.InteropServices;
-namespace TestNamespace;
+namespace TestNamespace.V0;
 /// <summary>
 /// Trade message (Version 0)
 /// (MessageDefinition)
