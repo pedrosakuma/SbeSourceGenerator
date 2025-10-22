@@ -142,7 +142,7 @@ namespace SbeCodeGenerator.IntegrationTests
         {
             // Verify namespace generation from file names
             // integration-test-schema.xml -> Integration.Test
-            Assert.Equal("Integration.Test", typeof(Integration.Test.V0.OrderSide).Namespace);
+            Assert.Equal("Integration.Test.V0", typeof(Integration.Test.V0.OrderSide).Namespace);
         }
 
         [Fact]
