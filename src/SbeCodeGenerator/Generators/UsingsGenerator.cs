@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 
 namespace SbeSourceGenerator
 {
@@ -6,8 +7,20 @@ namespace SbeSourceGenerator
     {
         internal static void AppendUsings(this StringBuilder sb, int tabs, params string[] namespaces)
         {
+            if (namespaces is null || namespaces.Length == 0)
+                return;
+
+            HashSet<string> emitted = new HashSet<string>(System.StringComparer.Ordinal);
             foreach (var ns in namespaces)
+            {
+                if (string.IsNullOrWhiteSpace(ns))
+                    continue;
+
+                if (!emitted.Add(ns))
+                    continue;
+
                 sb.AppendLine($"using {ns};", tabs);
+            }
         }
     }
 }

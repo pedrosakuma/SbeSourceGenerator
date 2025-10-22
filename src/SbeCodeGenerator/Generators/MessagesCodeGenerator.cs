@@ -44,10 +44,11 @@ namespace SbeSourceGenerator.Generators
                 var generatedMessageName = RegisterGeneratedTypeName(context, messageDto.Name);
 
                 var versions = GetMessageVersions(messageDto);
+                var baseNamespace = StripSchemaVersion(ns);
 
                 foreach (var version in versions)
                 {
-                    var versionNamespace = version == 0 ? ns : $"{ns}.V{version}";
+                    var versionNamespace = GetVersionNamespace(baseNamespace, ns, version);
                     var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
 
                     var generator = new MessageDefinition(
@@ -131,9 +132,10 @@ namespace SbeSourceGenerator.Generators
                     );
                     StringBuilder sb = new StringBuilder();
                     generator.AppendFileContent(sb);
+                    var targetNamespace = string.IsNullOrEmpty(versionNamespace) ? ns : versionNamespace;
                     var fileName = version == 0
-                        ? $"{ns}\\Messages\\{generator.Name}"
-                        : $"{ns}\\Messages\\{generator.Name}V{version}";
+                        ? $"{targetNamespace}\\Messages\\{generator.Name}"
+                        : $"{targetNamespace}\\Messages\\{generator.Name}V{version}";
                     yield return (fileName, sb.ToString());
                 }
             }
@@ -160,6 +162,50 @@ namespace SbeSourceGenerator.Generators
             }
 
             return versions.OrderBy(v => v).ToList();
+        }
+
+        private static string StripSchemaVersion(string schemaNamespace)
+        {
+            if (string.IsNullOrEmpty(schemaNamespace))
+                return string.Empty;
+
+            var segments = schemaNamespace.Split('.');
+            if (segments.Length == 0)
+                return string.Empty;
+
+            var last = segments[segments.Length - 1];
+            if (!IsVersionSegment(last))
+                return schemaNamespace;
+
+            if (segments.Length == 1)
+                return string.Empty;
+
+            return string.Join(".", segments.Take(segments.Length - 1));
+        }
+
+        private static bool IsVersionSegment(string segment)
+        {
+            if (string.IsNullOrEmpty(segment) || segment.Length < 2 || segment[0] != 'V')
+                return false;
+
+            for (int i = 1; i < segment.Length; i++)
+            {
+                char ch = segment[i];
+                if (!char.IsDigit(ch) && ch != '_')
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static string GetVersionNamespace(string baseNamespace, string schemaNamespace, int version)
+        {
+            string root = string.IsNullOrEmpty(baseNamespace) ? schemaNamespace : baseNamespace;
+
+            if (string.IsNullOrEmpty(root))
+                return $"V{version}";
+
+            return string.Concat(root, ".V", version);
         }
 
         /// <summary>
