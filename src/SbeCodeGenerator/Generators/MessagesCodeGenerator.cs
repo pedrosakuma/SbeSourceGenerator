@@ -134,8 +134,8 @@ namespace SbeSourceGenerator.Generators
                     generator.AppendFileContent(sb);
                     var targetNamespace = string.IsNullOrEmpty(versionNamespace) ? ns : versionNamespace;
                     var fileName = version == 0
-                        ? $"{targetNamespace}\\Messages\\{generator.Name}"
-                        : $"{targetNamespace}\\Messages\\{generator.Name}V{version}";
+                        ? context.CreateHintName(targetNamespace, "Messages", generator.Name)
+                        : context.CreateHintName(targetNamespace, "Messages", $"{generator.Name}V{version}");
                     yield return (fileName, sb.ToString());
                 }
             }
@@ -200,12 +200,22 @@ namespace SbeSourceGenerator.Generators
 
         private static string GetVersionNamespace(string baseNamespace, string schemaNamespace, int version)
         {
-            string root = string.IsNullOrEmpty(baseNamespace) ? schemaNamespace : baseNamespace;
+            if (version == 0)
+            {
+                return string.IsNullOrEmpty(schemaNamespace) ? baseNamespace : schemaNamespace;
+            }
 
-            if (string.IsNullOrEmpty(root))
-                return $"V{version}";
+            if (!string.IsNullOrEmpty(schemaNamespace))
+            {
+                return string.Concat(schemaNamespace, ".V", version);
+            }
 
-            return string.Concat(root, ".V", version);
+            if (!string.IsNullOrEmpty(baseNamespace))
+            {
+                return string.Concat(baseNamespace, ".V", version);
+            }
+
+            return $"V{version}";
         }
 
         /// <summary>

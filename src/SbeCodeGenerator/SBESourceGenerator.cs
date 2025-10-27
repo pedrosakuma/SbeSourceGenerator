@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
@@ -55,9 +56,10 @@ namespace SbeSourceGenerator
                         d.Load(path);
 
                         string ns = GetNamespaceFromSchema(d, path);
+                        string schemaKey = CreateSchemaKey(path);
 
                         // Create a per-schema context to hold mutable state (sharing runtime tracking)
-                        var context = new SchemaContext(emittedRuntimeNamespaces);
+                        var context = new SchemaContext(schemaKey, emittedRuntimeNamespaces);
 
                         // Parse byteOrder attribute from messageSchema element
                         var messageSchemaNode = d.DocumentElement;
@@ -98,6 +100,31 @@ namespace SbeSourceGenerator
                     }
                 }
             });
+        }
+
+        private static string CreateSchemaKey(string path)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = "schema";
+            }
+
+            var sanitized = new StringBuilder(fileName.Length);
+            foreach (char ch in fileName)
+            {
+                sanitized.Append(char.IsLetterOrDigit(ch) ? ch : '_');
+            }
+
+            string hash;
+            using (var sha = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(path);
+                var digest = sha.ComputeHash(bytes);
+                hash = BitConverter.ToString(digest, 0, 4).Replace("-", string.Empty);
+            }
+
+            return string.Concat(sanitized.ToString(), "_", hash);
         }
 
 
