@@ -16,12 +16,12 @@ namespace SbeSourceGenerator.Generators
             // Generate NumberExtensions
             StringBuilder sb = new StringBuilder();
             new NumberExtensions(ns).AppendFileContent(sb);
-            yield return ($"{ns}\\Utilities\\NumberExtensions", sb.ToString());
+            yield return (context.CreateHintName(ns, "Utilities", "NumberExtensions"), sb.ToString());
 
             // Generate EndianHelpers
             sb = new StringBuilder();
             new EndianHelpers(ns).AppendFileContent(sb);
-            yield return ($"{ns}\\Utilities\\EndianHelpers", sb.ToString());
+            yield return (context.CreateHintName(ns, "Utilities", "EndianHelpers"), sb.ToString());
 
             var runtimeNamespace = ns;
 
@@ -30,12 +30,12 @@ namespace SbeSourceGenerator.Generators
                 // Generate SpanReader once per runtime namespace
                 sb = new StringBuilder();
                 new SpanReaderGenerator(runtimeNamespace).AppendFileContent(sb);
-                yield return ($"{runtimeNamespace}\\Runtime\\SpanReader", sb.ToString());
+                yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanReader"), sb.ToString());
 
                 // Generate SpanWriter once per runtime namespace
                 sb = new StringBuilder();
                 new SpanWriterGenerator(runtimeNamespace).AppendFileContent(sb);
-                yield return ($"{runtimeNamespace}\\Runtime\\SpanWriter", sb.ToString());
+                yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanWriter"), sb.ToString());
             }
         }
     }

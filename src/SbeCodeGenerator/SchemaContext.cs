@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace SbeSourceGenerator
 {
@@ -9,10 +10,13 @@ namespace SbeSourceGenerator
     /// </summary>
     public class SchemaContext
     {
-        public SchemaContext(HashSet<string>? sharedRuntimeNamespaces = null)
+        public SchemaContext(string schemaKey, HashSet<string>? sharedRuntimeNamespaces = null)
         {
+            SchemaKey = schemaKey ?? throw new ArgumentNullException(nameof(schemaKey));
             GeneratedRuntimeNamespaces = sharedRuntimeNamespaces ?? new HashSet<string>(StringComparer.Ordinal);
         }
+
+        public string SchemaKey { get; }
 
         public Dictionary<string, string> EnumPrimitiveTypes { get; } = new Dictionary<string, string>();
         public Dictionary<string, int> CustomTypeLengths { get; } = new Dictionary<string, int>();
@@ -47,5 +51,20 @@ namespace SbeSourceGenerator
         /// Defaults to "littleEndian" if not specified.
         /// </summary>
         public string ByteOrder { get; set; } = "littleEndian";
+
+        public string CreateHintName(params string[] segments)
+        {
+            var builder = new StringBuilder(SchemaKey);
+            foreach (var segment in segments)
+            {
+                if (string.IsNullOrEmpty(segment))
+                    continue;
+
+                builder.Append('\\');
+                builder.Append(segment.Replace('/', '\\'));
+            }
+
+            return builder.ToString();
+        }
     }
 }

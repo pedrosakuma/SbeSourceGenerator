@@ -80,7 +80,7 @@ namespace SbeSourceGenerator.Generators
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Sets\\{generatedName}", sb.ToString());
+            yield return (context.CreateHintName(ns, "Sets", generatedName), sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
@@ -142,7 +142,7 @@ namespace SbeSourceGenerator.Generators
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
                 generator.AppendFileContent(sb);
-                yield return ($"{ns}\\Types\\{generatedName}", sb.ToString());
+                yield return (context.CreateHintName(ns, "Types", generatedName), sb.ToString());
                 if (generator is TypeDefinition typeDefinition)
                 {
                     var semanticGenerator = (typeDefinition.SemanticType) switch
@@ -153,7 +153,7 @@ namespace SbeSourceGenerator.Generators
                     sb.Clear();
                     semanticGenerator.AppendFileContent(sb);
                     if (semanticGenerator is not NullSemanticTypeDefintion)
-                        yield return ($"{typeDefinition.Namespace}\\Types\\{typeDefinition.Name}.Semantic", sb.ToString());
+                        yield return (context.CreateHintName(typeDefinition.Namespace, "Types", $"{typeDefinition.Name}.Semantic"), sb.ToString());
                 }
                 if (generator is OptionalTypeDefinition optionalTypeDefinition)
                 {
@@ -165,7 +165,7 @@ namespace SbeSourceGenerator.Generators
                     sb.Clear();
                     semanticGenerator.AppendFileContent(sb);
                     if (semanticGenerator is not NullSemanticTypeDefintion)
-                        yield return ($"{optionalTypeDefinition.Namespace}\\Types\\{optionalTypeDefinition.Name}.Semantic", sb.ToString());
+                        yield return (context.CreateHintName(optionalTypeDefinition.Namespace, "Types", $"{optionalTypeDefinition.Name}.Semantic"), sb.ToString());
                 }
             }
         }
@@ -215,7 +215,7 @@ namespace SbeSourceGenerator.Generators
                 context.EnumPrimitiveTypes[enumDto.Name] = enumDefinition.EncodingType;
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Enums\\{generatedName}", sb.ToString());
+            yield return (context.CreateHintName(ns, "Enums", generatedName), sb.ToString());
         }
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
@@ -273,7 +273,7 @@ namespace SbeSourceGenerator.Generators
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
             StringBuilder sb = new StringBuilder();
             generator.AppendFileContent(sb);
-            yield return ($"{ns}\\Composites\\{generatedName}", sb.ToString());
+            yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
             var semanticGenerator = (generator.Name) switch
             {
                 "Price" => (IFileContentGenerator)new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
@@ -292,7 +292,7 @@ namespace SbeSourceGenerator.Generators
             sb.Clear();
             semanticGenerator.AppendFileContent(sb);
             if (semanticGenerator is not NullSemanticTypeDefintion)
-                yield return ($"{ns}\\Composites\\{generatedName}.Semantic", sb.ToString());
+                yield return (context.CreateHintName(ns, "Composites", $"{generatedName}.Semantic"), sb.ToString());
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)

@@ -25,7 +25,7 @@ namespace SbeSourceGenerator.Generators
                 var validationCode = GenerateMessageValidation(ns, messageDto, context);
                 if (validationCode != null)
                 {
-                    yield return ($"{ns}\\Validation\\{messageDto.Name.FirstCharToUpper()}Validation", validationCode);
+                    yield return (context.CreateHintName(ns, "Validation", $"{messageDto.Name.FirstCharToUpper()}Validation"), validationCode);
                 }
             }
 
@@ -37,7 +37,7 @@ namespace SbeSourceGenerator.Generators
                 var validationCode = GenerateTypeValidation(ns, typeDto);
                 if (validationCode != null)
                 {
-                    yield return ($"{ns}\\Validation\\{typeDto.Name}Validation", validationCode);
+                    yield return (context.CreateHintName(ns, "Validation", $"{typeDto.Name}Validation"), validationCode);
                 }
             }
         }
