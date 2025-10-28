@@ -16,13 +16,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.0-rc.1.25451.107" />
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
   </ItemGroup>
-  <ItemGroup>
-      <AdditionalFiles Include="binance-spot-1.0.xml" />
+    <ItemGroup>
+        <AdditionalFiles Include="binance-spot-1.0.xml" />
       <AdditionalFiles Include="binance-spot-3.1.xml" />
       <AdditionalFiles Include="binance-spot-stream-1.0.xml" />
-  </ItemGroup>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Using Remove="System.IO" />
+    </ItemGroup>
 
   <ItemGroup>
 	  <ProjectReference Include="..\..\src\SbeCodeGenerator\SbeSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
