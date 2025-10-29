@@ -368,3 +368,6 @@ FodyWeavers.xsd
 
 # Verify test artifacts
 *.received.*
+
+# LaunchSettings
+launchSettings.json
