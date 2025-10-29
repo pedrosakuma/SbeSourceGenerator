@@ -370,4 +370,4 @@ FodyWeavers.xsd
 *.received.*
 
 # LaunchSettings
-launchSettings.json
+**/launchSettings.json
