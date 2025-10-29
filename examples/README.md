@@ -40,6 +40,7 @@ Binance market data processing example.
 - Binance SBE schema integration
 - Cryptocurrency market data handling
 - Real-time data processing
+- Spectre.Console live dashboard with interactive commands (`add`, `remove`, `api`, `help`, `quit`) for managing subscriptions and viewing trades/best bid-ask tables
 
 **Schemas**:
 - `binance-stream-1.0.xml` - Binance streaming protocol
@@ -83,6 +84,7 @@ dotnet run
 cd examples/SbeBinanceConsole
 dotnet run
 ```
+When running `SbeBinanceConsole`, provide your Binance `X-MBX-APIKEY` as the first argument or enter it when prompted. The interactive console accepts the commands `add`, `remove`, `api`, `help`, and `quit` to manage subscriptions while streaming.
 
 ## How to Use as Templates
 
