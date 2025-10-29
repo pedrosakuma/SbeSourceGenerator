@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using Binance.Spot.Stream.V0;
 using Binance.Spot.Stream.V0.Runtime;
 using Spectre.Console;
@@ -29,6 +24,10 @@ internal sealed class ConsoleApp : IAsyncDisposable
         SingleWriter = false,
         FullMode = BoundedChannelFullMode.DropOldest
     });
+
+    private readonly Table _instrumentTable = CreateInstrumentTable();
+    private readonly Table _tradesTable = CreateTradesTable();
+    private readonly Table _bestBidTable = CreateBestBidTable();
 
     private string? _apiKey;
 
@@ -635,21 +634,32 @@ internal sealed class ConsoleApp : IAsyncDisposable
             .BorderColor(Color.Grey62)
             .Expand();
 
-        IRenderable instrumentsRenderable = snapshot.Count == 0
-            ? new Markup("[grey58]No instruments configured. Use add <instrument>.\n[/]")
-            : BuildInstrumentsTable(snapshot);
+        IRenderable instrumentsRenderable;
+        if (snapshot.Count == 0)
+        {
+            _instrumentTable.Rows.Clear();
+            instrumentsRenderable = new Markup("[grey58]No instruments configured. Use add <instrument>.\n[/]");
+        }
+        else
+        {
+            UpdateInstrumentTable(snapshot);
+            instrumentsRenderable = _instrumentTable;
+        }
+
+        UpdateTradesTable(snapshot);
+        UpdateBestBidTable(snapshot);
 
         var instrumentsPanel = new Panel(instrumentsRenderable)
             .Header("Instruments", Justify.Center)
             .BorderColor(Color.Grey50)
             .Expand();
 
-        var tradesPanel = new Panel(BuildTradesTable(snapshot))
+        var tradesPanel = new Panel(_tradesTable)
             .Header("Trades", Justify.Center)
             .BorderColor(Color.Grey50)
             .Expand();
 
-        var bestBidPanel = new Panel(BuildBestBidTable(snapshot))
+        var bestBidPanel = new Panel(_bestBidTable)
             .Header("Best Bid/Ask", Justify.Center)
             .BorderColor(Color.Grey50)
             .Expand();
@@ -672,62 +682,69 @@ internal sealed class ConsoleApp : IAsyncDisposable
             feedbackPanel);
     }
 
-    private static IRenderable BuildInstrumentsTable(IEnumerable<SubscriptionSnapshot> snapshot)
+    private static Table CreateInstrumentTable()
     {
         var table = new Table().Expand();
         table.AddColumn(new TableColumn("Instrument").Centered());
         table.AddColumn(new TableColumn("Trade").Centered());
         table.AddColumn(new TableColumn("Best Bid/Ask").Centered());
+        return table;
+    }
 
+    private static Table CreateTradesTable()
+    {
+        var table = new Table().Expand();
+        table.AddColumns("Instrument", "Trade Id", "Quantity", "Price", "Aggressor");
+        return table;
+    }
+
+    private static Table CreateBestBidTable()
+    {
+        var table = new Table().Expand();
+        table.AddColumns("Instrument", "Bid", "Bid Qty", "Ask", "Ask Qty");
+        return table;
+    }
+
+    private void UpdateInstrumentTable(IEnumerable<SubscriptionSnapshot> snapshot)
+    {
+        _instrumentTable.Rows.Clear();
         foreach (var item in snapshot)
         {
-            table.AddRow(
+            _instrumentTable.AddRow(
                 Markup.FromInterpolated($"[white]{Markup.Escape(item.Symbol.ToUpperInvariant())}[/]"),
                 Markup.FromInterpolated($"[grey78]{Markup.Escape(FormatStatus(item.Trade))}[/]"),
                 Markup.FromInterpolated($"[grey78]{Markup.Escape(FormatStatus(item.BestBid))}[/]"));
         }
-
-        return table;
     }
 
-    private static IRenderable BuildTradesTable(IEnumerable<SubscriptionSnapshot> snapshot)
+    private void UpdateTradesTable(IEnumerable<SubscriptionSnapshot> snapshot)
     {
-        var table = new Table().Expand();
-        table.AddColumns("Instrument", "Status", "Trade Id", "Quantity", "Price", "Aggressor");
-
+        _tradesTable.Rows.Clear();
         foreach (var item in snapshot)
         {
             var trade = item.Trade.TradeSnapshot;
-            table.AddRow(
+            _tradesTable.AddRow(
                 ToCellContent(item.Symbol.ToUpperInvariant(), "{0,-20}"),
-                ToCellContent(FormatStatus(item.Trade), "{0,-30}"),
                 ToCellContent(trade?.TradeId, "{0,18}"),
                 ToCellContent(trade?.Quantity, "{0,18}"),
                 ToCellContent(trade?.Price, "{0,18}"),
                 ToCellContent(trade?.Aggressor, "{0,-12}"));
         }
-
-        return table;
     }
 
-    private static IRenderable BuildBestBidTable(IEnumerable<SubscriptionSnapshot> snapshot)
+    private void UpdateBestBidTable(IEnumerable<SubscriptionSnapshot> snapshot)
     {
-        var table = new Table().Expand();
-        table.AddColumns("Instrument", "Status", "Bid", "Bid Qty", "Ask", "Ask Qty");
-
+        _bestBidTable.Rows.Clear();
         foreach (var item in snapshot)
         {
             var bestBid = item.BestBid.BestBidSnapshot;
-            table.AddRow(
+            _bestBidTable.AddRow(
                 ToCellContent(item.Symbol.ToUpperInvariant(), "{0,-20}"),
-                ToCellContent(FormatStatus(item.BestBid), "{0,-30}"),
                 ToCellContent(bestBid?.BidPrice, "{0,18}"),
                 ToCellContent(bestBid?.BidQuantity, "{0,18}"),
                 ToCellContent(bestBid?.AskPrice, "{0,18}"),
                 ToCellContent(bestBid?.AskQuantity, "{0,18}"));
         }
-
-        return table;
     }
 
     private static Panel BuildCommandPanel(string commandBuffer)
