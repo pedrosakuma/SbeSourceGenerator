@@ -154,37 +154,14 @@ namespace SbeSourceGenerator
 
         private void AppendVariableDataEncoding(StringBuilder sb, int tabs)
         {
-            // Generate BeginEncoding method that returns a SpanWriter positioned after the message
-            sb.AppendLine("/// <summary>", tabs);
-            sb.AppendLine($"/// Begins encoding this {Name} message with variable-length data support.", tabs);
-            sb.AppendLine("/// Use the returned writer to encode groups and varData fields.", tabs);
-            sb.AppendLine("/// </summary>", tabs);
-            sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
-            sb.AppendLine("/// <param name=\"writer\">The writer positioned after the message header for writing variable data.</param>", tabs);
-            sb.AppendLine("/// <returns>True if encoding started successfully; otherwise, false.</returns>", tabs);
-            sb.AppendLine($"public bool BeginEncoding(Span<byte> buffer, out SpanWriter writer)", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("writer = default;", tabs);
-            sb.AppendLine("return false;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("", tabs);
-            sb.AppendLine("writer = new SpanWriter(buffer);", tabs);
-            sb.AppendLine("writer.Write(this);", tabs);
-            sb.AppendLine("return true;", tabs);
-            sb.AppendLine("}", --tabs);
-
-            // Generate helper methods for each group
+            // Generate private helper methods for each group (used internally by comprehensive TryEncode)
             foreach (var group in Groups.Cast<GroupDefinition>())
             {
                 sb.AppendLine("/// <summary>", tabs);
-                sb.AppendLine($"/// Encodes a {group.Name} group into the buffer.", tabs);
+                sb.AppendLine($"/// Internal helper: Encodes a {group.Name} group into the buffer.", tabs);
+                sb.AppendLine("/// Use the comprehensive TryEncode method instead.", tabs);
                 sb.AppendLine("/// </summary>", tabs);
-                sb.AppendLine("/// <param name=\"writer\">The writer to use for encoding.</param>", tabs);
-                sb.AppendLine($"/// <param name=\"entries\">The {group.Name} entries to encode.</param>", tabs);
-                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
-                sb.AppendLine($"public static bool TryEncode{group.Name}(ref SpanWriter writer, ReadOnlySpan<{group.Name}Data> entries)", tabs);
+                sb.AppendLine($"private static bool TryEncode{group.Name}(ref SpanWriter writer, ReadOnlySpan<{group.Name}Data> entries)", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine($"// Write group header", tabs);
                 sb.AppendLine($"var header = new {group.DimensionType}", tabs);
@@ -207,16 +184,14 @@ namespace SbeSourceGenerator
                 sb.AppendLine("}", --tabs);
             }
 
-            // Generate helper methods for each varData field
+            // Generate private helper methods for each varData field (used internally by comprehensive TryEncode)
             foreach (var data in Datas.Cast<DataFieldDefinition>())
             {
                 sb.AppendLine("/// <summary>", tabs);
-                sb.AppendLine($"/// Encodes a {data.Name} varData field into the buffer.", tabs);
+                sb.AppendLine($"/// Internal helper: Encodes a {data.Name} varData field into the buffer.", tabs);
+                sb.AppendLine("/// Use the comprehensive TryEncode method instead.", tabs);
                 sb.AppendLine("/// </summary>", tabs);
-                sb.AppendLine("/// <param name=\"writer\">The writer to use for encoding.</param>", tabs);
-                sb.AppendLine($"/// <param name=\"data\">The {data.Name} data to encode.</param>", tabs);
-                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
-                sb.AppendLine($"public static bool TryEncode{data.Name.FirstCharToUpper()}(ref SpanWriter writer, ReadOnlySpan<byte> data)", tabs);
+                sb.AppendLine($"private static bool TryEncode{data.Name.FirstCharToUpper()}(ref SpanWriter writer, ReadOnlySpan<byte> data)", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine($"// Write length prefix (uint8 for VarString8)", tabs);
                 sb.AppendLine($"if (data.Length > 255)", tabs);
