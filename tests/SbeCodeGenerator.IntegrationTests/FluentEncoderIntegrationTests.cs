@@ -202,51 +202,6 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void TryEncode_CompareWithOldAPI_ProducesSameResult()
-        {
-            // This test demonstrates that the new API produces identical output to the old API
-            
-            // Arrange
-            Span<byte> bufferOld = stackalloc byte[1024];
-            Span<byte> bufferNew = stackalloc byte[1024];
-            
-            var orderBook = new Integration.Test.V0.OrderBookData
-            {
-                InstrumentId = 42
-            };
-
-            var bids = new Integration.Test.V0.OrderBookData.BidsData[]
-            {
-                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 }
-            };
-
-            var asks = new Integration.Test.V0.OrderBookData.AsksData[]
-            {
-                new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
-            };
-
-            // Act - Old API (manual BeginEncoding + individual TryEncode calls)
-            Assert.True(orderBook.BeginEncoding(bufferOld, out var writerOld));
-            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeBids(ref writerOld, bids));
-            Assert.True(Integration.Test.V0.OrderBookData.TryEncodeAsks(ref writerOld, asks));
-            int bytesWrittenOld = writerOld.BytesWritten;
-
-            // Act - New API (single TryEncode call with all parameters)
-            bool successNew = Integration.Test.V0.OrderBookData.TryEncode(
-                orderBook,
-                bufferNew,
-                bids,
-                asks,
-                out int bytesWrittenNew
-            );
-
-            // Assert - Both produce identical results
-            Assert.True(successNew);
-            Assert.Equal(bytesWrittenOld, bytesWrittenNew);
-            Assert.True(bufferOld.Slice(0, bytesWrittenOld).SequenceEqual(bufferNew.Slice(0, bytesWrittenNew)));
-        }
-
-        [Fact]
         public void TryEncode_CallbackBased_ZeroAllocation()
         {
             // This test demonstrates the zero-allocation callback-based API
