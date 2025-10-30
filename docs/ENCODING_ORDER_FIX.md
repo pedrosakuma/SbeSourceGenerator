@@ -133,7 +133,7 @@ All tests updated to use new API:
 | **Intent Clarity** | ⚠️ Chained calls | ✅ Single call, clear order |
 | **Type Safety** | ⚠️ Can call in wrong order | ✅ Compiler enforces order |
 | **Performance** | ✅ Zero overhead | ✅ Zero overhead |
-| **Backward Compat** | N/A | ✅ Old API removed (breaking change) |
+| **Backward Compat** | N/A | ⚠️ Old API removed (breaking change) |
 
 ## Final State
 
@@ -224,7 +224,7 @@ This is a **breaking change** from the previous API, but it significantly improv
 
 ---
 
-**Implementation Date**: October 30, 2025  
+**Implementation Date**: 2025-10-30  
 **Tests**: All passing ✅  
 **Breaking Change**: Yes - old APIs removed
 

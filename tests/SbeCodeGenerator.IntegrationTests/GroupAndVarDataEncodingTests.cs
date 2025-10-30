@@ -8,7 +8,8 @@ namespace SbeCodeGenerator.IntegrationTests
 {
     /// <summary>
     /// Integration tests for Group and VarData encoding using the comprehensive TryEncode API
-    /// These tests verify that the allocation-free and allocation-based encoding flows work correctly
+    /// These tests verify the span-based (allocation-based) encoding flow
+    /// For callback-based (allocation-free) tests, see FluentEncoderIntegrationTests.cs
     /// </summary>
     public class GroupAndVarDataEncodingTests
     {
@@ -345,7 +346,7 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(100, decodedOrder.Quantity);
 
             // Decode the varData using ConsumeVariableLengthSegments
-            string decodedSymbol = "";
+            string? decodedSymbol = null;
             byte symbolLength = 0;
             decodedOrder.ConsumeVariableLengthSegments(
                 variableData,
@@ -357,6 +358,7 @@ namespace SbeCodeGenerator.IntegrationTests
             );
 
             // Assert - Verify symbol matches
+            Assert.NotNull(decodedSymbol);
             Assert.Equal(symbol, decodedSymbol);
             Assert.Equal((byte)symbolBytes.Length, symbolLength);
         }
