@@ -2,7 +2,7 @@
 <sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
                    package="versioning_test"
                    id="3"
-                   version="2"
+                   version="0"
                    semanticVersion="2.0"
                    description="Schema evolution test with sinceVersion"
                    byteOrder="littleEndian">

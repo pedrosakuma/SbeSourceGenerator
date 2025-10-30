@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Integration.Test;
 using Integration.Test.V0;
 
 namespace SbeCodeGenerator.IntegrationTests
