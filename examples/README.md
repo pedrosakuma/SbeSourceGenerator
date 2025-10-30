@@ -57,6 +57,7 @@ A comprehensive example demonstrating high-performance SBE message processing be
 - Batch processing techniques
 - Performance benchmarking
 - Demonstrates all optimization best practices
+- **NEW**: Fluent encoder API examples
 
 **Key Techniques**:
 - Stack allocation for small messages
@@ -64,8 +65,11 @@ A comprehensive example demonstrating high-performance SBE message processing be
 - Streaming group processing
 - Incremental decoding
 - Multi-million messages/second throughput
+- **Fluent encoding API for improved usability**
 
-**Perfect for**: Learning performance optimization patterns
+**Perfect for**: Learning performance optimization patterns and the new fluent encoder API
+
+See [Fluent Encoder API Documentation](../docs/FLUENT_ENCODER_API.md) for detailed examples of the improved encoding flow.
 
 ## Running the Examples
 
