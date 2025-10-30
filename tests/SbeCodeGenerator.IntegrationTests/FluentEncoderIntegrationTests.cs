@@ -245,5 +245,121 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(bytesWrittenOld, bytesWrittenNew);
             Assert.True(bufferOld.Slice(0, bytesWrittenOld).SequenceEqual(bufferNew.Slice(0, bytesWrittenNew)));
         }
+
+        [Fact]
+        public void TryEncode_CallbackBased_ZeroAllocation()
+        {
+            // This test demonstrates the zero-allocation callback-based API
+            
+            // Arrange
+            Span<byte> buffer = stackalloc byte[1024];
+            
+            var orderBook = new Integration.Test.V0.OrderBookData
+            {
+                InstrumentId = 123
+            };
+
+            // Simulate data source without allocating arrays
+            var bidPrices = new long[] { 100, 101, 102 };
+            var bidQuantities = new long[] { 10, 11, 12 };
+            var askPrices = new long[] { 200, 201 };
+            var askQuantities = new long[] { 20, 21 };
+
+            // Act - Use callback-based API for zero-allocation encoding
+            bool success = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                buffer,
+                bidPrices.Length,
+                (int index, ref Integration.Test.V0.OrderBookData.BidsData item) =>
+                {
+                    item.Price = bidPrices[index];
+                    item.Quantity = bidQuantities[index];
+                },
+                askPrices.Length,
+                (int index, ref Integration.Test.V0.OrderBookData.AsksData item) =>
+                {
+                    item.Price = askPrices[index];
+                    item.Quantity = askQuantities[index];
+                },
+                out int bytesWritten
+            );
+
+            // Assert
+            Assert.True(success);
+            Assert.True(bytesWritten > 0);
+
+            // Decode and verify
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded, out var variableData));
+            Assert.Equal(123, decoded.InstrumentId);
+
+            var decodedBids = new List<Integration.Test.V0.OrderBookData.BidsData>();
+            var decodedAsks = new List<Integration.Test.V0.OrderBookData.AsksData>();
+
+            decoded.ConsumeVariableLengthSegments(
+                variableData,
+                bid => decodedBids.Add(bid),
+                ask => decodedAsks.Add(ask)
+            );
+
+            Assert.Equal(3, decodedBids.Count);
+            Assert.Equal(2, decodedAsks.Count);
+            Assert.Equal(100, decodedBids[0].Price.Value);
+            Assert.Equal(101, decodedBids[1].Price.Value);
+            Assert.Equal(102, decodedBids[2].Price.Value);
+            Assert.Equal(200, decodedAsks[0].Price.Value);
+            Assert.Equal(201, decodedAsks[1].Price.Value);
+        }
+
+        [Fact]
+        public void TryEncode_CallbackVsSpan_ProduceSameResult()
+        {
+            // This test verifies callback-based and span-based APIs produce identical output
+            
+            // Arrange
+            Span<byte> bufferCallback = stackalloc byte[1024];
+            Span<byte> bufferSpan = stackalloc byte[1024];
+            
+            var orderBook = new Integration.Test.V0.OrderBookData
+            {
+                InstrumentId = 99
+            };
+
+            var bidsArray = new Integration.Test.V0.OrderBookData.BidsData[]
+            {
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 },
+                new Integration.Test.V0.OrderBookData.BidsData { Price = 1001, Quantity = 101 }
+            };
+
+            var asksArray = new Integration.Test.V0.OrderBookData.AsksData[]
+            {
+                new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
+            };
+
+            // Act - Span-based API
+            bool successSpan = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                bufferSpan,
+                bidsArray,
+                asksArray,
+                out int bytesWrittenSpan
+            );
+
+            // Act - Callback-based API
+            bool successCallback = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                bufferCallback,
+                bidsArray.Length,
+                (int index, ref Integration.Test.V0.OrderBookData.BidsData item) => item = bidsArray[index],
+                asksArray.Length,
+                (int index, ref Integration.Test.V0.OrderBookData.AsksData item) => item = asksArray[index],
+                out int bytesWrittenCallback
+            );
+
+            // Assert - Both APIs produce identical results
+            Assert.True(successSpan);
+            Assert.True(successCallback);
+            Assert.Equal(bytesWrittenSpan, bytesWrittenCallback);
+            Assert.True(bufferSpan.Slice(0, bytesWrittenSpan).SequenceEqual(bufferCallback.Slice(0, bytesWrittenCallback)));
+        }
     }
 }

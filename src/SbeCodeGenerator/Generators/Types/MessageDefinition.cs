@@ -333,7 +333,19 @@ namespace SbeSourceGenerator
 
         private void AppendComprehensiveTryEncode(StringBuilder sb, int tabs)
         {
-            // Generate a static TryEncode method that takes all groups and varData in schema order
+            // First, generate delegate types for callback-based encoding
+            foreach (var group in Groups.Cast<GroupDefinition>())
+            {
+                sb.AppendLine($"/// <summary>", tabs);
+                sb.AppendLine($"/// Delegate for encoding {group.Name} group items one at a time (zero-allocation).", tabs);
+                sb.AppendLine($"/// </summary>", tabs);
+                sb.AppendLine($"/// <param name=\"index\">Zero-based index of the item to encode.</param>", tabs);
+                sb.AppendLine($"/// <param name=\"item\">Reference to fill with the item data.</param>", tabs);
+                sb.AppendLine($"public delegate void {group.Name}Encoder(int index, ref {Name}Data.{group.Name}Data item);", tabs);
+                sb.AppendLine("", tabs);
+            }
+            
+            // Generate span-based TryEncode method
             sb.AppendLine("/// <summary>", tabs);
             sb.AppendLine($"/// Encodes this {Name}Data message with all variable-length fields in schema-defined order.", tabs);
             sb.AppendLine("/// This method ensures groups and varData are encoded in the correct sequence.", tabs);
@@ -412,6 +424,122 @@ namespace SbeSourceGenerator
             sb.AppendLine("bytesWritten = writer.BytesWritten;", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
+            
+            // Generate callback-based TryEncode overload for zero-allocation scenarios
+            if (Groups.Any())
+            {
+                sb.AppendLine("", tabs);
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Encodes this {Name}Data message with all variable-length fields using callbacks (zero-allocation).", tabs);
+                sb.AppendLine("/// This method ensures groups and varData are encoded in the correct sequence.", tabs);
+                sb.AppendLine("/// Use this overload to avoid array allocations when encoding groups.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine("/// <param name=\"message\">The message to encode.</param>", tabs);
+                sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
+                
+                // Add parameters for each group (count + encoder)
+                foreach (var group in Groups.Cast<GroupDefinition>())
+                {
+                    sb.AppendLine($"/// <param name=\"{group.Name.FirstCharToLower()}Count\">Number of {group.Name} entries.</param>", tabs);
+                    sb.AppendLine($"/// <param name=\"{group.Name.FirstCharToLower()}Encoder\">Callback to encode each {group.Name} entry.</param>", tabs);
+                }
+                
+                // Add parameters for each varData in order
+                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                {
+                    sb.AppendLine($"/// <param name=\"{data.Name.FirstCharToLower()}\">The {data.Name} variable-length data.</param>", tabs);
+                }
+                
+                sb.AppendLine("/// <param name=\"bytesWritten\">Number of bytes written on success.</param>", tabs);
+                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+                
+                sb.Append($"public static bool TryEncode({Name}Data message, Span<byte> buffer", tabs);
+                
+                // Add parameters for groups (count + encoder callback)
+                foreach (var group in Groups.Cast<GroupDefinition>())
+                {
+                    sb.Append($", int {group.Name.FirstCharToLower()}Count, {group.Name}Encoder {group.Name.FirstCharToLower()}Encoder");
+                }
+                
+                // Add parameters for varData
+                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                {
+                    sb.Append($", ReadOnlySpan<byte> {data.Name.FirstCharToLower()}");
+                }
+                
+                sb.AppendLine(", out int bytesWritten)");
+                sb.AppendLine("{", tabs++);
+                
+                // Encode the message header
+                sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("bytesWritten = 0;", tabs);
+                sb.AppendLine("return false;", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("", tabs);
+                sb.AppendLine("var writer = new SpanWriter(buffer);", tabs);
+                sb.AppendLine("writer.Write(message);", tabs);
+                sb.AppendLine("", tabs);
+                
+                // Encode groups in schema order using callbacks
+                foreach (var group in Groups.Cast<GroupDefinition>())
+                {
+                    var groupNameLower = group.Name.FirstCharToLower();
+                    sb.AppendLine($"// Encode {group.Name} group using callback", tabs);
+                    sb.AppendLine($"if (!TryEncode{group.Name}WithCallback(ref writer, {groupNameLower}Count, {groupNameLower}Encoder))", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine("bytesWritten = 0;", tabs);
+                    sb.AppendLine("return false;", tabs);
+                    sb.AppendLine("}", --tabs);
+                    sb.AppendLine("", tabs);
+                }
+                
+                // Encode varData in schema order
+                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                {
+                    var capitalizedName = data.Name.FirstCharToUpper();
+                    sb.AppendLine($"// Encode {data.Name} varData", tabs);
+                    sb.AppendLine($"if (!TryEncode{capitalizedName}(ref writer, {data.Name.FirstCharToLower()}))", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine("bytesWritten = 0;", tabs);
+                    sb.AppendLine("return false;", tabs);
+                    sb.AppendLine("}", --tabs);
+                    sb.AppendLine("", tabs);
+                }
+                
+                sb.AppendLine("bytesWritten = writer.BytesWritten;", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+                
+                // Generate helper methods for callback-based group encoding
+                foreach (var group in Groups.Cast<GroupDefinition>())
+                {
+                    sb.AppendLine("", tabs);
+                    sb.AppendLine($"private static bool TryEncode{group.Name}WithCallback(ref SpanWriter writer, int count, {group.Name}Encoder encoder)", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine($"// Write group header", tabs);
+                    sb.AppendLine($"var header = new {group.DimensionType}", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine($"BlockLength = (ushort){group.Name}Data.MESSAGE_SIZE,", tabs);
+                    sb.AppendLine($"NumInGroup = ({group.NumInGroupType})count", tabs);
+                    sb.AppendLine("};", --tabs);
+                    sb.AppendLine("", tabs);
+                    sb.AppendLine("if (!writer.TryWrite(header))", tabs);
+                    sb.AppendLine("    return false;", tabs + 1);
+                    sb.AppendLine("", tabs);
+                    sb.AppendLine($"// Encode each entry using callback", tabs);
+                    sb.AppendLine("for (int i = 0; i < count; i++)", tabs);
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendLine($"var item = new {group.Name}Data();", tabs);
+                    sb.AppendLine("encoder(i, ref item);", tabs);
+                    sb.AppendLine("if (!writer.TryWrite(item))", tabs);
+                    sb.AppendLine("    return false;", tabs + 1);
+                    sb.AppendLine("}", --tabs);
+                    sb.AppendLine("", tabs);
+                    sb.AppendLine("return true;", tabs);
+                    sb.AppendLine("}", --tabs);
+                }
+            }
         }
 
     }
