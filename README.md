@@ -91,7 +91,7 @@ if (TradeData.TryParse(receivedBuffer, out var decoded, out _))
 }
 ```
 
-**Messages with Repeating Groups:**
+**Messages with Repeating Groups (Fluent API - Recommended):**
 ```csharp
 // Create message with groups
 var orderBook = new OrderBookData { InstrumentId = 42 };
@@ -100,10 +100,12 @@ var bids = new[] {
     new BidsData { Price = 1010, Quantity = 101 }
 };
 
-// Encode with groups
+// Encode with fluent API - type-safe and discoverable
 Span<byte> buffer = stackalloc byte[1024];
-orderBook.BeginEncoding(buffer, out var writer);
-OrderBookData.TryEncodeBids(ref writer, bids);
+var encoder = orderBook.CreateEncoder(buffer)
+    .WithBids(bids)
+    .WithAsks(asks);
+int bytesWritten = encoder.BytesWritten;
 
 // Decode with groups
 OrderBookData.TryParse(buffer, out var decoded, out var variableData);
@@ -114,15 +116,26 @@ decoded.ConsumeVariableLengthSegments(
 );
 ```
 
-**Messages with Variable-Length Data:**
+**Messages with Repeating Groups (Traditional API):**
 ```csharp
-// Encode message with varData
+// Alternative: Traditional API for advanced scenarios
+Span<byte> buffer = stackalloc byte[1024];
+orderBook.BeginEncoding(buffer, out var writer);
+OrderBookData.TryEncodeBids(ref writer, bids);
+OrderBookData.TryEncodeAsks(ref writer, asks);
+int bytesWritten = writer.BytesWritten;
+```
+
+**Messages with Variable-Length Data (Fluent API - Recommended):**
+```csharp
+// Encode message with varData using fluent API
 var order = new NewOrderData { OrderId = 123, Price = 9950 };
 var symbolBytes = Encoding.UTF8.GetBytes("AAPL");
 
 Span<byte> buffer = stackalloc byte[512];
-order.BeginEncoding(buffer, out var writer);
-NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+var encoder = order.CreateEncoder(buffer)
+    .WithSymbol(symbolBytes);
+int bytesWritten = encoder.BytesWritten;
 
 // Decode varData
 NewOrderData.TryParse(buffer, out var decoded, out var variableData);
@@ -133,6 +146,15 @@ decoded.ConsumeVariableLengthSegments(
         Console.WriteLine($"Symbol: {text}");
     }
 );
+```
+
+**Messages with Variable-Length Data (Traditional API):**
+```csharp
+// Alternative: Traditional API for advanced scenarios
+Span<byte> buffer = stackalloc byte[512];
+order.BeginEncoding(buffer, out var writer);
+NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+int bytesWritten = writer.BytesWritten;
 ```
 
 ## Example Schema
