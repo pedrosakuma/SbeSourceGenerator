@@ -91,7 +91,7 @@ if (TradeData.TryParse(receivedBuffer, out var decoded, out _))
 }
 ```
 
-**Messages with Repeating Groups:**
+**Messages with Repeating Groups (Recommended - Order-Safe API):**
 ```csharp
 // Create message with groups
 var orderBook = new OrderBookData { InstrumentId = 42 };
@@ -99,11 +99,19 @@ var bids = new[] {
     new BidsData { Price = 1000, Quantity = 100 },
     new BidsData { Price = 1010, Quantity = 101 }
 };
+var asks = new[] {
+    new AsksData { Price = 2000, Quantity = 200 }
+};
 
-// Encode with groups
+// Encode with comprehensive TryEncode - enforces correct schema order
 Span<byte> buffer = stackalloc byte[1024];
-orderBook.BeginEncoding(buffer, out var writer);
-OrderBookData.TryEncodeBids(ref writer, bids);
+bool success = OrderBookData.TryEncode(
+    orderBook,
+    buffer,
+    bids,  // Groups/varData in schema-defined order
+    asks,  // Compiler ensures correct parameter order
+    out int bytesWritten
+);
 
 // Decode with groups
 OrderBookData.TryParse(buffer, out var decoded, out var variableData);
@@ -114,15 +122,53 @@ decoded.ConsumeVariableLengthSegments(
 );
 ```
 
-**Messages with Variable-Length Data:**
+**Messages with Repeating Groups (Zero-Allocation Callback API):**
+```csharp
+// For high-performance scenarios: use callbacks to avoid array allocations
+var orderBook = new OrderBookData { InstrumentId = 42 };
+
+Span<byte> buffer = stackalloc byte[1024];
+bool success = OrderBookData.TryEncode(
+    orderBook,
+    buffer,
+    bidCount: 3,
+    bidsEncoder: (int index, ref BidsData item) => {
+        // Populate item from your data source without allocations
+        item.Price = GetBidPrice(index);
+        item.Quantity = GetBidQuantity(index);
+    },
+    askCount: 2,
+    asksEncoder: (int index, ref AsksData item) => {
+        item.Price = GetAskPrice(index);
+        item.Quantity = GetAskQuantity(index);
+    },
+    out int bytesWritten
+);
+```
+
+**Messages with Repeating Groups (Traditional API):**
+```csharp
+// Alternative: Manual API for advanced scenarios
+Span<byte> buffer = stackalloc byte[1024];
+orderBook.BeginEncoding(buffer, out var writer);
+OrderBookData.TryEncodeBids(ref writer, bids);
+OrderBookData.TryEncodeAsks(ref writer, asks);
+int bytesWritten = writer.BytesWritten;
+```
+
+**Messages with Variable-Length Data (Recommended - Order-Safe API):**
 ```csharp
 // Encode message with varData
 var order = new NewOrderData { OrderId = 123, Price = 9950 };
 var symbolBytes = Encoding.UTF8.GetBytes("AAPL");
 
 Span<byte> buffer = stackalloc byte[512];
-order.BeginEncoding(buffer, out var writer);
-NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+bool success = NewOrderData.TryEncode(
+    order,
+    buffer,
+    symbolBytes,  // VarData in schema-defined order
+    out int bytesWritten
+);
 
 // Decode varData
 NewOrderData.TryParse(buffer, out var decoded, out var variableData);
@@ -133,6 +179,15 @@ decoded.ConsumeVariableLengthSegments(
         Console.WriteLine($"Symbol: {text}");
     }
 );
+```
+
+**Messages with Variable-Length Data (Traditional API):**
+```csharp
+// Alternative: Manual API for advanced scenarios
+Span<byte> buffer = stackalloc byte[512];
+order.BeginEncoding(buffer, out var writer);
+NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
+int bytesWritten = writer.BytesWritten;
 ```
 
 ## Example Schema
