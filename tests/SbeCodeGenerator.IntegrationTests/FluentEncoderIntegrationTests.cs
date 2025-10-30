@@ -6,13 +6,13 @@ using Xunit;
 namespace SbeCodeGenerator.IntegrationTests
 {
     /// <summary>
-    /// Integration tests for the fluent encoder API
-    /// Tests the new CreateEncoder() fluent builder pattern for improved usability
+    /// Integration tests for the improved encoder API
+    /// Tests the new TryEncode() method that enforces correct schema order
     /// </summary>
-    public class FluentEncoderIntegrationTests
+    public class ImprovedEncoderIntegrationTests
     {
         [Fact]
-        public void FluentEncoder_WithGroups_EncodesCorrectly()
+        public void TryEncode_WithGroups_EncodesInCorrectOrder()
         {
             // Arrange - Create message and groups
             Span<byte> buffer = stackalloc byte[1024];
@@ -33,14 +33,17 @@ namespace SbeCodeGenerator.IntegrationTests
                 new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
             };
 
-            // Act - Use fluent encoder API
-            var encoder = orderBook.CreateEncoder(buffer)
-                .WithBids(bids)
-                .WithAsks(asks);
-
-            int bytesWritten = encoder.BytesWritten;
+            // Act - Use new TryEncode API with all parameters in schema order
+            bool success = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook, 
+                buffer, 
+                bids,  // First group in schema
+                asks,  // Second group in schema
+                out int bytesWritten
+            );
 
             // Assert - Verify encoding worked correctly
+            Assert.True(success);
             Assert.True(bytesWritten > 0);
 
             // Decode and verify
@@ -58,13 +61,13 @@ namespace SbeCodeGenerator.IntegrationTests
             );
 
             Assert.Equal(2, decodedBids.Count);
-            Assert.Equal(1, decodedAsks.Count);
+            Assert.Single(decodedAsks);
             Assert.Equal(1000, decodedBids[0].Price.Value);
             Assert.Equal(2000, decodedAsks[0].Price.Value);
         }
 
         [Fact]
-        public void FluentEncoder_WithVarData_EncodesCorrectly()
+        public void TryEncode_WithVarData_EncodesCorrectly()
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[512];
@@ -81,13 +84,16 @@ namespace SbeCodeGenerator.IntegrationTests
             string symbol = "AAPL";
             var symbolBytes = Encoding.UTF8.GetBytes(symbol);
 
-            // Act - Use fluent encoder API
-            var encoder = order.CreateEncoder(buffer)
-                .WithSymbol(symbolBytes);
-
-            int bytesWritten = encoder.BytesWritten;
+            // Act - Use new TryEncode API with varData
+            bool success = Integration.Test.V0.NewOrderData.TryEncode(
+                order,
+                buffer,
+                symbolBytes,  // VarData in schema order
+                out int bytesWritten
+            );
 
             // Assert
+            Assert.True(success);
             Assert.True(bytesWritten > 0);
 
             // Decode and verify
@@ -107,7 +113,7 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void FluentEncoder_TryWithVariant_HandleFailuresGracefully()
+        public void TryEncode_InsufficientBuffer_ReturnsFalse()
         {
             // Arrange - Very small buffer to force failure
             Span<byte> buffer = stackalloc byte[10];
@@ -122,17 +128,29 @@ namespace SbeCodeGenerator.IntegrationTests
                 new Integration.Test.V0.OrderBookData.BidsData { Price = 1000, Quantity = 100 }
             };
 
-            // Act - Use TryWith variant
-            var encoder = orderBook.CreateEncoder(buffer);
-            bool success = encoder.TryWithBids(bids);
+            var asks = Array.Empty<Integration.Test.V0.OrderBookData.AsksData>();
+
+            // Act - Try to encode with insufficient buffer
+            bool success = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                buffer,
+                bids,
+                asks,
+                out int bytesWritten
+            );
 
             // Assert - Should fail due to buffer being too small
             Assert.False(success);
+            Assert.Equal(0, bytesWritten);
         }
 
         [Fact]
-        public void FluentEncoder_ChainedCalls_WorksCorrectly()
+        public void TryEncode_ParameterOrder_EnforcesSchemaOrder()
         {
+            // This test demonstrates that the API enforces correct order at compile time
+            // The method signature requires: TryEncode(message, buffer, bids, asks, out bytesWritten)
+            // You cannot pass asks before bids - the compiler will prevent it
+            
             // Arrange
             Span<byte> buffer = stackalloc byte[1024];
             
@@ -154,13 +172,17 @@ namespace SbeCodeGenerator.IntegrationTests
                 new Integration.Test.V0.OrderBookData.AsksData { Price = 201, Quantity = 21 }
             };
 
-            // Act - Chain multiple groups in a fluent manner
-            var bytesWritten = orderBook.CreateEncoder(buffer)
-                .WithBids(bids)
-                .WithAsks(asks)
-                .BytesWritten;
+            // Act - Parameters must be in schema-defined order (bids, then asks)
+            bool success = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                buffer,
+                bids,   // MUST be first (as defined in schema)
+                asks,   // MUST be second (as defined in schema)
+                out int bytesWritten
+            );
 
             // Assert
+            Assert.True(success);
             Assert.True(bytesWritten > Integration.Test.V0.OrderBookData.MESSAGE_SIZE);
 
             // Verify by decoding
@@ -180,9 +202,9 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void FluentEncoder_CompareWithOldAPI_ProducesSameResult()
+        public void TryEncode_CompareWithOldAPI_ProducesSameResult()
         {
-            // This test demonstrates that the new fluent API produces identical output to the old API
+            // This test demonstrates that the new API produces identical output to the old API
             
             // Arrange
             Span<byte> bufferOld = stackalloc byte[1024];
@@ -203,19 +225,23 @@ namespace SbeCodeGenerator.IntegrationTests
                 new Integration.Test.V0.OrderBookData.AsksData { Price = 2000, Quantity = 200 }
             };
 
-            // Act - Old API
+            // Act - Old API (manual BeginEncoding + individual TryEncode calls)
             Assert.True(orderBook.BeginEncoding(bufferOld, out var writerOld));
             Assert.True(Integration.Test.V0.OrderBookData.TryEncodeBids(ref writerOld, bids));
             Assert.True(Integration.Test.V0.OrderBookData.TryEncodeAsks(ref writerOld, asks));
             int bytesWrittenOld = writerOld.BytesWritten;
 
-            // Act - New Fluent API
-            var encoderNew = orderBook.CreateEncoder(bufferNew)
-                .WithBids(bids)
-                .WithAsks(asks);
-            int bytesWrittenNew = encoderNew.BytesWritten;
+            // Act - New API (single TryEncode call with all parameters)
+            bool successNew = Integration.Test.V0.OrderBookData.TryEncode(
+                orderBook,
+                bufferNew,
+                bids,
+                asks,
+                out int bytesWrittenNew
+            );
 
             // Assert - Both produce identical results
+            Assert.True(successNew);
             Assert.Equal(bytesWrittenOld, bytesWrittenNew);
             Assert.True(bufferOld.Slice(0, bytesWrittenOld).SequenceEqual(bufferNew.Slice(0, bytesWrittenNew)));
         }
