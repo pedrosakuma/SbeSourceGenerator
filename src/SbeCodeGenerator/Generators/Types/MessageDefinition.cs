@@ -24,6 +24,12 @@ namespace SbeSourceGenerator
             AppendGroupsFileContent(sb, tabs);
             AppendConsumeVariable(sb, tabs);
             sb.AppendLine("}", --tabs);
+
+            // Generate Encoder class if message has groups or varData
+            if (Groups.Any() || Datas.Any())
+            {
+                AppendEncoderClass(sb, tabs);
+            }
         }
 
         private void AppendParseHelpers(StringBuilder sb, int tabs)
@@ -142,6 +148,18 @@ namespace SbeSourceGenerator
             if (Groups.Any() || Datas.Any())
             {
                 AppendVariableDataEncoding(sb, tabs);
+                
+                // Add factory method for fluent encoder
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Creates a fluent encoder for this {Name}Data message.", tabs);
+                sb.AppendLine("/// Use the returned encoder to chain calls for encoding groups and varData.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
+                sb.AppendLine($"/// <returns>A {Name}Encoder for fluent encoding.</returns>", tabs);
+                sb.AppendLine($"public {Name}Encoder CreateEncoder(Span<byte> buffer)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine($"return new {Name}Encoder(this, buffer);", tabs);
+                sb.AppendLine("}", --tabs);
             }
         }
 
@@ -322,6 +340,177 @@ namespace SbeSourceGenerator
                 field.AppendFileContent(sb, tabs);
                 offset = blittableField.Offset.Value + blittableField.Length;
             }
+        }
+
+        private void AppendEncoderClass(StringBuilder sb, int tabs)
+        {
+            // Generate a fluent encoder builder class
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Fluent encoder builder for {Name}Data messages with variable-length fields.", tabs);
+            sb.AppendLine("/// Provides a type-safe, discoverable API for encoding messages with groups and varData.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine($"public ref struct {Name}Encoder", tabs);
+            sb.AppendLine("{", tabs++);
+            
+            // Private fields
+            sb.AppendLine($"private readonly {Name}Data _message;", tabs);
+            sb.AppendLine("private readonly Span<byte> _buffer;", tabs);
+            sb.AppendLine("private SpanWriter _writer;", tabs);
+            sb.AppendLine("private bool _messageWritten;", tabs);
+            
+            // Track which groups/varData have been encoded (for validation)
+            foreach (var group in Groups.Cast<GroupDefinition>())
+            {
+                sb.AppendLine($"private bool _{group.Name.FirstCharToLower()}Set;", tabs);
+            }
+            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            {
+                sb.AppendLine($"private bool _{data.Name.FirstCharToLower()}Set;", tabs);
+            }
+            
+            sb.AppendLine("", tabs);
+            
+            // Constructor
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine($"/// Initializes a new encoder for {Name}Data.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine($"internal {Name}Encoder({Name}Data message, Span<byte> buffer)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("_message = message;", tabs);
+            sb.AppendLine("_buffer = buffer;", tabs);
+            sb.AppendLine("_writer = default;", tabs);
+            sb.AppendLine("_messageWritten = false;", tabs);
+            foreach (var group in Groups.Cast<GroupDefinition>())
+            {
+                sb.AppendLine($"_{group.Name.FirstCharToLower()}Set = false;", tabs);
+            }
+            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            {
+                sb.AppendLine($"_{data.Name.FirstCharToLower()}Set = false;", tabs);
+            }
+            sb.AppendLine("}", --tabs);
+            
+            sb.AppendLine("", tabs);
+            
+            // Private EnsureMessageWritten method
+            sb.AppendLine("private bool EnsureMessageWritten()", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (_messageWritten)", tabs);
+            sb.AppendLine("    return true;", tabs + 1);
+            sb.AppendLine("", tabs);
+            sb.AppendLine($"if (_buffer.Length < {Name}Data.MESSAGE_SIZE)", tabs);
+            sb.AppendLine("    return false;", tabs + 1);
+            sb.AppendLine("", tabs);
+            sb.AppendLine("_writer = new SpanWriter(_buffer);", tabs);
+            sb.AppendLine("_writer.Write(_message);", tabs);
+            sb.AppendLine("_messageWritten = true;", tabs);
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+            
+            sb.AppendLine("", tabs);
+            
+            // Generate With methods for each group
+            foreach (var group in Groups.Cast<GroupDefinition>())
+            {
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Encodes the {group.Name} group.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine($"/// <param name=\"entries\">The {group.Name} entries to encode.</param>", tabs);
+                sb.AppendLine($"/// <returns>This encoder for method chaining.</returns>", tabs);
+                sb.AppendLine($"public {Name}Encoder With{group.Name}(ReadOnlySpan<{Name}Data.{group.Name}Data> entries)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!EnsureMessageWritten())", tabs);
+                sb.AppendLine($"    throw new InvalidOperationException(\"Buffer too small for {Name}Data message.\");", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"if (!{Name}Data.TryEncode{group.Name}(ref _writer, entries))", tabs);
+                sb.AppendLine($"    throw new InvalidOperationException(\"Failed to encode {group.Name} group.\");", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"_{group.Name.FirstCharToLower()}Set = true;", tabs);
+                sb.AppendLine("return this;", tabs);
+                sb.AppendLine("}", --tabs);
+                
+                sb.AppendLine("", tabs);
+                
+                // Also generate TryWith variant
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Attempts to encode the {group.Name} group.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine($"/// <param name=\"entries\">The {group.Name} entries to encode.</param>", tabs);
+                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+                sb.AppendLine($"public bool TryWith{group.Name}(ReadOnlySpan<{Name}Data.{group.Name}Data> entries)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!EnsureMessageWritten())", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"if (!{Name}Data.TryEncode{group.Name}(ref _writer, entries))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"_{group.Name.FirstCharToLower()}Set = true;", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+                
+                sb.AppendLine("", tabs);
+            }
+            
+            // Generate With methods for each varData field
+            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            {
+                var capitalizedName = data.Name.FirstCharToUpper();
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Encodes the {data.Name} varData field.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine($"/// <param name=\"data\">The {data.Name} data to encode.</param>", tabs);
+                sb.AppendLine($"/// <returns>This encoder for method chaining.</returns>", tabs);
+                sb.AppendLine($"public {Name}Encoder With{capitalizedName}(ReadOnlySpan<byte> data)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!EnsureMessageWritten())", tabs);
+                sb.AppendLine($"    throw new InvalidOperationException(\"Buffer too small for {Name}Data message.\");", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"if (!{Name}Data.TryEncode{capitalizedName}(ref _writer, data))", tabs);
+                sb.AppendLine($"    throw new InvalidOperationException(\"Failed to encode {data.Name} varData.\");", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"_{data.Name.FirstCharToLower()}Set = true;", tabs);
+                sb.AppendLine("return this;", tabs);
+                sb.AppendLine("}", --tabs);
+                
+                sb.AppendLine("", tabs);
+                
+                // Also generate TryWith variant
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendLine($"/// Attempts to encode the {data.Name} varData field.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendLine($"/// <param name=\"data\">The {data.Name} data to encode.</param>", tabs);
+                sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+                sb.AppendLine($"public bool TryWith{capitalizedName}(ReadOnlySpan<byte> data)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!EnsureMessageWritten())", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"if (!{Name}Data.TryEncode{capitalizedName}(ref _writer, data))", tabs);
+                sb.AppendLine("    return false;", tabs + 1);
+                sb.AppendLine("", tabs);
+                sb.AppendLine($"_{data.Name.FirstCharToLower()}Set = true;", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+                
+                sb.AppendLine("", tabs);
+            }
+            
+            // GetBytesWritten property
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// Gets the number of bytes written to the buffer.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("public int BytesWritten", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("get", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (!_messageWritten)", tabs);
+            sb.AppendLine("    return 0;", tabs + 1);
+            sb.AppendLine("return _writer.BytesWritten;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("}", --tabs);
+            
+            sb.AppendLine("}", --tabs);
         }
 
     }
