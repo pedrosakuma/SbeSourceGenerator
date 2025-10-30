@@ -10,7 +10,7 @@ namespace SbeCodeGenerator.Tests
         public void SchemaContext_DefaultsByteOrder_IsLittleEndian()
         {
             // Arrange & Act
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Assert
             Assert.Equal("littleEndian", context.ByteOrder);
@@ -26,7 +26,7 @@ namespace SbeCodeGenerator.Tests
                                    byteOrder=""littleEndian"">
                 </sbe:messageSchema>");
 
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var messageSchemaNode = xmlDoc.DocumentElement;
@@ -53,7 +53,7 @@ namespace SbeCodeGenerator.Tests
                                    byteOrder=""bigEndian"">
                 </sbe:messageSchema>");
 
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var messageSchemaNode = xmlDoc.DocumentElement;
@@ -79,7 +79,7 @@ namespace SbeCodeGenerator.Tests
                 <sbe:messageSchema xmlns:sbe=""http://fixprotocol.io/2016/sbe"">
                 </sbe:messageSchema>");
 
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var messageSchemaNode = xmlDoc.DocumentElement;

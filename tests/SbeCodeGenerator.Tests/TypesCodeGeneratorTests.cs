@@ -13,7 +13,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -43,7 +43,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -68,7 +68,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -96,7 +96,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -128,7 +128,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -153,7 +153,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -178,7 +178,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -203,7 +203,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -228,7 +228,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -262,7 +262,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange - Phase 3 Option 1: readonly ref structs
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -295,7 +295,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange - Phase 3 Option 1: ref struct constructors
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -326,7 +326,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange - Phase 3 Option 1: Create method should use constructor
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -358,7 +358,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange - Blittable composites should NOT be readonly ref structs
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>

@@ -29,7 +29,7 @@ namespace SbeCodeGenerator.Tests
             
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -55,7 +55,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <messageSchema>
@@ -83,7 +83,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new MessagesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>

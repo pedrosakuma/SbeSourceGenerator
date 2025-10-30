@@ -28,7 +28,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
@@ -48,7 +48,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
@@ -68,7 +68,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new TypesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
@@ -87,7 +87,7 @@ namespace SbeCodeGenerator.Tests
         public Task MessagesCodeGenerator_GeneratesConsistentTradeMessage()
         {
             // Arrange
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             
             // First run TypesCodeGenerator to populate the context
             var typesGenerator = new TypesCodeGenerator();
@@ -97,7 +97,7 @@ namespace SbeCodeGenerator.Tests
             var generator = new MessagesCodeGenerator();
 
             // Act
-            var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace.V0", _testSchema, context, default(SourceProductionContext));
 
             // Find the Trade message
             var messageResult = results.FirstOrDefault(r => r.name.Contains("Trade") && !r.name.Contains("Parser"));
@@ -113,7 +113,7 @@ namespace SbeCodeGenerator.Tests
         public Task MessagesCodeGenerator_GeneratesConsistentQuoteMessage()
         {
             // Arrange
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             
             // First run TypesCodeGenerator to populate the context
             var typesGenerator = new TypesCodeGenerator();
@@ -123,7 +123,7 @@ namespace SbeCodeGenerator.Tests
             var generator = new MessagesCodeGenerator();
 
             // Act
-            var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace.V0", _testSchema, context, default(SourceProductionContext));
 
             // Find the Quote message
             var messageResult = results.FirstOrDefault(r => r.name.Contains("Quote") && !r.name.Contains("Parser"));
@@ -140,7 +140,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
@@ -157,7 +157,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
 
             // Act
             var results = generator.Generate("TestNamespace", _testSchema, context, default(SourceProductionContext));
