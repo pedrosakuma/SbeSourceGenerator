@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Deprecated.Test.V0;
+using Deprecated.Test.V2;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -18,7 +18,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
             var generatedFiles = Directory.GetFiles(
                 Path.Combine(projectDir, "Generated"),
-                "OrderWithDeprecated.cs",
+                "OrderWithDeprecated*.cs",
                 SearchOption.AllDirectories
             );
             Assert.NotEmpty(generatedFiles);
@@ -49,7 +49,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
             var generatedFiles = Directory.GetFiles(
                 Path.Combine(projectDir, "Generated"),
-                "OrderWithDeprecated.cs",
+                "OrderWithDeprecated*.cs",
                 SearchOption.AllDirectories
             );
             
@@ -96,7 +96,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
             var generatedFiles = Directory.GetFiles(
                 Path.Combine(projectDir, "Generated"),
-                "OrderWithDeprecated.cs",
+                "OrderWithDeprecated*.cs",
                 SearchOption.AllDirectories
             );
             
@@ -144,7 +144,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var projectDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".."));
             var generatedFiles = Directory.GetFiles(
                 Path.Combine(projectDir, "Generated"),
-                "OrderWithDeprecated.cs",
+                "OrderWithDeprecated*.cs",
                 SearchOption.AllDirectories
             );
             

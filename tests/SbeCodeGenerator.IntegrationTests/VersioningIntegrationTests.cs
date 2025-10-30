@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using V0 = Versioning.Test.V0;
-using V1 = Versioning.Test.V1;
-using V2 = Versioning.Test.V2;
+using V0 = Versioning.Test.V2;
+using V1 = Versioning.Test.V2.V1;
+using V2 = Versioning.Test.V2.V2;
 
 namespace SbeCodeGenerator.IntegrationTests
 {
@@ -25,9 +25,9 @@ namespace SbeCodeGenerator.IntegrationTests
                 "SbeSourceGenerator",
                 "SbeSourceGenerator.SBESourceGenerator");
 
-            var v0File = Path.Combine(generatorRoot, "Versioning.Test.V0", "Messages", "EvolvingOrder.cs");
-            var v1File = Path.Combine(generatorRoot, "Versioning.Test.V1", "Messages", "EvolvingOrderV1.cs");
-            var v2File = Path.Combine(generatorRoot, "Versioning.Test.V2", "Messages", "EvolvingOrderV2.cs");
+            var v0File = Path.Combine(generatorRoot, "versioning_test_schema_769F041A", "Versioning.Test.V2", "Messages", "EvolvingOrder.cs");
+            var v1File = Path.Combine(generatorRoot, "versioning_test_schema_769F041A", "Versioning.Test.V2.V1", "Messages", "EvolvingOrderV1.cs");
+            var v2File = Path.Combine(generatorRoot, "versioning_test_schema_769F041A", "Versioning.Test.V2.V2", "Messages", "EvolvingOrderV2.cs");
 
             Assert.True(File.Exists(v0File), $"Expected version 0 message at {v0File}");
             Assert.True(File.Exists(v1File), $"Expected version 1 message at {v1File}");
@@ -173,14 +173,14 @@ namespace SbeCodeGenerator.IntegrationTests
                 "SbeSourceGenerator",
                 "SbeSourceGenerator.SBESourceGenerator");
 
-            var v1File = Path.Combine(generatorRoot, "Versioning.Test.V1", "Messages", "EvolvingOrderV1.cs");
+            var v1File = Path.Combine(generatorRoot, "versioning_test_schema_769F041A", "Versioning.Test.V2.V1", "Messages", "EvolvingOrderV1.cs");
             Assert.True(File.Exists(v1File), $"Expected version 1 message at {v1File}");
 
             var v1Content = File.ReadAllText(v1File);
             Assert.Contains("Since version 1", v1Content);
             
             // V2 file should have "Since version 2" for side
-            var v2File = Path.Combine(generatorRoot, "Versioning.Test.V2", "Messages", "EvolvingOrderV2.cs");
+            var v2File = Path.Combine(generatorRoot, "versioning_test_schema_769F041A", "Versioning.Test.V2.V2", "Messages", "EvolvingOrderV2.cs");
             Assert.True(File.Exists(v2File), $"Expected version 2 message at {v2File}");
 
             var v2Content = File.ReadAllText(v2File);
