@@ -34,18 +34,15 @@ namespace SbeSourceGenerator.Generators
 
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
-            // Strip version suffix to use base namespace for types
-            var baseNamespace = StripSchemaVersion(ns);
-            
             var typeNodes = xmlDocument.SelectNodes("//types/*");
             foreach (XmlElement typeNode in typeNodes)
             {
                 var generatedType = typeNode.Name switch
                 {
-                    "composite" => GenerateComposite(baseNamespace, typeNode, context, sourceContext),
-                    "enum" => GenerateEnum(baseNamespace, typeNode, context, sourceContext),
-                    "type" => GenerateType(baseNamespace, typeNode, context, sourceContext),
-                    "set" => GenerateSet(baseNamespace, typeNode, context, sourceContext),
+                    "composite" => GenerateComposite(ns, typeNode, context, sourceContext),
+                    "enum" => GenerateEnum(ns, typeNode, context, sourceContext),
+                    "type" => GenerateType(ns, typeNode, context, sourceContext),
+                    "set" => GenerateSet(ns, typeNode, context, sourceContext),
                     _ => Enumerable.Empty<(string name, string content)>()
                 };
                 foreach (var item in generatedType)
@@ -372,40 +369,6 @@ namespace SbeSourceGenerator.Generators
                 return normalizedType;
 
             return string.Concat(normalizedType, separator, remainder);
-        }
-
-        private static string StripSchemaVersion(string schemaNamespace)
-        {
-            if (string.IsNullOrEmpty(schemaNamespace))
-                return string.Empty;
-
-            var segments = schemaNamespace.Split('.');
-            if (segments.Length == 0)
-                return string.Empty;
-
-            var last = segments[segments.Length - 1];
-            if (!IsVersionSegment(last))
-                return schemaNamespace;
-
-            if (segments.Length == 1)
-                return string.Empty;
-
-            return string.Join(".", segments.Take(segments.Length - 1));
-        }
-
-        private static bool IsVersionSegment(string segment)
-        {
-            if (string.IsNullOrEmpty(segment) || segment.Length < 2 || segment[0] != 'V')
-                return false;
-
-            for (int i = 1; i < segment.Length; i++)
-            {
-                char ch = segment[i];
-                if (!char.IsDigit(ch) && ch != '_')
-                    return false;
-            }
-
-            return true;
         }
     }
 }
