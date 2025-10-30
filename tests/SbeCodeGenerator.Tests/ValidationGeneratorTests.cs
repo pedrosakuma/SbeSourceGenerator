@@ -28,7 +28,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -72,7 +72,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -98,7 +98,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -127,7 +127,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -158,7 +158,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -192,7 +192,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
@@ -235,7 +235,7 @@ namespace SbeCodeGenerator.Tests
 
             var doc = new XmlDocument();
             doc.LoadXml(xml);
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act

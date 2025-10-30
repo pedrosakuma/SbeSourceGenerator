@@ -13,7 +13,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml("<messageSchema></messageSchema>");
 
@@ -32,7 +32,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml("<messageSchema></messageSchema>");
 
@@ -51,7 +51,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml("<messageSchema></messageSchema>");
 
@@ -69,7 +69,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml("<messageSchema></messageSchema>");
 
@@ -88,7 +88,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var generator = new UtilitiesCodeGenerator();
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml("<messageSchema></messageSchema>");
 

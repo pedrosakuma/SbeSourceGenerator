@@ -13,7 +13,7 @@ namespace SbeCodeGenerator.Tests
         public void MessagesIncludeTryParseHelper()
         {
             // Arrange
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
@@ -37,7 +37,7 @@ namespace SbeCodeGenerator.Tests
         public void CompositesIncludeTryParseHelper()
         {
             // Arrange
-            var context = new SchemaContext();
+            var context = new SchemaContext("test-schema");
             var xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>

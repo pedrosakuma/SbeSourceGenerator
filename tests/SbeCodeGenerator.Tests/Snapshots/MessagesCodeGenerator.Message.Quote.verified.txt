@@ -1,5 +1,5 @@
-﻿using TestNamespace;
-using TestNamespace.Runtime;
+﻿using TestNamespace.V0;
+using TestNamespace.V0.Runtime;
 using System.Runtime.InteropServices;
 namespace TestNamespace.V0;
 /// <summary>
