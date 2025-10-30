@@ -122,6 +122,30 @@ decoded.ConsumeVariableLengthSegments(
 );
 ```
 
+**Messages with Repeating Groups (Zero-Allocation Callback API):**
+```csharp
+// For high-performance scenarios: use callbacks to avoid array allocations
+var orderBook = new OrderBookData { InstrumentId = 42 };
+
+Span<byte> buffer = stackalloc byte[1024];
+bool success = OrderBookData.TryEncode(
+    orderBook,
+    buffer,
+    bidCount: 3,
+    bidsEncoder: (int index, ref BidsData item) => {
+        // Populate item from your data source without allocations
+        item.Price = GetBidPrice(index);
+        item.Quantity = GetBidQuantity(index);
+    },
+    askCount: 2,
+    asksEncoder: (int index, ref AsksData item) => {
+        item.Price = GetAskPrice(index);
+        item.Quantity = GetAskQuantity(index);
+    },
+    out int bytesWritten
+);
+```
+
 **Messages with Repeating Groups (Traditional API):**
 ```csharp
 // Alternative: Manual API for advanced scenarios
