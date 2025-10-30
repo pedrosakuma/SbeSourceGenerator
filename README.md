@@ -91,7 +91,7 @@ if (TradeData.TryParse(receivedBuffer, out var decoded, out _))
 }
 ```
 
-**Messages with Repeating Groups (Recommended - Order-Safe API):**
+**Messages with Repeating Groups (Span-Based API):**
 ```csharp
 // Create message with groups
 var orderBook = new OrderBookData { InstrumentId = 42 };
@@ -146,17 +146,7 @@ bool success = OrderBookData.TryEncode(
 );
 ```
 
-**Messages with Repeating Groups (Traditional API):**
-```csharp
-// Alternative: Manual API for advanced scenarios
-Span<byte> buffer = stackalloc byte[1024];
-orderBook.BeginEncoding(buffer, out var writer);
-OrderBookData.TryEncodeBids(ref writer, bids);
-OrderBookData.TryEncodeAsks(ref writer, asks);
-int bytesWritten = writer.BytesWritten;
-```
-
-**Messages with Variable-Length Data (Recommended - Order-Safe API):**
+**Messages with Variable-Length Data (Span-Based API):**
 ```csharp
 // Encode message with varData
 var order = new NewOrderData { OrderId = 123, Price = 9950 };
@@ -179,15 +169,6 @@ decoded.ConsumeVariableLengthSegments(
         Console.WriteLine($"Symbol: {text}");
     }
 );
-```
-
-**Messages with Variable-Length Data (Traditional API):**
-```csharp
-// Alternative: Manual API for advanced scenarios
-Span<byte> buffer = stackalloc byte[512];
-order.BeginEncoding(buffer, out var writer);
-NewOrderData.TryEncodeSymbol(ref writer, symbolBytes);
-int bytesWritten = writer.BytesWritten;
 ```
 
 ## Example Schema
