@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Xml;
 
@@ -14,20 +13,17 @@ namespace SbeSourceGenerator.Generators
     {
         public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
         {
-            // Strip version suffix to use base namespace for utilities
-            var baseNamespace = StripSchemaVersion(ns);
-            
             // Generate NumberExtensions
             StringBuilder sb = new StringBuilder();
-            new NumberExtensions(baseNamespace).AppendFileContent(sb);
-            yield return (context.CreateHintName(baseNamespace, "Utilities", "NumberExtensions"), sb.ToString());
+            new NumberExtensions(ns).AppendFileContent(sb);
+            yield return (context.CreateHintName(ns, "Utilities", "NumberExtensions"), sb.ToString());
 
             // Generate EndianHelpers
             sb = new StringBuilder();
-            new EndianHelpers(baseNamespace).AppendFileContent(sb);
-            yield return (context.CreateHintName(baseNamespace, "Utilities", "EndianHelpers"), sb.ToString());
+            new EndianHelpers(ns).AppendFileContent(sb);
+            yield return (context.CreateHintName(ns, "Utilities", "EndianHelpers"), sb.ToString());
 
-            var runtimeNamespace = baseNamespace;
+            var runtimeNamespace = ns;
 
             if (context.GeneratedRuntimeNamespaces.Add(runtimeNamespace))
             {
@@ -41,40 +37,6 @@ namespace SbeSourceGenerator.Generators
                 new SpanWriterGenerator(runtimeNamespace).AppendFileContent(sb);
                 yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanWriter"), sb.ToString());
             }
-        }
-
-        private static string StripSchemaVersion(string schemaNamespace)
-        {
-            if (string.IsNullOrEmpty(schemaNamespace))
-                return string.Empty;
-
-            var segments = schemaNamespace.Split('.');
-            if (segments.Length == 0)
-                return string.Empty;
-
-            var last = segments[segments.Length - 1];
-            if (!IsVersionSegment(last))
-                return schemaNamespace;
-
-            if (segments.Length == 1)
-                return string.Empty;
-
-            return string.Join(".", segments.Take(segments.Length - 1));
-        }
-
-        private static bool IsVersionSegment(string segment)
-        {
-            if (string.IsNullOrEmpty(segment) || segment.Length < 2 || segment[0] != 'V')
-                return false;
-
-            for (int i = 1; i < segment.Length; i++)
-            {
-                char ch = segment[i];
-                if (!char.IsDigit(ch) && ch != '_')
-                    return false;
-            }
-
-            return true;
         }
     }
 }

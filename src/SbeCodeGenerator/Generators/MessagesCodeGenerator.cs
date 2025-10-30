@@ -53,7 +53,7 @@ namespace SbeSourceGenerator.Generators
 
                     var generator = new MessageDefinition(
                         versionNamespace,
-                        baseNamespace,
+                        ns,
                         generatedMessageName,
                         messageDto.Id,
                         $"{messageDto.Description} (Version {version})",
@@ -203,6 +203,11 @@ namespace SbeSourceGenerator.Generators
             if (version == 0)
             {
                 return string.IsNullOrEmpty(schemaNamespace) ? baseNamespace : schemaNamespace;
+            }
+
+            if (!string.IsNullOrEmpty(schemaNamespace))
+            {
+                return string.Concat(schemaNamespace, ".V", version);
             }
 
             if (!string.IsNullOrEmpty(baseNamespace))
