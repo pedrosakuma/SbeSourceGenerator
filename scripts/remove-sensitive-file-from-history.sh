@@ -32,9 +32,9 @@ if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
     exit 1
 fi
 
-# Configuration
-REPO_URL="https://github.com/pedrosakuma/SbeSourceGenerator.git"
-REPO_NAME="SbeSourceGenerator"
+# Configuration - can be overridden via environment variables
+REPO_URL="${REPO_URL:-https://github.com/pedrosakuma/SbeSourceGenerator.git}"
+REPO_NAME="${REPO_NAME:-SbeSourceGenerator}"
 BFG_VERSION="1.14.0"
 BFG_JAR="bfg-${BFG_VERSION}.jar"
 BFG_URL="https://repo1.maven.org/maven2/com/madgag/bfg/${BFG_VERSION}/${BFG_JAR}"
@@ -81,7 +81,8 @@ echo -e "${GREEN}Verificação / Verification:${NC}"
 echo "Procurando $FILE_TO_REMOVE no histórico..."
 echo "Searching for $FILE_TO_REMOVE in history..."
 
-if git log --all --full-history -- "**/$FILE_TO_REMOVE" | grep -q commit; then
+# Use explicit pattern for better compatibility
+if git log --all --full-history -- "**/launchSettings.json" | grep -q commit; then
     echo -e "${RED}❌ ERRO: O arquivo ainda existe no histórico!${NC}"
     echo -e "${RED}❌ ERROR: The file still exists in history!${NC}"
     exit 1
@@ -110,7 +111,9 @@ read -p "" -r
 echo ""
 if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
     echo -e "${GREEN}Executando force push... / Executing force push...${NC}"
-    git push --force
+    # Push all branches and tags explicitly for safety
+    git push --force origin --all
+    git push --force origin --tags
     echo ""
     echo -e "${GREEN}✅ CONCLUÍDO! Histórico limpo e enviado ao remote.${NC}"
     echo -e "${GREEN}✅ COMPLETE! History cleaned and pushed to remote.${NC}"
@@ -122,7 +125,8 @@ else
     echo -e "${YELLOW}Force push cancelled. You can run it manually later:${NC}"
     echo ""
     echo "    cd $(pwd)"
-    echo "    git push --force"
+    echo "    git push --force origin --all"
+    echo "    git push --force origin --tags"
 fi
 
 cd ../..

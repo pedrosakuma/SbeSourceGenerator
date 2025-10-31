@@ -14,7 +14,7 @@ O arquivo `examples/SbeBinanceConsole/Properties/launchSettings.json` contém **
 
 **CRÍTICO:** Vá agora para o painel do Binance e:
 
-1. Acesse: https://www.binance.com/en/my/settings/api-management
+1. Acesse: https://www.binance.com/en/my/settings/api-management (URL verificada em 2025-10-31)
 2. **REVOGUE** todas as API keys que estavam no arquivo
 3. **DELETE** as API keys antigas
 4. Gere novas API keys se necessário
