@@ -6,6 +6,10 @@
 
 A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) XML schemas into efficient, type-safe C# code.
 
+## 🔒 Security Notice
+
+⚠️ **Important**: If you need to remove sensitive files from Git history, please see [SECURITY_INCIDENT_RESPONSE.md](./SECURITY_INCIDENT_RESPONSE.md) for immediate action steps.
+
 ## Features
 
 ✅ **Fully Implemented SBE Features**:
