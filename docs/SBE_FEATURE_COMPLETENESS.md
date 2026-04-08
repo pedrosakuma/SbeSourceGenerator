@@ -511,7 +511,8 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 | **Messages** | ✅ Implemented | 95% |
 | **Composites** | ✅ Implemented | 100% |
 | **Enums & Sets** | ✅ Implemented | 100% |
-| **Repeating Groups** | ✅ Implemented | 100% |
+| **Repeating Groups** | ✅ Implemented | 90% |
+| **Nested Groups** | ❌ Not Implemented | 0% |
 | **Optional Fields** | ✅ Implemented | 100% |
 | **Constant Fields** | ✅ Implemented | 100% |
 | **Variable Data** | ✅ Implemented | 90% |
@@ -568,6 +569,7 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-10-16 | 1.2 | Fixed GroupSizeEncoding bug, noted nested groups limitation |
 | 2025-10-15 | 1.1 | Updated dates and current status |
 | 2024-10-06 | 1.0 | Initial feature completeness assessment |
 

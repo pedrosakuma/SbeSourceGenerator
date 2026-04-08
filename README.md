@@ -23,15 +23,10 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Validation constraints (min/max ranges)
 - Comprehensive diagnostics and error reporting
 
-⚠️ **Partially Implemented**:
-- Schema versioning (metadata parsed, evolution not fully implemented)
-- Deprecated field handling (parsed but not marked in code)
-
-📋 **Planned Features**:
-- Nested groups (groups within groups)
-- Extended varData types (VarString16, VarString32)
-- Schema evolution with sinceVersion
-- Custom encoding/decoding hooks
+⚠️ **Known Limitations**:
+- Nested groups (groups within groups) are not yet supported
+- Extended varData types (VarString16, VarString32) not yet available
+- Custom encoding/decoding hooks not yet available
 
 See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
 
