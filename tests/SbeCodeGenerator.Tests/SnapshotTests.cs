@@ -1,6 +1,6 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -13,14 +13,13 @@ namespace SbeCodeGenerator.Tests
     /// </summary>
     public class SnapshotTests
     {
-        private readonly string _testSchemaPath;
-        private readonly XmlDocument _testSchema;
+        private readonly ParsedSchema _testSchema;
 
         public SnapshotTests()
         {
-            _testSchemaPath = Path.Combine(AppContext.BaseDirectory, "TestData", "test-schema-simple.xml");
-            _testSchema = new XmlDocument();
-            _testSchema.Load(_testSchemaPath);
+            var testSchemaPath = Path.Combine(AppContext.BaseDirectory, "TestData", "test-schema-simple.xml");
+            var xmlContent = File.ReadAllText(testSchemaPath);
+            _testSchema = SchemaReader.Parse(xmlContent);
         }
 
         [Fact]

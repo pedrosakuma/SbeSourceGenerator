@@ -1,17 +1,17 @@
 using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
     /// Generates utility code (e.g., NumberExtensions, EndianHelpers).
     /// </summary>
-    public class UtilitiesCodeGenerator : ICodeGenerator
+    internal class UtilitiesCodeGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
+        public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
             // Generate NumberExtensions
             StringBuilder sb = new StringBuilder();

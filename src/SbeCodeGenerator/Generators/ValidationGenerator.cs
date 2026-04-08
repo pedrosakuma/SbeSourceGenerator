@@ -4,25 +4,18 @@ using SbeSourceGenerator.Schema;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
     /// Generates validation methods for SBE messages and types based on schema constraints.
     /// </summary>
-    public class ValidationGenerator : ICodeGenerator
+    internal class ValidationGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
+        public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
-            nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
-
-            // Generate validation for messages
-            var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
-            foreach (XmlElement messageNode in messageNodes)
+            foreach (var messageDto in schema.Messages)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode, context, sourceContext);
                 var validationCode = GenerateMessageValidation(ns, messageDto, context, sourceContext);
                 if (validationCode != null)
                 {
@@ -30,11 +23,8 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            // Generate validation for types with constraints
-            var typeNodes = xmlDocument.SelectNodes("//types/type");
-            foreach (XmlElement typeNode in typeNodes)
+            foreach (var typeDto in schema.Types)
             {
-                var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
                 var validationCode = GenerateTypeValidation(ns, typeDto);
                 if (validationCode != null)
                 {

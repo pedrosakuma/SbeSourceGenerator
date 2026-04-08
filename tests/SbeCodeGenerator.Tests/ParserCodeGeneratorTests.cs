@@ -2,7 +2,7 @@ using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Generators.Types;
 using System.Linq;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
@@ -14,8 +14,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='A test message'>
                         <field name='field1' id='1' type='uint32'/>
@@ -25,7 +24,7 @@ namespace SbeCodeGenerator.Tests
             var generator = new MessagesCodeGenerator();
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default);
+            var results = generator.Generate("TestNamespace", schema, context, default);
 
             // Assert
             var messageResult = results.FirstOrDefault(r => r.name.Contains("TestMessage"));
@@ -38,8 +37,7 @@ namespace SbeCodeGenerator.Tests
         {
             // Arrange
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <types>
                         <composite name='MessageHeader' description='Header'>
@@ -52,7 +50,7 @@ namespace SbeCodeGenerator.Tests
             var generator = new TypesCodeGenerator();
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default);
+            var results = generator.Generate("TestNamespace", schema, context, default);
 
             // Assert
             var compositeResult = results.FirstOrDefault(r => r.name.Contains("MessageHeader"));

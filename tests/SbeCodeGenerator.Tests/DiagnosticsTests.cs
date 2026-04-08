@@ -3,7 +3,7 @@ using SbeSourceGenerator;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
 using System.Collections.Immutable;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
@@ -30,8 +30,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='BadType' primitiveType='char' length='NotANumber'/>
@@ -41,7 +40,7 @@ namespace SbeCodeGenerator.Tests
             // Act
             // Using default SourceProductionContext - in real usage, diagnostics would be reported
             // This demonstrates the API signature, even though we can't capture diagnostics in tests
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             // The generator should complete without throwing exceptions
@@ -56,8 +55,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <set name='BadSet' encodingType='uint8'>
@@ -68,7 +66,7 @@ namespace SbeCodeGenerator.Tests
 
             // Act
             // In actual build, diagnostic SBE003 would be reported for invalid flag value
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -84,8 +82,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='Test'>
                         <field name='field1' id='1' type='uint32' offset='NotANumber'/>
@@ -94,7 +91,7 @@ namespace SbeCodeGenerator.Tests
 
             // Act
             // In actual build, diagnostic SBE001 would be reported for invalid offset
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();

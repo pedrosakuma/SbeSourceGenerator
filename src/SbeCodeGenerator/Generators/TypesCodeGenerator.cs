@@ -7,14 +7,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
     /// Generates code for SBE type definitions (types, enums, sets, composites).
     /// </summary>
-    public class TypesCodeGenerator : ICodeGenerator
+    internal class TypesCodeGenerator : ICodeGenerator
     {
         private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
         {
@@ -33,27 +32,32 @@ namespace SbeSourceGenerator.Generators
             "string"
         };
 
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
+        public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var typeNodes = xmlDocument.SelectNodes("//types/*");
-            foreach (XmlElement typeNode in typeNodes)
+            foreach (var compositeDto in schema.Composites)
             {
-                var generatedType = typeNode.Name switch
-                {
-                    "composite" => GenerateComposite(ns, typeNode, context, sourceContext),
-                    "enum" => GenerateEnum(ns, typeNode, context, sourceContext),
-                    "type" => GenerateType(ns, typeNode, context, sourceContext),
-                    "set" => GenerateSet(ns, typeNode, context, sourceContext),
-                    _ => Enumerable.Empty<(string name, string content)>()
-                };
-                foreach (var item in generatedType)
+                foreach (var item in GenerateComposite(ns, compositeDto, context, sourceContext))
+                    yield return item;
+            }
+            foreach (var enumDto in schema.Enums)
+            {
+                foreach (var item in GenerateEnum(ns, enumDto, context, sourceContext))
+                    yield return item;
+            }
+            foreach (var typeDto in schema.Types)
+            {
+                foreach (var item in GenerateType(ns, typeDto, context, sourceContext))
+                    yield return item;
+            }
+            foreach (var setDto in schema.Sets)
+            {
+                foreach (var item in GenerateSet(ns, setDto, context, sourceContext))
                     yield return item;
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
+        private static IEnumerable<(string name, string content)> GenerateSet(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
@@ -84,9 +88,8 @@ namespace SbeSourceGenerator.Generators
             yield return (context.CreateHintName(ns, "Sets", generatedName), sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
+        private static IEnumerable<(string name, string content)> GenerateType(string ns, SchemaTypeDto typeDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
             var primitiveTranslated = TypeTranslator.Translate(typeDto.PrimitiveType);
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
@@ -96,7 +99,17 @@ namespace SbeSourceGenerator.Generators
                 if (!string.IsNullOrEmpty(typeDto.Length))
                 {
                     if (!int.TryParse(typeDto.Length, out lengthValue))
-                        lengthValue = typeNode.GetIntAttributeOrDefault("length", 0, sourceContext);
+                    {
+                        if (sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.InvalidIntegerAttribute,
+                                Location.None,
+                                "length",
+                                typeDto.Length,
+                                "type"));
+                        }
+                    }
                 }
 
                 var nativeType = primitiveTranslated.PrimitiveType;
@@ -182,9 +195,8 @@ namespace SbeSourceGenerator.Generators
             }
         }
 
-        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
+        private static IEnumerable<(string name, string content)> GenerateEnum(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
@@ -238,9 +250,8 @@ namespace SbeSourceGenerator.Generators
             yield return (context.CreateHintName(ns, "Enums", generatedName), sb.ToString());
         }
 
-        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
+        private static IEnumerable<(string name, string content)> GenerateComposite(string ns, SchemaCompositeDto compositeDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var compositeDto = SchemaParser.ParseComposite(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
 
             // Pre-translate all field primitive types once to avoid repeated dictionary lookups

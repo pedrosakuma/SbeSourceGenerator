@@ -4,16 +4,14 @@ using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
     /// Generates code for SBE message definitions.
     /// </summary>
-    public class MessagesCodeGenerator : ICodeGenerator
+    internal class MessagesCodeGenerator : ICodeGenerator
     {
         private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
         {
@@ -32,15 +30,10 @@ namespace SbeSourceGenerator.Generators
             "string"
         };
 
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
+        public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
-            nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
-            var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
-            foreach (XmlElement messageNode in messageNodes)
+            foreach (var messageDto in schema.Messages)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode, context, sourceContext);
-
                 var generatedMessageName = RegisterGeneratedTypeName(context, messageDto.Name);
 
                 var versions = GetMessageVersions(messageDto, sourceContext);
@@ -60,75 +53,9 @@ namespace SbeSourceGenerator.Generators
                         messageDto.SemanticType,
                         messageDto.Deprecated,
                         fieldsForVersion,
-                        messageDto.Constants
-                            .Select(constant => (IFileContentGenerator)
-                                new ConstantMessageFieldDefinition(
-                                    TypeTranslator.NormalizeName(constant.Name),
-                                    constant.Id,
-                                    ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
-                                    constant.Description != "" ? constant.Description : constant.Type,
-                                    NormalizeValueRef(constant.ValueRef, context)
-                                )
-                            )
-                            .ToList(),
-                        messageDto.Groups
-                            .Select(group =>
-                            {
-                                var groupName = RegisterGeneratedTypeName(context, group.Name);
-                                var groupFields = group.Fields
-                                    .Select(field =>
-                                    {
-                                        var translatedField = TypeTranslator.Translate(field.Type);
-                                        var resolvedFieldType = ResolveTypeName(translatedField.PrimitiveType, context);
-                                        var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
-                                        return (IFileContentGenerator)new MessageFieldDefinition(
-                                            generatedFieldName,
-                                            field.Id,
-                                            resolvedFieldType,
-                                            field.Description,
-                                            ParseOffset(field.Offset, field.Name, sourceContext),
-                                            GetTypeLength(field.Type, context),
-                                            field.SinceVersion,
-                                            field.Deprecated
-                                        );
-                                    })
-                                    .ToList();
-
-                                var groupConstants = group.Constants
-                                    .Select(constant => (IFileContentGenerator)
-                                        new ConstantMessageFieldDefinition(
-                                            TypeTranslator.NormalizeName(constant.Name),
-                                            constant.Id,
-                                            ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
-                                            constant.Description,
-                                            NormalizeValueRef(constant.ValueRef, context)
-                                        )
-                                    )
-                                    .ToList();
-
-                                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
-
-                                return (IFileContentGenerator)new GroupDefinition(
-                                    versionNamespace,
-                                    groupName,
-                                    group.Id,
-                                    ResolveTypeName(group.DimensionType, context),
-                                    group.Description,
-                                    groupFields,
-                                    groupConstants,
-                                    numInGroupType
-                                );
-                            })
-                            .ToList(),
-                        messageDto.Data
-                            .Select(data => (IFileContentGenerator)
-                                new DataFieldDefinition(
-                                    TypeTranslator.NormalizeName(data.Name),
-                                    data.Id,
-                                    ResolveTypeName(data.Type, context),
-                                    data.Description
-                                )
-                            ).ToList()
+                        BuildConstants(messageDto.Constants, context),
+                        BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
+                        BuildData(messageDto.Data, context)
                     );
                     StringBuilder sb = new StringBuilder();
                     generator.AppendFileContent(sb);
@@ -172,7 +99,9 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            return versions.OrderBy(v => v).ToList();
+            var sorted = new List<int>(versions);
+            sorted.Sort();
+            return sorted;
         }
 
         private static string StripSchemaVersion(string schemaNamespace)
@@ -191,7 +120,7 @@ namespace SbeSourceGenerator.Generators
             if (segments.Length == 1)
                 return string.Empty;
 
-            return string.Join(".", segments.Take(segments.Length - 1));
+            return string.Join(".", segments, 0, segments.Length - 1);
         }
 
         private static bool IsVersionSegment(string segment)
@@ -239,54 +168,47 @@ namespace SbeSourceGenerator.Generators
             SourceProductionContext sourceContext,
             SchemaContext context)
         {
-            return fields
-                .Where(field =>
+            var result = new List<IFileContentGenerator>(fields.Count);
+            foreach (var field in fields)
+            {
+                if (!string.IsNullOrEmpty(field.SinceVersion))
                 {
-                    if (string.IsNullOrEmpty(field.SinceVersion))
-                        return true;
+                    if (int.TryParse(field.SinceVersion, out int sinceVersion) && sinceVersion > version)
+                        continue;
+                }
 
-                    if (int.TryParse(field.SinceVersion, out int sinceVersion))
-                        return sinceVersion <= version;
+                bool isOptional = field.Presence == "optional" || context.OptionalTypes.ContainsKey(field.Type);
+                var translated = TypeTranslator.Translate(field.Type);
+                var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
+                var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
 
-                    // sinceVersion is present but not a valid integer — already reported by GetMessageVersions
-                    return true;
-                })
-                .Select(field =>
+                if (isOptional)
                 {
-                    // Check if this field is optional either by:
-                    // 1. Having presence="optional" attribute
-                    // 2. Using a type that is defined as optional (e.g., Int64NULL)
-                    bool isOptional = field.Presence == "optional" || context.OptionalTypes.ContainsKey(field.Type);
-                    var translated = TypeTranslator.Translate(field.Type);
-                    var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
-                    var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
-
-                    if (isOptional)
+                    var underlyingType = GetUnderlyingType(field.Type, context);
+                    if (underlyingType != null && !TypesCatalog.HasNullValue(underlyingType)
+                        && sourceContext.CancellationToken != default)
                     {
-                        var underlyingType = GetUnderlyingType(field.Type, context);
-                        if (underlyingType != null && !TypesCatalog.HasNullValue(underlyingType)
-                            && sourceContext.CancellationToken != default)
-                        {
-                            sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                SbeDiagnostics.UnknownPrimitiveTypeFallback,
-                                Location.None,
-                                underlyingType, "null sentinel", field.Name));
-                        }
-
-                        return (IFileContentGenerator)new OptionalMessageFieldDefinition(
-                            generatedFieldName,
-                            field.Id,
-                            resolvedType,
-                            underlyingType,
-                            field.Description,
-                            ParseOffset(field.Offset, field.Name, sourceContext),
-                            GetTypeLength(field.Type, context),
-                            field.SinceVersion,
-                            field.Deprecated
-                        );
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                            Location.None,
+                            underlyingType, "null sentinel", field.Name));
                     }
 
-                    return (IFileContentGenerator)new MessageFieldDefinition(
+                    result.Add(new OptionalMessageFieldDefinition(
+                        generatedFieldName,
+                        field.Id,
+                        resolvedType,
+                        underlyingType,
+                        field.Description,
+                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        GetTypeLength(field.Type, context),
+                        field.SinceVersion,
+                        field.Deprecated
+                    ));
+                }
+                else
+                {
+                    result.Add(new MessageFieldDefinition(
                         generatedFieldName,
                         field.Id,
                         resolvedType,
@@ -295,9 +217,87 @@ namespace SbeSourceGenerator.Generators
                         GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated
-                    );
-                })
-                .ToList();
+                    ));
+                }
+            }
+            return result;
+        }
+
+        private static List<IFileContentGenerator> BuildConstants(List<SchemaFieldDto> constants, SchemaContext context)
+        {
+            var result = new List<IFileContentGenerator>(constants.Count);
+            foreach (var constant in constants)
+            {
+                result.Add(new ConstantMessageFieldDefinition(
+                    TypeTranslator.NormalizeName(constant.Name),
+                    constant.Id,
+                    ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
+                    constant.Description != "" ? constant.Description : constant.Type,
+                    NormalizeValueRef(constant.ValueRef, context)
+                ));
+            }
+            return result;
+        }
+
+        private static List<IFileContentGenerator> BuildGroups(
+            List<SchemaGroupDto> groups,
+            string versionNamespace,
+            SchemaContext context,
+            SourceProductionContext sourceContext)
+        {
+            var result = new List<IFileContentGenerator>(groups.Count);
+            foreach (var group in groups)
+            {
+                var groupName = RegisterGeneratedTypeName(context, group.Name);
+
+                var groupFields = new List<IFileContentGenerator>(group.Fields.Count);
+                foreach (var field in group.Fields)
+                {
+                    var translatedField = TypeTranslator.Translate(field.Type);
+                    var resolvedFieldType = ResolveTypeName(translatedField.PrimitiveType, context);
+                    var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
+                    groupFields.Add(new MessageFieldDefinition(
+                        generatedFieldName,
+                        field.Id,
+                        resolvedFieldType,
+                        field.Description,
+                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        GetTypeLength(field.Type, context),
+                        field.SinceVersion,
+                        field.Deprecated
+                    ));
+                }
+
+                var groupConstants = BuildConstants(group.Constants, context);
+                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
+
+                result.Add(new GroupDefinition(
+                    versionNamespace,
+                    groupName,
+                    group.Id,
+                    ResolveTypeName(group.DimensionType, context),
+                    group.Description,
+                    groupFields,
+                    groupConstants,
+                    numInGroupType
+                ));
+            }
+            return result;
+        }
+
+        private static List<IFileContentGenerator> BuildData(List<SchemaDataDto> dataList, SchemaContext context)
+        {
+            var result = new List<IFileContentGenerator>(dataList.Count);
+            foreach (var data in dataList)
+            {
+                result.Add(new DataFieldDefinition(
+                    TypeTranslator.NormalizeName(data.Name),
+                    data.Id,
+                    ResolveTypeName(data.Type, context),
+                    data.Description
+                ));
+            }
+            return result;
         }
 
         private static string? GetUnderlyingType(string type, SchemaContext context)
