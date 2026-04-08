@@ -39,15 +39,28 @@ See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detail
 
 ### 1. Install
 
-Add the SBE source generator to your project:
+Install the NuGet package:
+
+```bash
+dotnet add package SbeSourceGenerator
+```
+
+Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\SbeCodeGenerator\SbeSourceGenerator.csproj" 
-                    OutputItemType="Analyzer" 
-                    ReferenceOutputAssembly="false" />
+  <PackageReference Include="SbeSourceGenerator" Version="0.1.0-preview.1" />
 </ItemGroup>
 ```
+
+> **For local development**, use a project reference instead:
+> ```xml
+> <ItemGroup>
+>   <ProjectReference Include="..\SbeCodeGenerator\SbeSourceGenerator.csproj" 
+>                     OutputItemType="Analyzer" 
+>                     ReferenceOutputAssembly="false" />
+> </ItemGroup>
+> ```
 
 ### 2. Add Your Schema
 
@@ -239,7 +252,7 @@ SBESourceGenerator (Orchestrator)
         └── Helper Extensions
 ```
 
-See [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) for detailed architecture diagrams.
+See [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) for detailed architecture diagrams.
 
 ## Diagnostics
 
@@ -276,7 +289,7 @@ dotnet test SbeCodeGenerator.IntegrationTests
 dotnet test
 ```
 
-**Current Status**: 214 tests (105 unit + 109 integration), all passing ✅
+**Current Status**: All tests passing ✅
 
 See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 
@@ -308,9 +321,8 @@ SbeSourceGenerator/
 │   ├── SbeCodeGenerator.Tests/       # Unit tests
 │   └── SbeCodeGenerator.IntegrationTests/  # Integration tests
 ├── examples/                     # Example applications
-│   ├── PcapSbePocConsole/       # Basic SBE encoding/decoding
-│   ├── PcapMarketReplayConsole/ # Market data replay
-│   └── SbeBinanceConsole/       # Binance market data processing
+│   ├── SbeBinanceConsole/       # Binance market data processing
+│   └── HighPerformanceMarketData/ # High-performance SBE patterns
 └── docs/                        # Documentation files
 ```
 
@@ -318,9 +330,8 @@ SbeSourceGenerator/
 
 The repository includes several example projects in the `examples/` folder:
 
-1. **PcapSbePocConsole** - Basic SBE encoding/decoding with B3 market data
-2. **PcapMarketReplayConsole** - PCAP-based market data replay
-3. **SbeBinanceConsole** - Binance market data processing
+1. **SbeBinanceConsole** - Binance market data processing with live dashboard
+2. **HighPerformanceMarketData** - High-performance SBE message processing patterns
 
 ## Performance
 
@@ -337,7 +348,7 @@ See [Performance Tuning Guide](./docs/PERFORMANCE_TUNING_GUIDE.md) for optimizat
 
 ## Compliance
 
-**SBE 1.0 Specification Compliance**: ~70-75%
+**SBE 1.0 Specification Compliance**: ~92-95%
 
 The generator implements the core SBE features needed for most use cases. See the [Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md) document for what's currently supported and what's planned.
 
@@ -355,7 +366,7 @@ Contributions are welcome! Priority areas:
 - Add validation constraints
 - Improve diagnostics
 
-See [Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) for more opportunities.
+See [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for more opportunities.
 
 ### Development Setup
 

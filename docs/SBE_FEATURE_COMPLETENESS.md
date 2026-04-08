@@ -275,19 +275,22 @@ Schema versioning with `sinceVersion` attribute is now fully implemented.
 ### ⚠️ Features Partially Implemented
 
 #### 11. Variable-Length Data (varData)
-**Status**: ⚠️ **NOT IMPLEMENTED**
+**Status**: ✅ **IMPLEMENTED**
 
-Variable-length data fields are not currently supported.
+Variable-length data fields are fully supported with encoding and decoding.
 
-**Missing Features**:
-- `<data>` element support
-- Length field encoding
-- Blob/string data handling
+**Implemented Features**:
+- `<data>` element support in schema parsing
+- VarString8 and VarData code generation
+- Length-prefixed encoding/decoding
 - UTF-8 string support
+- Buffer bounds checking
 
-**Impact**: Cannot encode messages with variable-length strings or binary blobs
-
-**Recommendation**: Implement `DataFieldDefinition` class and update `MessagesCodeGenerator` to handle `<data>` elements.
+**Implementation**:
+- Schema parsing for `<data>` elements
+- `MessagesCodeGenerator` handles varData fields
+- Generated Encode/Decode methods for variable-length data
+- Integration tests with real schemas
 
 ---
 
@@ -443,7 +446,9 @@ Deprecated fields are properly marked with `[Obsolete]` attribute.
 
 ### Current Test Suite
 
-**Unit Tests** (`SbeCodeGenerator.Tests`): 28 tests ✅
+Comprehensive test suite with unit and integration tests — all passing ✅
+
+**Unit Tests** (`SbeCodeGenerator.Tests`):
 - Primitive type generation
 - Enum generation  
 - Set generation
@@ -451,18 +456,19 @@ Deprecated fields are properly marked with `[Obsolete]` attribute.
 - Message generation
 - Diagnostics validation
 - Validation constraint generation
+- Variable-length data generation
 
-**Integration Tests** (`SbeCodeGenerator.IntegrationTests`): 15 tests ✅
+**Integration Tests** (`SbeCodeGenerator.IntegrationTests`):
 - Real-world B3 schema processing
 - Snapshot testing for generated code
 - Validation constraint enforcement
-
-**Total**: 74 tests, all passing ✅
+- Schema versioning (8 tests in `VersioningIntegrationTests.cs`)
+- Variable-length data encoding/decoding
 
 ### Test Coverage Gaps
 
-- ❌ No tests for variable-length data
-- ❌ No tests for schema versioning
+- ✅ **Variable-length data** - Fully tested
+- ✅ **Schema versioning** - Fully tested (8 integration tests in `VersioningIntegrationTests.cs`)
 - ✅ **Validation constraints** - Fully tested
 - ✅ **Byte order handling** - Fully tested (unit + integration tests)
 - ❌ No tests for multi-schema references
@@ -508,27 +514,27 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 | **Repeating Groups** | ✅ Implemented | 100% |
 | **Optional Fields** | ✅ Implemented | 100% |
 | **Constant Fields** | ✅ Implemented | 100% |
-| **Variable Data** | ❌ Not Implemented | 0% |
+| **Variable Data** | ✅ Implemented | 90% |
 | **Schema Versioning** | ✅ Implemented | 95% |
 | **Validation** | ✅ Implemented | 100% |
-| **Byte Order** | ⚠️ Not Verified | 50% |
+| **Byte Order** | ✅ Implemented | 100% |
 
-**Overall Completeness**: ~85-90% of SBE 1.0 specification
+**Overall Completeness**: ~92-95% of SBE 1.0 specification
 
 ---
 
 ## Recommendations
 
-### High Priority
+### High Priority — Completed ✅
 
-1. **Variable-Length Data Support** (varData)
-   - Implement `<data>` element parsing and code generation
-   - Add length prefix handling
-   - Support UTF-8 strings and binary blobs
+1. ~~**Variable-Length Data Support** (varData)~~ — ✅ Implemented
+   - `<data>` element parsing and code generation
+   - Length prefix handling (VarString8, VarData)
+   - UTF-8 strings and binary blobs
 
-2. **Deprecated Field Marking**
-   - Add `[Obsolete]` attributes to deprecated fields
-   - Generate compiler warnings for usage
+2. ~~**Deprecated Field Marking**~~ — ✅ Implemented (see Section 18)
+   - `[Obsolete]` attributes on deprecated fields
+   - Compiler warnings for usage
 
 ### Medium Priority
    - ✅ Generate validation methods

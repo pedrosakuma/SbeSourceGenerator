@@ -5,45 +5,18 @@
 
 ## Critical Gaps (Must Fix for v1.0)
 
-### 1. Variable-Length Data (varData) 🔴
+### 1. Variable-Length Data (varData) ✅
 
-**Status**: ❌ Not Implemented  
-**Priority**: P0 - Critical  
-**Effort**: 2-3 weeks  
-**Blocking**: v1.0 release
+**Status**: ✅ Implemented  
+**Priority**: P0 - Critical — **COMPLETED**
 
-**What's Missing**:
-- `<data>` element support in schema
-- VarString8, VarString16, VarString32 types
-- VarData for binary blobs
+**Implemented Features**:
+- `<data>` element support in schema parsing
+- VarString8 and VarData code generation
 - Length-prefixed encoding/decoding
 - UTF-8 string support
-
-**Use Cases Blocked**:
-- Variable-length strings (symbols, names, descriptions)
-- Binary data (certificates, signatures, images)
-- Text messages
-- Dynamic-size fields
-
-**Implementation Plan**:
-1. Create `SchemaDataDto` for parsing `<data>` elements
-2. Update `SchemaParser.ParseMessage()` to extract data fields
-3. Implement `VariableLengthDataFieldDefinition` generator
-4. Generate length-prefixed field accessors
-5. Handle UTF-8 string encoding/decoding
-6. Support binary blob data
-7. Add buffer bounds checking
-8. Write comprehensive tests
-
-**Files to Create/Modify**:
-- `Schema/SchemaDataDto.cs` (new)
-- `Generators/Fields/VariableLengthDataFieldDefinition.cs` (new)
-- `Generators/MessagesCodeGenerator.cs` (modify)
-- `Tests/VariableLengthDataTests.cs` (new)
-
-**References**:
-- [SBE Spec - Variable-Length Data](https://github.com/real-logic/simple-binary-encoding/wiki/FIX-SBE-XML-Primer#variable-length-data)
-- Real Logic implementation: `sbe-tool/src/main/java/uk/co/real_logic/sbe/generation/java/JavaGenerator.java`
+- Buffer bounds checking
+- Comprehensive unit and integration tests
 
 ---
 
@@ -224,7 +197,7 @@ var json = JsonSerializer.Serialize(message); // Auto-converts
 
 | Feature | Status | Priority | Effort | v1.0? |
 |---------|--------|----------|--------|-------|
-| **Variable-Length Data** | ❌ | 🔴 P0 | 2-3 weeks | ✅ Yes |
+| **Variable-Length Data** | ✅ | 🔴 P0 | ✅ Done | ✅ Yes |
 | **Nested Groups** | ❌ | 🟡 P1 | 2-3 weeks | ⚠️ Maybe |
 | **Performance Benchmarks** | ⚠️ | 🟡 P1 | 1 week | ✅ Yes |
 | **FlyWeight Pattern** | ⚠️ | 🟢 P3 | 1 week | ❌ No |
@@ -241,13 +214,13 @@ var json = JsonSerializer.Serialize(message); // Auto-converts
 
 ### Phase 1: Critical Features (Target: v0.9.0 - 3 weeks)
 
-**Week 1-2**: Variable-Length Data (VarString8 + VarData)
-- [ ] Schema parsing for `<data>` elements
-- [ ] VarString8 code generation
-- [ ] VarData code generation
-- [ ] UTF-8 encoding support
-- [ ] Unit tests
-- [ ] Integration tests
+**Week 1-2**: Variable-Length Data (VarString8 + VarData) — ✅ **COMPLETED**
+- [x] Schema parsing for `<data>` elements
+- [x] VarString8 code generation
+- [x] VarData code generation
+- [x] UTF-8 encoding support
+- [x] Unit tests
+- [x] Integration tests
 
 **Week 3**: Performance Benchmarks
 - [ ] Benchmark scenarios
@@ -307,8 +280,8 @@ var json = JsonSerializer.Serialize(message); // Auto-converts
 
 ### Feature Completeness
 - **Target**: 95%+ of SBE 1.0 spec
-- **Current**: ~85-90%
-- **After varData**: ~90-92%
+- **Current**: ~92-95%
+- **After varData**: ✅ Done (~92-95%)
 - **After nested groups**: ~95-98%
 
 ### Performance
