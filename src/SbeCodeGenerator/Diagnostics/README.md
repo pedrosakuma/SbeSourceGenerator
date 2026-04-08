@@ -9,6 +9,10 @@ Provides compile-time diagnostics for:
 - Invalid attribute values
 - Missing required attributes
 - Unsupported constructs
+- Unresolved type references
+- Non-native byte order
+- Invalid numeric constraints
+- Unknown primitive type fallbacks
 
 ## Diagnostic Codes
 
@@ -48,6 +52,30 @@ Provides compile-time diagnostics for:
 **Example**: `<type name="MyType" primitiveType="char" length="abc"/>`  
 **Resolution**: Provide a valid integer for the length attribute
 
+### SBE007: Non-Native Byte Order
+**Severity**: Warning  
+**Triggered when**: The schema specifies a `byteOrder` that differs from the platform's native endianness (little-endian)  
+**Example**: `<messageSchema byteOrder="bigEndian" .../>`  
+**Resolution**: The generator does not emit byte-swap logic. Multi-byte fields may be read/written incorrectly on this platform. Consider using little-endian byte order or handling endianness manually.
+
+### SBE008: Unresolved Type Reference
+**Severity**: Error  
+**Triggered when**: A type reference in the schema cannot be resolved to a known primitive or custom type  
+**Example**: `<field name="price" type="UnknownType" .../>`  
+**Resolution**: Ensure the type is defined in the `<types>` section before it is referenced, or that it maps to a valid SBE primitive type.
+
+### SBE009: Invalid Numeric Constraint
+**Severity**: Warning  
+**Triggered when**: A `minValue` or `maxValue` attribute contains a non-numeric value  
+**Example**: `<field name="qty" type="uint32" minValue="abc" .../>`  
+**Resolution**: Provide valid numeric literals for constraint attributes. Non-numeric constraints are ignored during validation code generation.
+
+### SBE010: Unknown Primitive Type Fallback
+**Severity**: Warning  
+**Triggered when**: A primitive type used in the schema does not have a known mapping in the type catalog for length or null sentinel lookups  
+**Example**: A custom or misspelled type name used where a primitive is expected  
+**Resolution**: Verify the primitive type name in the schema. The generator uses fallback values (0 for length, `default` for null sentinel) which may produce incorrect code.
+
 ## Usage
 
 Diagnostics are automatically reported during source generation. When you build a project that includes an invalid SBE schema as an additional file, you'll see these diagnostics in:
@@ -61,4 +89,5 @@ Diagnostics are automatically reported during source generation. When you build 
 
 - Diagnostics use `Location.None` as source generators don't have access to the original XML file locations
 - The generator gracefully handles errors by using fallback values and continuing generation
+- Each generator phase (Types, Messages, Utilities, Validation) runs in isolation — a failure in one phase does not block the others
 - Test code uses `default(SourceProductionContext)` which has special handling to skip diagnostic reporting
