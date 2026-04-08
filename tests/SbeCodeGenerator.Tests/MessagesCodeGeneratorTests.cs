@@ -154,5 +154,96 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("version", v1Result.content.ToLower());
         }
 
+        [Fact]
+        public void Generate_WithGroupUsingUint16NumInGroup_ProducesUshortCast()
+        {
+            // Arrange - Schema with uint16 numInGroup (standard SBE default)
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <types>
+                        <composite name='MessageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='GroupSizeEncoding'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='numInGroup' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='id' id='1' type='uint64'/>
+                        <group name='entries' id='2' dimensionType='GroupSizeEncoding'>
+                            <field name='price' id='3' type='int64'/>
+                            <field name='quantity' id='4' type='int64'/>
+                        </group>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+
+            // Act - Run TypesCodeGenerator first to populate CompositeFieldTypes
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+
+            var messagesGenerator = new MessagesCodeGenerator();
+            var results = messagesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+
+            // Assert
+            Assert.NotEmpty(results);
+            var messageResult = results.First();
+            // Should cast to ushort (uint16), NOT uint (uint32)
+            Assert.Contains("(ushort)", messageResult.content);
+            Assert.DoesNotContain("(uint)entries", messageResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithGroupUsingUint32NumInGroup_ProducesUintCast()
+        {
+            // Arrange - Schema with uint32 numInGroup (like B3 market data)
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <types>
+                        <composite name='MessageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='GroupSizeEncoding'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='numInGroup' primitiveType='uint32'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='id' id='1' type='uint64'/>
+                        <group name='entries' id='2' dimensionType='GroupSizeEncoding'>
+                            <field name='price' id='3' type='int64'/>
+                            <field name='quantity' id='4' type='int64'/>
+                        </group>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+
+            // Act - Run TypesCodeGenerator first to populate CompositeFieldTypes
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+
+            var messagesGenerator = new MessagesCodeGenerator();
+            var results = messagesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+
+            // Assert
+            Assert.NotEmpty(results);
+            var messageResult = results.First();
+            // Should cast to uint (uint32)
+            Assert.Contains("(uint)", messageResult.content);
+        }
+
     }
 }
