@@ -6,20 +6,23 @@ namespace SbeSourceGenerator
     {
         public static int SumFieldLength(this IEnumerable<IFileContentGenerator> fields)
         {
-            int offset = 0;
-            foreach (var field in fields)
+            checked
             {
-                if (field is IBlittableMessageField blittableMessageField)
+                int offset = 0;
+                foreach (var field in fields)
                 {
-                    blittableMessageField.Offset ??= offset;
-                    offset = blittableMessageField.Offset.Value + blittableMessageField.Length;
+                    if (field is IBlittableMessageField blittableMessageField)
+                    {
+                        blittableMessageField.Offset ??= offset;
+                        offset = blittableMessageField.Offset.Value + blittableMessageField.Length;
+                    }
+                    else if (field is IBlittable blittable)
+                    {
+                        offset += blittable.Length;
+                    }
                 }
-                else if (field is IBlittable blittable)
-                {
-                    offset += blittable.Length;
-                }
+                return offset;
             }
-            return offset;
         }
     }
 }

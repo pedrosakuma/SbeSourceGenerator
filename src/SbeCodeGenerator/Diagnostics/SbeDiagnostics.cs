@@ -68,5 +68,15 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "A type definition has an invalid length attribute value.");
+
+        // SBE007: Non-native byte order
+        public static readonly DiagnosticDescriptor NonNativeByteOrder = new DiagnosticDescriptor(
+            id: "SBE007",
+            title: "Non-native byte order",
+            messageFormat: "Schema '{0}' specifies byteOrder='{1}' but the generator only supports native (little-endian) byte order. Generated code will not apply endianness conversion and may produce incorrect values on this platform.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "The schema specifies a byte order that differs from the platform's native endianness. The generator does not emit byte-swap logic, so multi-byte fields will be read/written incorrectly.");
     }
 }

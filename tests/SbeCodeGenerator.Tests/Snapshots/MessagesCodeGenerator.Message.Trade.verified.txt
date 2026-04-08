@@ -71,6 +71,11 @@ public partial struct TradeData
 		else
 		{
 			// For backward compatibility: variable data starts at blockLength
+			if (blockLength > buffer.Length)
+			{
+				variableData = default;
+				return false;
+			}
 			variableData = buffer.Slice(blockLength);
 		}
 		
