@@ -9,7 +9,7 @@ namespace SbeSourceGenerator
         {
             var nullValue = NullValue;
             if (NullValue == "")
-                nullValue = TypesCatalog.NullValueByType[PrimitiveType];
+                nullValue = TypesCatalog.GetNullValue(PrimitiveType);
             sb.AppendLine("#pragma warning disable CS0649", tabs);
             sb.AppendLine($"namespace {Namespace};", tabs);
             sb.AppendSummary(Description, tabs, nameof(OptionalTypeDefinition));

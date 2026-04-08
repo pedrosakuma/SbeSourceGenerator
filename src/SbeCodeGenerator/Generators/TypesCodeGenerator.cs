@@ -185,7 +185,7 @@ namespace SbeSourceGenerator.Generators
                     enumDto.Description,
                     encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
+                    TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
@@ -200,7 +200,7 @@ namespace SbeSourceGenerator.Generators
                     enumDto.Description,
                     encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
+                    TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,

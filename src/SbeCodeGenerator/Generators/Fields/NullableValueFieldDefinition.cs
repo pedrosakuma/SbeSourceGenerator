@@ -7,7 +7,7 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            string nullValue = NullValue ?? TypesCatalog.NullValueByType[PrimitiveType];
+            string nullValue = NullValue ?? TypesCatalog.GetNullValue(PrimitiveType);
             sb.AppendSummary(Description, tabs, nameof(NullableValueFieldDefinition));
             sb.AppendLine("#pragma warning disable CS0649", tabs);
             sb.AppendLine($"private {PrimitiveType} {Name.FirstCharToLower()};", tabs);
