@@ -138,7 +138,18 @@ namespace SbeSourceGenerator.Generators
                 if (generator is ConstantTypeDefinition)
                     context.CustomConstantTypes[typeDto.Name] = 0;
                 if (generator is OptionalTypeDefinition)
+                {
                     context.OptionalTypes[typeDto.Name] = nativeType;
+                    var resolvedType = ResolveTypeName(nativeType, context);
+                    if (string.IsNullOrEmpty(typeDto.NullValue) && !TypesCatalog.HasNullValue(resolvedType)
+                        && sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                            Location.None,
+                            resolvedType, "null sentinel", typeDto.Name));
+                    }
+                }
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
@@ -176,6 +187,14 @@ namespace SbeSourceGenerator.Generators
             var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+
+            if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CancellationToken != default)
+            {
+                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                    Location.None,
+                    encodingTranslated.PrimitiveType, "length", enumDto.Name));
+            }
 
             var generator = encodingTranslated.IsNullableEncoding switch
             {
@@ -232,6 +251,18 @@ namespace SbeSourceGenerator.Generators
             foreach (var ft in fieldTranslations)
             {
                 context.CompositeFieldTypes[$"{compositeDto.Name}.{ft.Field.Name}"] = ResolveTypeName(ft.Translation.PrimitiveType, context);
+
+                if (ft.Field.Presence == "optional" && string.IsNullOrEmpty(ft.Field.NullValue))
+                {
+                    var resolvedType = ResolveTypeName(ft.Translation.PrimitiveType, context);
+                    if (!TypesCatalog.HasNullValue(resolvedType) && sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                            Location.None,
+                            resolvedType, "null sentinel", $"{compositeDto.Name}.{ft.Field.Name}"));
+                    }
+                }
             }
 
             var generator = new CompositeDefinition(

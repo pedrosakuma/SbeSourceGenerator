@@ -98,5 +98,15 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "A minValue or maxValue constraint must be a valid numeric literal. Non-numeric constraints are ignored during validation code generation.");
+
+        // SBE010: Unknown primitive type fallback
+        public static readonly DiagnosticDescriptor UnknownPrimitiveTypeFallback = new DiagnosticDescriptor(
+            id: "SBE010",
+            title: "Unknown primitive type fallback",
+            messageFormat: "Primitive type '{0}' is not recognized for {1} lookup in '{2}'. A fallback value will be used, which may produce incorrect generated code.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A primitive type used in the schema does not have a known mapping in the type catalog. The generator will use a fallback value (0 for length, 'default' for null sentinel), but the generated code may be incorrect. Verify the type name in the schema.");
     }
 }

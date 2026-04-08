@@ -261,28 +261,41 @@ namespace SbeSourceGenerator.Generators
                     var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
                     var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
 
-                    return isOptional
-                        ? new OptionalMessageFieldDefinition(
+                    if (isOptional)
+                    {
+                        var underlyingType = GetUnderlyingType(field.Type, context);
+                        if (underlyingType != null && !TypesCatalog.HasNullValue(underlyingType)
+                            && sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                                Location.None,
+                                underlyingType, "null sentinel", field.Name));
+                        }
+
+                        return (IFileContentGenerator)new OptionalMessageFieldDefinition(
                             generatedFieldName,
                             field.Id,
                             resolvedType,
-                            GetUnderlyingType(field.Type, context),
-                            field.Description,
-                            ParseOffset(field.Offset, field.Name, sourceContext),
-                            GetTypeLength(field.Type, context),
-                            field.SinceVersion,
-                            field.Deprecated
-                        )
-                        : (IFileContentGenerator)new MessageFieldDefinition(
-                            generatedFieldName,
-                            field.Id,
-                            resolvedType,
+                            underlyingType,
                             field.Description,
                             ParseOffset(field.Offset, field.Name, sourceContext),
                             GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated
                         );
+                    }
+
+                    return (IFileContentGenerator)new MessageFieldDefinition(
+                        generatedFieldName,
+                        field.Id,
+                        resolvedType,
+                        field.Description,
+                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        GetTypeLength(field.Type, context),
+                        field.SinceVersion,
+                        field.Deprecated
+                    );
                 })
                 .ToList();
         }
