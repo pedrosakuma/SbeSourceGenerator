@@ -89,8 +89,8 @@ There are many ways to contribute:
 
 ```bash
 # Clone the repository
-git clone https://github.com/pedrosakuma/PcapSbePocConsole.git
-cd PcapSbePocConsole
+git clone https://github.com/pedrosakuma/SbeSourceGenerator.git
+cd SbeSourceGenerator
 
 # Build the solution
 dotnet build
@@ -704,13 +704,13 @@ Want to make a big impact? Focus on these areas:
    - Real-world applications
    - Best practices guide
 
-See [SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md) for the complete roadmap.
+See [SBE_IMPLEMENTATION_ROADMAP.md](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for the complete roadmap.
 
 ## Questions?
 
-- **General questions**: Open a [discussion](https://github.com/pedrosakuma/PcapSbePocConsole/discussions)
-- **Bug reports**: Create an [issue](https://github.com/pedrosakuma/PcapSbePocConsole/issues)
-- **Feature requests**: Create an [issue](https://github.com/pedrosakuma/PcapSbePocConsole/issues) with the "enhancement" label
+- **General questions**: Open a [discussion](https://github.com/pedrosakuma/SbeSourceGenerator/discussions)
+- **Bug reports**: Create an [issue](https://github.com/pedrosakuma/SbeSourceGenerator/issues)
+- **Feature requests**: Create an [issue](https://github.com/pedrosakuma/SbeSourceGenerator/issues) with the "enhancement" label
 
 ## License
 

@@ -214,6 +214,71 @@ Exemplos:
 - Monitore as estatísticas de download em [NuGet.org](https://www.nuget.org/)
 - Verifique se há problemas reportados na página do pacote
 
+## Checklist para Primeira Release
+
+### Pré-requisitos
+
+- [ ] Todos os testes passando localmente (`dotnet test`)
+- [ ] Build Release sem erros (`dotnet build -c Release`)
+- [ ] CHANGELOG.md atualizado com as mudanças da versão
+- [ ] Versão definida no formato semver (ex: `0.2.0-preview.1`)
+
+### Configuração (uma vez)
+
+1. **Criar conta no NuGet.org** (se ainda não existir)
+   - Acesse https://www.nuget.org/ e crie uma conta Microsoft
+
+2. **Gerar API Key no NuGet.org**
+   - Account Settings → API Keys → Create
+   - Key Name: `SbeSourceGenerator-CI`
+   - Scopes: `Push` + `Push new packages and package versions`
+   - Glob Pattern: `SbeSourceGenerator`
+   - Expiration: 365 dias
+
+3. **Configurar secret no GitHub**
+   - Repository → Settings → Secrets and variables → Actions
+   - New repository secret: `NUGET_API_KEY` = (valor da API Key)
+
+### Publicação
+
+1. **Criar tag e release**
+   ```bash
+   # Definir versão
+   VERSION="0.2.0-preview.1"
+   
+   # Criar tag
+   git tag "v${VERSION}"
+   git push origin "v${VERSION}"
+   ```
+
+2. **Criar GitHub Release**
+   - Ir em Releases → Draft a new release
+   - Selecionar a tag criada
+   - Título: `v${VERSION}`
+   - Descrever as mudanças (copiar do CHANGELOG.md)
+   - Publicar release
+
+3. **Verificar publicação**
+   - Acompanhar o workflow "CD - Publish to NuGet" na aba Actions
+   - Verificar se o pacote aparece em https://www.nuget.org/packages/SbeSourceGenerator/
+   - Nota: pode demorar alguns minutos para indexação
+
+4. **Validar instalação**
+   ```bash
+   # Criar projeto teste
+   dotnet new console -n TestInstall
+   cd TestInstall
+   dotnet add package SbeSourceGenerator --version ${VERSION}
+   dotnet build
+   ```
+
+### Pós-publicação
+
+- [ ] Pacote visível no NuGet.org
+- [ ] Badge no README.md mostrando versão correta
+- [ ] Instalação funciona em projeto novo
+- [ ] Source generator executa corretamente no projeto consumidor
+
 ## Troubleshooting
 
 ### Erro: "Package already exists"

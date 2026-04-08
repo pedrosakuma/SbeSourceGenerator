@@ -53,12 +53,31 @@ jobs:
     - name: Pack NuGet package
       run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts /p:PackageVersion=${{ steps.get_version.outputs.version }}
       
+    - name: Validate NuGet package
+      run: |
+        NUPKG=$(ls ./artifacts/*.nupkg | head -1)
+        echo "📦 Validating package: $NUPKG"
+        unzip -l "$NUPKG" | grep -q "analyzers/dotnet/cs/" || (echo "❌ Analyzer DLL not found in package" && exit 1)
+        echo "✅ Package validation passed"
+      
     - name: Push to NuGet
-      run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: |
+        dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        dotnet nuget push ./artifacts/*.snupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate || true
       
     - name: Upload release artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-package-${{ steps.get_version.outputs.version }}
-        path: ./artifacts/*.nupkg
+        path: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg
         retention-days: 90
+      
+    - name: Upload assets to GitHub Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg

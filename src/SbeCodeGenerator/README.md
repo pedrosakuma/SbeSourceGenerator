@@ -36,7 +36,7 @@ The generator surfaces Roslyn diagnostics prefixed with `SBE`. Refer to `Analyze
 
 ## Contributing
 
-Issues and pull requests are welcome at [github.com/pedrosakuma/PcapSbePocConsole](https://github.com/pedrosakuma/PcapSbePocConsole).
+Issues and pull requests are welcome at [github.com/pedrosakuma/SbeSourceGenerator](https://github.com/pedrosakuma/SbeSourceGenerator).
 
 ## License
 

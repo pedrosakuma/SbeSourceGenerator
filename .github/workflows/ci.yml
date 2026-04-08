@@ -37,9 +37,24 @@ jobs:
     - name: Pack NuGet package (dry-run)
       run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts
       
+    - name: Validate NuGet package
+      run: |
+        echo "📦 Package contents:"
+        NUPKG=$(ls ./artifacts/*.nupkg | head -1)
+        unzip -l "$NUPKG"
+        echo ""
+        echo "🔍 Validating analyzer DLL is in correct location..."
+        unzip -l "$NUPKG" | grep -q "analyzers/dotnet/cs/" && echo "✅ Analyzer DLL found in analyzers/dotnet/cs/" || (echo "❌ Analyzer DLL NOT found in analyzers/dotnet/cs/" && exit 1)
+        echo ""
+        echo "🔍 Checking package metadata..."
+        unzip -l "$NUPKG" | grep -q "README.md" && echo "✅ README.md included" || echo "⚠️ README.md missing"
+        unzip -l "$NUPKG" | grep -q "LICENSE" && echo "✅ LICENSE included" || echo "⚠️ LICENSE missing"
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-package
-        path: ./artifacts/*.nupkg
+        path: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg
         retention-days: 7
