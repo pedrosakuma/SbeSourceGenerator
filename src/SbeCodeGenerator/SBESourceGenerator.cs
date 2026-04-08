@@ -52,8 +52,16 @@ namespace SbeSourceGenerator
                     try
                     {
                         string path = additionalText.Path;
-                        var d = new XmlDocument();
-                        d.Load(path);
+                        var d = new XmlDocument { XmlResolver = null };
+                        var readerSettings = new XmlReaderSettings
+                        {
+                            DtdProcessing = DtdProcessing.Prohibit,
+                            XmlResolver = null
+                        };
+                        using (var xmlReader = XmlReader.Create(path, readerSettings))
+                        {
+                            d.Load(xmlReader);
+                        }
 
                         string ns = GetNamespaceFromSchema(d, path);
                         string schemaKey = CreateSchemaKey(path);
@@ -69,6 +77,15 @@ namespace SbeSourceGenerator
                             if (!string.IsNullOrEmpty(byteOrderAttr))
                             {
                                 context.ByteOrder = byteOrderAttr;
+                                if (!byteOrderAttr.Equals("littleEndian", StringComparison.OrdinalIgnoreCase)
+                                    && !sourceContext.CancellationToken.IsCancellationRequested)
+                                {
+                                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                        SbeDiagnostics.NonNativeByteOrder,
+                                        Location.None,
+                                        path,
+                                        byteOrderAttr));
+                                }
                             }
                         }
 

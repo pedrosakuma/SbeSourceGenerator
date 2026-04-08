@@ -66,6 +66,11 @@ namespace SbeSourceGenerator
             sb.AppendLine("else", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("// For backward compatibility: variable data starts at blockLength", tabs);
+            sb.AppendLine("if (blockLength > buffer.Length)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
             sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
             sb.AppendLine("}", --tabs);
             sb.AppendLine("", tabs);
@@ -259,10 +264,11 @@ namespace SbeSourceGenerator
                     sb.AppendLine("{", tabs++);
                     sb.AppendLine($"for (int i = 0; i < group{group.Name}.NumInGroup; i++)", tabs);
                     sb.AppendLine("{", tabs++);
-                    sb.AppendLine($"if (reader.TryRead<{group.Name}Data>(out var data))", tabs);
+                    sb.AppendLine($"if (!reader.TryRead<{group.Name}Data>(out var data))", tabs);
                     sb.AppendLine("{", tabs++);
-                    sb.AppendLine($"callback{group.Name}(data);", tabs);
+                    sb.AppendLine("break;", tabs);
                     sb.AppendLine("}", --tabs);
+                    sb.AppendLine($"callback{group.Name}(data);", tabs);
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("}", --tabs);
                 }
