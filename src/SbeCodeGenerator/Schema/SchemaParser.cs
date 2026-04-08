@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Helpers;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,10 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a field into a SchemaFieldDto.
         /// </summary>
-        public static SchemaFieldDto ParseField(XmlElement fieldElement)
+        public static SchemaFieldDto ParseField(XmlElement fieldElement, SourceProductionContext sourceContext)
         {
             return new SchemaFieldDto(
-                Name: fieldElement.GetAttributeOrEmpty("name"),
+                Name: fieldElement.GetRequiredAttribute("name", sourceContext),
                 Description: fieldElement.GetAttributeOrEmpty("description"),
                 PrimitiveType: fieldElement.GetAttributeOrEmpty("primitiveType"),
                 Presence: fieldElement.GetAttributeOrEmpty("presence"),
@@ -38,14 +39,14 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a composite type into a SchemaCompositeDto.
         /// </summary>
-        public static SchemaCompositeDto ParseComposite(XmlElement compositeElement)
+        public static SchemaCompositeDto ParseComposite(XmlElement compositeElement, SourceProductionContext sourceContext)
         {
             var fields = EnumerateElements(compositeElement.ChildNodes)
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             return new SchemaCompositeDto(
-                Name: compositeElement.GetAttributeOrEmpty("name"),
+                Name: compositeElement.GetRequiredAttribute("name", sourceContext),
                 Description: compositeElement.GetAttributeOrEmpty("description"),
                 SemanticType: compositeElement.GetAttributeOrEmpty("semanticType"),
                 Fields: fields
@@ -55,16 +56,16 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing an enum or set type into a SchemaEnumDto.
         /// </summary>
-        public static SchemaEnumDto ParseEnum(XmlElement enumElement)
+        public static SchemaEnumDto ParseEnum(XmlElement enumElement, SourceProductionContext sourceContext)
         {
             var choices = EnumerateElements(enumElement.ChildNodes)
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             return new SchemaEnumDto(
-                Name: enumElement.GetAttributeOrEmpty("name"),
+                Name: enumElement.GetRequiredAttribute("name", sourceContext),
                 Description: enumElement.GetAttributeOrEmpty("description"),
-                EncodingType: enumElement.GetAttributeOrEmpty("encodingType"),
+                EncodingType: enumElement.GetRequiredAttribute("encodingType", sourceContext),
                 SemanticType: enumElement.GetAttributeOrEmpty("semanticType"),
                 Choices: choices
             );
@@ -73,12 +74,12 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a simple type into a SchemaTypeDto.
         /// </summary>
-        public static SchemaTypeDto ParseType(XmlElement typeElement)
+        public static SchemaTypeDto ParseType(XmlElement typeElement, SourceProductionContext sourceContext)
         {
             return new SchemaTypeDto(
-                Name: typeElement.GetAttributeOrEmpty("name"),
+                Name: typeElement.GetRequiredAttribute("name", sourceContext),
                 Description: typeElement.GetAttributeOrEmpty("description"),
-                PrimitiveType: typeElement.GetAttributeOrEmpty("primitiveType"),
+                PrimitiveType: typeElement.GetRequiredAttribute("primitiveType", sourceContext),
                 SemanticType: typeElement.GetAttributeOrEmpty("semanticType"),
                 Presence: typeElement.GetAttributeOrEmpty("presence"),
                 NullValue: typeElement.GetAttributeOrEmpty("nullValue"),
@@ -92,23 +93,23 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a group into a SchemaGroupDto.
         /// </summary>
-        public static SchemaGroupDto ParseGroup(XmlElement groupElement, SchemaContext context)
+        public static SchemaGroupDto ParseGroup(XmlElement groupElement, SchemaContext context, SourceProductionContext sourceContext)
         {
             var fields = EnumerateElements(groupElement.ChildNodes)
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
                 .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             var constants = EnumerateElements(groupElement.ChildNodes)
                 .Where(x => x.Name == "field" && x.GetAttributeOrEmpty("presence") == "constant")
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             return new SchemaGroupDto(
-                Name: groupElement.GetAttributeOrEmpty("name"),
-                Id: groupElement.GetAttributeOrEmpty("id"),
+                Name: groupElement.GetRequiredAttribute("name", sourceContext),
+                Id: groupElement.GetRequiredAttribute("id", sourceContext),
                 DimensionType: groupElement.GetAttributeOrEmpty("dimensionType") == "" ? "GroupSizeEncoding" : groupElement.GetAttributeOrEmpty("dimensionType"),
                 Description: groupElement.GetAttributeOrEmpty("description"),
                 Fields: fields,
@@ -119,12 +120,12 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a data field into a SchemaDataDto.
         /// </summary>
-        public static SchemaDataDto ParseData(XmlElement dataElement)
+        public static SchemaDataDto ParseData(XmlElement dataElement, SourceProductionContext sourceContext)
         {
             return new SchemaDataDto(
-                Name: dataElement.GetAttributeOrEmpty("name"),
-                Id: dataElement.GetAttributeOrEmpty("id"),
-                Type: dataElement.GetAttributeOrEmpty("type"),
+                Name: dataElement.GetRequiredAttribute("name", sourceContext),
+                Id: dataElement.GetRequiredAttribute("id", sourceContext),
+                Type: dataElement.GetRequiredAttribute("type", sourceContext),
                 Description: dataElement.GetAttributeOrEmpty("description")
             );
         }
@@ -132,34 +133,34 @@ namespace SbeSourceGenerator.Schema
         /// <summary>
         /// Parses an XmlElement representing a message into a SchemaMessageDto.
         /// </summary>
-        public static SchemaMessageDto ParseMessage(XmlElement messageElement, SchemaContext context)
+        public static SchemaMessageDto ParseMessage(XmlElement messageElement, SchemaContext context, SourceProductionContext sourceContext)
         {
 
             var fields = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "field")
                 .Where(x => x.GetAttributeOrEmpty("presence") == "" || x.GetAttributeOrEmpty("presence") == "optional")
                 .Where(x => !context.CustomConstantTypes.ContainsKey(x.GetAttributeOrEmpty("type")))
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             var constants = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "field" && x.GetAttributeOrEmpty("presence") == "constant" && x.GetAttributeOrEmpty("valueRef") != "")
-                .Select(ParseField)
+                .Select(e => ParseField(e, sourceContext))
                 .ToList();
 
             var groups = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "group")
-                .Select(x => ParseGroup(x, context))
+                .Select(x => ParseGroup(x, context, sourceContext))
                 .ToList();
 
             var data = EnumerateElements(messageElement.ChildNodes)
                 .Where(x => x.Name == "data")
-                .Select(ParseData)
+                .Select(e => ParseData(e, sourceContext))
                 .ToList();
 
             return new SchemaMessageDto(
-                Name: messageElement.GetAttributeOrEmpty("name"),
-                Id: messageElement.GetAttributeOrEmpty("id"),
+                Name: messageElement.GetRequiredAttribute("name", sourceContext),
+                Id: messageElement.GetRequiredAttribute("id", sourceContext),
                 Description: messageElement.GetAttributeOrEmpty("description"),
                 SemanticType: messageElement.GetAttributeOrEmpty("semanticType"),
                 Deprecated: messageElement.GetAttributeOrEmpty("deprecated"),

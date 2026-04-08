@@ -78,5 +78,25 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "The schema specifies a byte order that differs from the platform's native endianness. The generator does not emit byte-swap logic, so multi-byte fields will be read/written incorrectly.");
+
+        // SBE008: Unresolved type reference
+        public static readonly DiagnosticDescriptor UnresolvedTypeReference = new DiagnosticDescriptor(
+            id: "SBE008",
+            title: "Unresolved type reference",
+            messageFormat: "Type '{0}' could not be resolved to a known primitive or custom type in element '{1}'",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: "A type reference in the schema could not be resolved. Check that the type is defined in the <types> section before it is used.");
+
+        // SBE009: Invalid numeric constraint
+        public static readonly DiagnosticDescriptor InvalidNumericConstraint = new DiagnosticDescriptor(
+            id: "SBE009",
+            title: "Invalid numeric constraint",
+            messageFormat: "Attribute '{0}' has non-numeric value '{1}' in field '{2}'. Constraint will be ignored.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A minValue or maxValue constraint must be a valid numeric literal. Non-numeric constraints are ignored during validation code generation.");
     }
 }

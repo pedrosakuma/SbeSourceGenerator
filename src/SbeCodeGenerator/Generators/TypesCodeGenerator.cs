@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Types;
 using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
@@ -52,7 +53,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode);
+            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
@@ -85,7 +86,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var typeDto = SchemaParser.ParseType(typeNode);
+            var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
             var primitiveTranslated = TypeTranslator.Translate(typeDto.PrimitiveType);
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
@@ -172,7 +173,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode);
+            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
@@ -220,7 +221,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var compositeDto = SchemaParser.ParseComposite(typeNode);
+            var compositeDto = SchemaParser.ParseComposite(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
 
             // Pre-translate all field primitive types once to avoid repeated dictionary lookups
@@ -305,13 +306,23 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
-        private static int GetTypeLength(string type, SchemaContext context)
+        private static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
         {
             int length;
             if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(type, out length)
                 && !context.CustomTypeLengths.TryGetValue(type, out length)
                 && !TypesCatalog.PrimitiveTypeLengths.TryGetValue(TypeTranslator.Translate(type).PrimitiveType, out length))
-                throw new ArgumentException($"Could not get type {type} length");
+            {
+                if (sourceContext.CancellationToken != default)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.UnresolvedTypeReference,
+                        Location.None,
+                        type,
+                        elementName));
+                }
+                return 0;
+            }
             return length;
         }
 
