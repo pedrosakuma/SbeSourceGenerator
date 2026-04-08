@@ -15,11 +15,11 @@ namespace SbeSourceGenerator
                 value = $"\"{value}\"";
             }
 
-            sb.AppendLine($"namespace {Namespace};");
+            sb.Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(ConstantTypeDefinition));
-            sb.AppendLine($"public struct {Name}");
+            sb.Append("public struct ").AppendLine(Name);
             sb.AppendLine("{", tabs++);
-            sb.AppendLine($"public const {primitiveType} Value = {value};", tabs);
+            sb.AppendTabs(tabs).Append("public const ").Append(primitiveType).Append(" Value = ").Append(value).AppendLine(";");
             sb.AppendLine("}", --tabs);
         }
     }

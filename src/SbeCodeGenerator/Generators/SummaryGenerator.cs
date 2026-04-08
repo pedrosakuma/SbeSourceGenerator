@@ -9,9 +9,9 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <summary>", tabs);
             foreach (var descriptionLine in description.Split('\r', '\n'))
             {
-                sb.AppendLine($"/// {descriptionLine.Trim()}", tabs);
+                sb.AppendTabs(tabs).Append("/// ").Append(descriptionLine.Trim()).AppendLine();
             }
-            sb.AppendLine($"/// ({source})", tabs);
+            sb.AppendTabs(tabs).Append("/// (").Append(source).AppendLine(")");
             sb.AppendLine("/// </summary>", tabs);
         }
     }

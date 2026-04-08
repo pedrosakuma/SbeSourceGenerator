@@ -7,16 +7,16 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendLine($"namespace {Namespace};", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(TypeDefinition));
-            sb.AppendLine($"public readonly partial struct {Name}", tabs);
+            sb.AppendTabs(tabs).Append("public readonly partial struct ").Append(Name).AppendLine();
             sb.AppendLine("{", tabs++);
-            sb.AppendLine($"public readonly {PrimitiveType} Value;", tabs);
+            sb.AppendTabs(tabs).Append("public readonly ").Append(PrimitiveType).AppendLine(" Value;");
             sb.AppendLine("", tabs);
 
             // Constructor
             sb.AppendSummary($"Initializes a new instance of {Name} with the specified value.", tabs, nameof(TypeDefinition));
-            sb.AppendLine($"public {Name}({PrimitiveType} value)", tabs);
+            sb.AppendTabs(tabs).Append("public ").Append(Name).Append("(").Append(PrimitiveType).AppendLine(" value)");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("Value = value;", tabs);
             sb.AppendLine("}", --tabs);
@@ -24,12 +24,12 @@ namespace SbeSourceGenerator
 
             // Implicit conversion from primitive to wrapper
             sb.AppendSummary($"Implicitly converts a {PrimitiveType} to {Name}.", tabs, nameof(TypeDefinition));
-            sb.AppendLine($"public static implicit operator {Name}({PrimitiveType} value) => new {Name}(value);", tabs);
+            sb.AppendTabs(tabs).Append("public static implicit operator ").Append(Name).Append("(").Append(PrimitiveType).Append(" value) => new ").Append(Name).AppendLine("(value);");
             sb.AppendLine("", tabs);
 
             // Explicit conversion from wrapper to primitive
             sb.AppendSummary($"Explicitly converts a {Name} to {PrimitiveType}.", tabs, nameof(TypeDefinition));
-            sb.AppendLine($"public static explicit operator {PrimitiveType}({Name} value) => value.Value;", tabs);
+            sb.AppendTabs(tabs).Append("public static explicit operator ").Append(PrimitiveType).Append("(").Append(Name).AppendLine(" value) => value.Value;");
 
             sb.AppendLine("}", --tabs);
         }

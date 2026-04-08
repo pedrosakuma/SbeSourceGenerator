@@ -6,17 +6,17 @@ namespace SbeSourceGenerator.Generators.Types
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendLine($"namespace {Namespace};", tabs);
-            sb.AppendLine($"public partial struct {Name}", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
+            sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
             sb.AppendLine("{", tabs++);
             sb.AppendSummary("Date", tabs, nameof(LocalMktDateSemanticTypeDefinition));
             if (IsNullable)
             {
-                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => Value == null ? null : DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs);
+                sb.AppendTabs(tabs).Append("public DateOnly").Append((IsNullable ? "?" : "")).AppendLine(" Date => Value == null ? null : DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);");
             }
             else
             {
-                sb.AppendLine($"public DateOnly{(IsNullable ? "?" : "")} Date => DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);", tabs);
+                sb.AppendTabs(tabs).Append("public DateOnly").Append((IsNullable ? "?" : "")).AppendLine(" Date => DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds((long)TimeSpan.FromDays((double)Value).TotalSeconds).UtcDateTime);");
             }
             sb.AppendLine("}", --tabs);
         }

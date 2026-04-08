@@ -33,10 +33,10 @@ namespace SbeSourceGenerator
                 var deprecatedSince = string.IsNullOrEmpty(SinceVersion)
                     ? "This field is deprecated"
                     : $"This field is deprecated since version {SinceVersion}";
-                sb.AppendLine($"[Obsolete(\"{deprecatedSince}\")]", tabs);
+                sb.AppendTabs(tabs).Append("[Obsolete(\"").Append(deprecatedSince).AppendLine("\")]");
             }
-            sb.AppendLine($"[FieldOffset({Offset})]", tabs);
-            sb.AppendLine($"public {Type} {Name};", tabs);
+            sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
+            sb.AppendTabs(tabs).Append("public ").Append(Type).Append(" ").Append(Name).AppendLine(";");
         }
 
         private void AppendSummaryWithVersion(StringBuilder sb, string description, string sinceVersion, int tabs)
@@ -44,18 +44,18 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <summary>", tabs);
             if (!string.IsNullOrEmpty(description))
             {
-                sb.AppendLine($"/// {description}", tabs);
+                sb.AppendTabs(tabs).Append("/// ").Append(description).AppendLine();
             }
             else
             {
-                sb.AppendLine($"/// ", tabs);
+                sb.AppendTabs(tabs).AppendLine("/// ");
             }
             if (!string.IsNullOrEmpty(sinceVersion))
             {
-                sb.AppendLine($"/// ", tabs);
-                sb.AppendLine($"/// Since version {sinceVersion}", tabs);
+                sb.AppendTabs(tabs).AppendLine("/// ");
+                sb.AppendTabs(tabs).Append("/// Since version ").Append(sinceVersion).AppendLine();
             }
-            sb.AppendLine($"/// ({nameof(MessageFieldDefinition)})", tabs);
+            sb.AppendTabs(tabs).Append("/// (").Append(nameof(MessageFieldDefinition)).AppendLine(")");
             sb.AppendLine("/// </summary>", tabs);
         }
     }

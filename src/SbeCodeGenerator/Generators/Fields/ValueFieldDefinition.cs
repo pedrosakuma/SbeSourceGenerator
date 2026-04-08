@@ -8,7 +8,7 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendSummary(Description, tabs, nameof(ValueFieldDefinition));
-            sb.AppendLine($"public {PrimitiveType} {Name};", tabs);
+            sb.AppendTabs(tabs).Append("public ").Append(PrimitiveType).Append(" ").Append(Name).AppendLine(";");
         }
     }
 }

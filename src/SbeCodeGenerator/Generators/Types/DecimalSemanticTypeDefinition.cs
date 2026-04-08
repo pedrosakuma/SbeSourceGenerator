@@ -9,11 +9,11 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             var hasNullable = Fields.Where(f => f is NullableValueFieldDefinition).Any();
-            sb.AppendLine($"namespace {Namespace};", tabs);
-            sb.AppendLine($"public partial struct {Name}", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
+            sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
             sb.AppendLine("{", tabs++);
             sb.AppendSummary("Decimal value from mantissa and exponent", tabs, nameof(DecimalSemanticTypeDefinition));
-            sb.AppendLine($"public decimal{(hasNullable ? "?" : "")} Value => Mantissa.ToDecimalWithPrecision(-Exponent);", tabs);
+            sb.AppendTabs(tabs).Append("public decimal").Append((hasNullable ? "?" : "")).AppendLine(" Value => Mantissa.ToDecimalWithPrecision(-Exponent);");
             sb.AppendLine("}", --tabs);
         }
     }
