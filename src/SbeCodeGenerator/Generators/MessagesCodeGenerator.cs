@@ -302,14 +302,13 @@ namespace SbeSourceGenerator.Generators
         private static string GetNumInGroupType(string dimensionType, SchemaContext context)
         {
             // Look up the type of the numInGroup field in the dimension composite type
-            // Default to "uint" if not found for backward compatibility
             var key = $"{dimensionType}.numInGroup";
             if (context.CompositeFieldTypes.TryGetValue(key, out string? numInGroupType))
             {
                 return numInGroupType;
             }
-            // Fallback to "uint" for backward compatibility with existing schemas
-            return "uint";
+            // Fallback to "ushort" — the SBE spec default for numInGroup is uint16
+            return "ushort";
         }
 
         private static string RegisterGeneratedTypeName(SchemaContext context, string originalName)
