@@ -11,6 +11,8 @@ namespace SbeSourceGenerator
                 namespace {{Namespace}}; 
                 public static class NumberExtensions
                 {
+                    private static readonly long[] PowerOfTen = new long[] { 1L, 10L, 100L, 1000L, 10000L, 100000L, 1000000L, 10000000L };
+
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public static decimal ToDecimalWithPrecision(this long value, byte scale)
                     {
@@ -65,7 +67,7 @@ namespace SbeSourceGenerator
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public static DateTime ToDateTimeWithUnit(this ulong time, byte unit)
                     {
-                        return DateTimeOffset.UnixEpoch.AddTicks((long)(time * Math.Pow(10, 7 - unit))).DateTime;
+                        return DateTimeOffset.UnixEpoch.AddTicks((long)(time * (ulong)PowerOfTen[7 - unit])).DateTime;
                     }
                 
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -79,7 +81,7 @@ namespace SbeSourceGenerator
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public static DateTime ToDateTimeWithUnit(this long time, byte unit)
                     {
-                        return DateTimeOffset.UnixEpoch.AddTicks((long)(time * Math.Pow(10, 7 - unit))).DateTime;
+                        return DateTimeOffset.UnixEpoch.AddTicks((long)(time * PowerOfTen[7 - unit])).DateTime;
                     }
                 
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]

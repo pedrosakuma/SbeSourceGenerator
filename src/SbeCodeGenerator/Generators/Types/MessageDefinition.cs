@@ -1,6 +1,5 @@
 ﻿using SbeSourceGenerator.Generators.Fields;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace SbeSourceGenerator
@@ -9,9 +8,15 @@ namespace SbeSourceGenerator
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
         List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas) : IFileContentGenerator
     {
+        private List<GroupDefinition>? _typedGroups;
+        private List<GroupDefinition> TypedGroups => _typedGroups ??= Groups.ConvertAll(g => (GroupDefinition)g);
+
+        private List<DataFieldDefinition>? _typedDatas;
+        private List<DataFieldDefinition> TypedDatas => _typedDatas ??= Datas.ConvertAll(d => (DataFieldDefinition)d);
+
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime");
+            sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
 
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
@@ -25,7 +30,7 @@ namespace SbeSourceGenerator
             AppendConsumeVariable(sb, tabs);
             
             // Generate comprehensive TryEncode method if message has groups or varData
-            if (Groups.Any() || Datas.Any())
+            if (Groups.Count > 0 || Datas.Count > 0)
             {
                 AppendComprehensiveTryEncode(sb, tabs);
             }
@@ -36,12 +41,14 @@ namespace SbeSourceGenerator
         private void AppendParseHelpers(StringBuilder sb, int tabs)
         {
             // Original TryParse without blockLength parameter for backward compatibility
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine($"return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);", tabs);
             sb.AppendLine("}", --tabs);
 
             // TryParse with blockLength parameter for schema evolution support
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out {Name}Data message, out ReadOnlySpan<byte> variableData)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
@@ -80,6 +87,7 @@ namespace SbeSourceGenerator
             // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
             // This method is designed for advanced scenarios where users manage their own SpanReader
             // Caller can access remaining data via reader.Remaining after successful parse
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendLine($"public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out {Name}Data message)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("// Read the message data", tabs);
@@ -108,6 +116,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
             sb.AppendLine("/// <param name=\"bytesWritten\">Number of bytes written on success.</param>", tabs);
             sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendLine($"public bool TryEncode(Span<byte> buffer, out int bytesWritten)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
@@ -129,6 +138,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// </summary>", tabs);
             sb.AppendLine("/// <param name=\"writer\">The writer to use.</param>", tabs);
             sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendLine($"public bool TryEncodeWithWriter(ref SpanWriter writer)", tabs);
             sb.AppendLine("{", tabs++);
             sb.AppendLine("return writer.TryWrite(this);", tabs);
@@ -151,7 +161,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("}", --tabs);
 
             // If message has groups or varData, generate encoding methods for them
-            if (Groups.Any() || Datas.Any())
+            if (Groups.Count > 0 || Datas.Count > 0)
             {
                 AppendVariableDataEncoding(sb, tabs);
             }
@@ -160,7 +170,7 @@ namespace SbeSourceGenerator
         private void AppendVariableDataEncoding(StringBuilder sb, int tabs)
         {
             // Generate private helper methods for each group (used internally by comprehensive TryEncode)
-            foreach (var group in Groups.Cast<GroupDefinition>())
+            foreach (var group in TypedGroups)
             {
                 sb.AppendLine("/// <summary>", tabs);
                 sb.AppendLine($"/// Internal helper: Encodes a {group.Name} group into the buffer.", tabs);
@@ -190,7 +200,7 @@ namespace SbeSourceGenerator
             }
 
             // Generate private helper methods for each varData field (used internally by comprehensive TryEncode)
-            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            foreach (var data in TypedDatas)
             {
                 sb.AppendLine("/// <summary>", tabs);
                 sb.AppendLine($"/// Internal helper: Encodes a {data.Name} varData field into the buffer.", tabs);
@@ -216,49 +226,23 @@ namespace SbeSourceGenerator
 
         private void AppendConsumeVariable(StringBuilder sb, int tabs)
         {
-            if (Groups.Any() || Datas.Any())
+            if (Groups.Count > 0 || Datas.Count > 0)
             {
+                // Build callback parameter lists once
+                var callbackParams = BuildCallbackParams();
+                var callbackArgs = BuildCallbackArgs();
+
                 // Original overload that creates its own SpanReader
-                sb.AppendLine("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ", tabs);
-                foreach (var group in Groups.Cast<GroupDefinition>())
-                {
-                    sb.Append($"Action<{group.Name}Data> callback{group.Name}, ", tabs);
-                }
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
-                {
-                    sb.Append($"{data.Type}.Callback callback{data.Name}, ", tabs);
-                }
-                sb.Remove(sb.Length - 2, 2);
-                sb.AppendLine(")", tabs);
+                sb.AppendLine($"public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, {callbackParams})", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
-                sb.Append("ConsumeVariableLengthSegments(ref reader, ", tabs);
-                foreach (var group in Groups.Cast<GroupDefinition>())
-                {
-                    sb.Append($"callback{group.Name}, ", tabs);
-                }
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
-                {
-                    sb.Append($"callback{data.Name}, ", tabs);
-                }
-                sb.Remove(sb.Length - 2, 2);
-                sb.AppendLine(");", tabs);
+                sb.AppendLine($"ConsumeVariableLengthSegments(ref reader, {callbackArgs});", tabs);
                 sb.AppendLine("}", --tabs);
 
                 // New overload that accepts SpanReader by reference
-                sb.AppendLine("public void ConsumeVariableLengthSegments(ref SpanReader reader, ", tabs);
-                foreach (var group in Groups.Cast<GroupDefinition>())
-                {
-                    sb.Append($"Action<{group.Name}Data> callback{group.Name}, ", tabs);
-                }
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
-                {
-                    sb.Append($"{data.Type}.Callback callback{data.Name}, ", tabs);
-                }
-                sb.Remove(sb.Length - 2, 2);
-                sb.AppendLine(")", tabs);
+                sb.AppendLine($"public void ConsumeVariableLengthSegments(ref SpanReader reader, {callbackParams})", tabs);
                 sb.AppendLine("{", tabs++);
-                foreach (var group in Groups.Cast<GroupDefinition>())
+                foreach (var group in TypedGroups)
                 {
                     sb.AppendLine($"if (reader.TryRead<{group.DimensionType}>(out var group{group.Name}))", tabs);
                     sb.AppendLine("{", tabs++);
@@ -272,7 +256,7 @@ namespace SbeSourceGenerator
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("}", --tabs);
                 }
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                foreach (var data in TypedDatas)
                 {
                     sb.AppendLine($"var datas{data.Name} = {data.Type}.Create(reader.Remaining);", tabs);
                     sb.AppendLine($"callback{data.Name}(datas{data.Name});", tabs);
@@ -315,7 +299,7 @@ namespace SbeSourceGenerator
         private void AppendComprehensiveTryEncode(StringBuilder sb, int tabs)
         {
             // First, generate delegate types for callback-based encoding
-            foreach (var group in Groups.Cast<GroupDefinition>())
+            foreach (var group in TypedGroups)
             {
                 sb.AppendLine($"/// <summary>", tabs);
                 sb.AppendLine($"/// Delegate for encoding {group.Name} group items one at a time (zero-allocation).", tabs);
@@ -335,13 +319,13 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
             
             // Add parameters for each group in order
-            foreach (var group in Groups.Cast<GroupDefinition>())
+            foreach (var group in TypedGroups)
             {
                 sb.AppendLine($"/// <param name=\"{group.Name.FirstCharToLower()}\">The {group.Name} group entries.</param>", tabs);
             }
             
             // Add parameters for each varData in order
-            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            foreach (var data in TypedDatas)
             {
                 sb.AppendLine($"/// <param name=\"{data.Name.FirstCharToLower()}\">The {data.Name} variable-length data.</param>", tabs);
             }
@@ -352,13 +336,13 @@ namespace SbeSourceGenerator
             sb.Append($"public static bool TryEncode({Name}Data message, Span<byte> buffer", tabs);
             
             // Add parameters for groups
-            foreach (var group in Groups.Cast<GroupDefinition>())
+            foreach (var group in TypedGroups)
             {
                 sb.Append($", ReadOnlySpan<{Name}Data.{group.Name}Data> {group.Name.FirstCharToLower()}");
             }
             
             // Add parameters for varData
-            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            foreach (var data in TypedDatas)
             {
                 sb.Append($", ReadOnlySpan<byte> {data.Name.FirstCharToLower()}");
             }
@@ -378,7 +362,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("", tabs);
             
             // Encode groups in schema order
-            foreach (var group in Groups.Cast<GroupDefinition>())
+            foreach (var group in TypedGroups)
             {
                 sb.AppendLine($"// Encode {group.Name} group", tabs);
                 sb.AppendLine($"if (!TryEncode{group.Name}(ref writer, {group.Name.FirstCharToLower()}))", tabs);
@@ -390,7 +374,7 @@ namespace SbeSourceGenerator
             }
             
             // Encode varData in schema order
-            foreach (var data in Datas.Cast<DataFieldDefinition>())
+            foreach (var data in TypedDatas)
             {
                 var capitalizedName = data.Name.FirstCharToUpper();
                 sb.AppendLine($"// Encode {data.Name} varData", tabs);
@@ -407,7 +391,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("}", --tabs);
             
             // Generate callback-based TryEncode overload for zero-allocation scenarios
-            if (Groups.Any())
+            if (Groups.Count > 0)
             {
                 sb.AppendLine("", tabs);
                 sb.AppendLine("/// <summary>", tabs);
@@ -419,14 +403,14 @@ namespace SbeSourceGenerator
                 sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
                 
                 // Add parameters for each group (count + encoder)
-                foreach (var group in Groups.Cast<GroupDefinition>())
+                foreach (var group in TypedGroups)
                 {
                     sb.AppendLine($"/// <param name=\"{group.Name.FirstCharToLower()}Count\">Number of {group.Name} entries.</param>", tabs);
                     sb.AppendLine($"/// <param name=\"{group.Name.FirstCharToLower()}Encoder\">Callback to encode each {group.Name} entry.</param>", tabs);
                 }
                 
                 // Add parameters for each varData in order
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                foreach (var data in TypedDatas)
                 {
                     sb.AppendLine($"/// <param name=\"{data.Name.FirstCharToLower()}\">The {data.Name} variable-length data.</param>", tabs);
                 }
@@ -437,13 +421,13 @@ namespace SbeSourceGenerator
                 sb.Append($"public static bool TryEncode({Name}Data message, Span<byte> buffer", tabs);
                 
                 // Add parameters for groups (count + encoder callback)
-                foreach (var group in Groups.Cast<GroupDefinition>())
+                foreach (var group in TypedGroups)
                 {
                     sb.Append($", int {group.Name.FirstCharToLower()}Count, {group.Name}Encoder {group.Name.FirstCharToLower()}Encoder");
                 }
                 
                 // Add parameters for varData
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                foreach (var data in TypedDatas)
                 {
                     sb.Append($", ReadOnlySpan<byte> {data.Name.FirstCharToLower()}");
                 }
@@ -463,7 +447,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("", tabs);
                 
                 // Encode groups in schema order using callbacks
-                foreach (var group in Groups.Cast<GroupDefinition>())
+                foreach (var group in TypedGroups)
                 {
                     var groupNameLower = group.Name.FirstCharToLower();
                     sb.AppendLine($"// Encode {group.Name} group using callback", tabs);
@@ -476,7 +460,7 @@ namespace SbeSourceGenerator
                 }
                 
                 // Encode varData in schema order
-                foreach (var data in Datas.Cast<DataFieldDefinition>())
+                foreach (var data in TypedDatas)
                 {
                     var capitalizedName = data.Name.FirstCharToUpper();
                     sb.AppendLine($"// Encode {data.Name} varData", tabs);
@@ -493,7 +477,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("}", --tabs);
                 
                 // Generate helper methods for callback-based group encoding
-                foreach (var group in Groups.Cast<GroupDefinition>())
+                foreach (var group in TypedGroups)
                 {
                     sb.AppendLine("", tabs);
                     sb.AppendLine($"private static bool TryEncode{group.Name}WithCallback(ref SpanWriter writer, int count, {group.Name}Encoder encoder)", tabs);
@@ -523,5 +507,24 @@ namespace SbeSourceGenerator
             }
         }
 
+        private string BuildCallbackParams()
+        {
+            var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
+            foreach (var group in TypedGroups)
+                parts.Add($"Action<{group.Name}Data> callback{group.Name}");
+            foreach (var data in TypedDatas)
+                parts.Add($"{data.Type}.Callback callback{data.Name}");
+            return string.Join(", ", parts);
+        }
+
+        private string BuildCallbackArgs()
+        {
+            var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
+            foreach (var group in TypedGroups)
+                parts.Add($"callback{group.Name}");
+            foreach (var data in TypedDatas)
+                parts.Add($"callback{data.Name}");
+            return string.Join(", ", parts);
+        }
     }
 }
