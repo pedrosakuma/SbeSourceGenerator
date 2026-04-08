@@ -57,7 +57,9 @@ namespace SbeSourceGenerator.Generators
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
                         BuildData(messageDto.Data, context)
                     );
-                    StringBuilder sb = new StringBuilder();
+                    int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
+                        + messageDto.Groups.Count * 1024 + messageDto.Data.Count * 512;
+                    StringBuilder sb = new StringBuilder(estimatedCapacity);
                     generator.AppendFileContent(sb);
                     var targetNamespace = string.IsNullOrEmpty(versionNamespace) ? ns : versionNamespace;
                     var fileName = version == 0

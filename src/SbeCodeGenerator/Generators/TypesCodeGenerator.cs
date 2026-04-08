@@ -83,7 +83,7 @@ namespace SbeSourceGenerator.Generators
             );
             if (generator is IBlittable blittableType)
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Sets", generatedName), sb.ToString());
         }
@@ -165,7 +165,7 @@ namespace SbeSourceGenerator.Generators
                 }
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
-                StringBuilder sb = new StringBuilder();
+                StringBuilder sb = new StringBuilder(1024);
                 generator.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Types", generatedName), sb.ToString());
                 if (generator is TypeDefinition typeDefinition)
@@ -245,7 +245,7 @@ namespace SbeSourceGenerator.Generators
                 context.CustomTypeLengths[enumDto.Name] = blittableType.Length;
             if (generator is EnumDefinition enumDefinition)
                 context.EnumPrimitiveTypes[enumDto.Name] = enumDefinition.EncodingType;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Enums", generatedName), sb.ToString());
         }
@@ -314,7 +314,7 @@ namespace SbeSourceGenerator.Generators
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
             var semanticGenerator = (generator.Name) switch

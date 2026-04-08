@@ -9,10 +9,37 @@ namespace SbeSourceGenerator
         List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas) : IFileContentGenerator
     {
         private List<GroupDefinition>? _typedGroups;
-        private List<GroupDefinition> TypedGroups => _typedGroups ??= Groups.ConvertAll(g => (GroupDefinition)g);
-
         private List<DataFieldDefinition>? _typedDatas;
-        private List<DataFieldDefinition> TypedDatas => _typedDatas ??= Datas.ConvertAll(d => (DataFieldDefinition)d);
+
+        private List<GroupDefinition> TypedGroups
+        {
+            get
+            {
+                if (_typedGroups == null)
+                {
+                    _typedGroups = new List<GroupDefinition>(Groups.Count);
+                    foreach (var item in Groups)
+                        _typedGroups.Add((GroupDefinition)item);
+                }
+                return _typedGroups;
+            }
+        }
+
+        private List<DataFieldDefinition> TypedDatas
+        {
+            get
+            {
+                if (_typedDatas == null)
+                {
+                    _typedDatas = new List<DataFieldDefinition>(Datas.Count);
+                    foreach (var item in Datas)
+                        _typedDatas.Add((DataFieldDefinition)item);
+                }
+                return _typedDatas;
+            }
+        }
+
+        private bool HasVariableData => Groups.Count > 0 || Datas.Count > 0;
 
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
@@ -30,7 +57,7 @@ namespace SbeSourceGenerator
             AppendConsumeVariable(sb, tabs);
             
             // Generate comprehensive TryEncode method if message has groups or varData
-            if (Groups.Count > 0 || Datas.Count > 0)
+            if (HasVariableData)
             {
                 AppendComprehensiveTryEncode(sb, tabs);
             }
@@ -161,7 +188,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("}", --tabs);
 
             // If message has groups or varData, generate encoding methods for them
-            if (Groups.Count > 0 || Datas.Count > 0)
+            if (HasVariableData)
             {
                 AppendVariableDataEncoding(sb, tabs);
             }
@@ -226,7 +253,7 @@ namespace SbeSourceGenerator
 
         private void AppendConsumeVariable(StringBuilder sb, int tabs)
         {
-            if (Groups.Count > 0 || Datas.Count > 0)
+            if (HasVariableData)
             {
                 // Build callback parameter lists once
                 var callbackParams = BuildCallbackParams();
@@ -286,14 +313,9 @@ namespace SbeSourceGenerator
         }
         private void AppendFieldsFileContent(StringBuilder sb, int tabs)
         {
-            int offset = 0;
+            // Offsets are already computed by SumFieldLength() in AppendMessageDefinitionConstants
             foreach (var field in Fields)
-            {
-                var blittableField = (IBlittableMessageField)field;
-                blittableField.Offset ??= offset;
                 field.AppendFileContent(sb, tabs);
-                offset = blittableField.Offset.Value + blittableField.Length;
-            }
         }
 
         private void AppendComprehensiveTryEncode(StringBuilder sb, int tabs)
