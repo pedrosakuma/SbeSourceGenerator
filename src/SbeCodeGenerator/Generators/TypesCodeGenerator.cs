@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Types;
 using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
@@ -52,7 +53,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode);
+            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
@@ -85,7 +86,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateType(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var typeDto = SchemaParser.ParseType(typeNode);
+            var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
             var primitiveTranslated = TypeTranslator.Translate(typeDto.PrimitiveType);
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
@@ -137,7 +138,18 @@ namespace SbeSourceGenerator.Generators
                 if (generator is ConstantTypeDefinition)
                     context.CustomConstantTypes[typeDto.Name] = 0;
                 if (generator is OptionalTypeDefinition)
+                {
                     context.OptionalTypes[typeDto.Name] = nativeType;
+                    var resolvedType = ResolveTypeName(nativeType, context);
+                    if (string.IsNullOrEmpty(typeDto.NullValue) && !TypesCatalog.HasNullValue(resolvedType)
+                        && sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                            Location.None,
+                            resolvedType, "null sentinel", typeDto.Name));
+                    }
+                }
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
                 StringBuilder sb = new StringBuilder();
@@ -172,9 +184,17 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var enumDto = SchemaParser.ParseEnum(typeNode);
+            var enumDto = SchemaParser.ParseEnum(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+
+            if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CancellationToken != default)
+            {
+                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                    Location.None,
+                    encodingTranslated.PrimitiveType, "length", enumDto.Name));
+            }
 
             var generator = encodingTranslated.IsNullableEncoding switch
             {
@@ -184,7 +204,7 @@ namespace SbeSourceGenerator.Generators
                     enumDto.Description,
                     encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
+                    TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
@@ -199,7 +219,7 @@ namespace SbeSourceGenerator.Generators
                     enumDto.Description,
                     encodingTranslated.PrimitiveType,
                     enumDto.SemanticType,
-                    TypesCatalog.PrimitiveTypeLengths[encodingTranslated.PrimitiveType],
+                    TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
@@ -220,7 +240,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, XmlElement typeNode, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var compositeDto = SchemaParser.ParseComposite(typeNode);
+            var compositeDto = SchemaParser.ParseComposite(typeNode, sourceContext);
             var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
 
             // Pre-translate all field primitive types once to avoid repeated dictionary lookups
@@ -231,6 +251,18 @@ namespace SbeSourceGenerator.Generators
             foreach (var ft in fieldTranslations)
             {
                 context.CompositeFieldTypes[$"{compositeDto.Name}.{ft.Field.Name}"] = ResolveTypeName(ft.Translation.PrimitiveType, context);
+
+                if (ft.Field.Presence == "optional" && string.IsNullOrEmpty(ft.Field.NullValue))
+                {
+                    var resolvedType = ResolveTypeName(ft.Translation.PrimitiveType, context);
+                    if (!TypesCatalog.HasNullValue(resolvedType) && sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                            Location.None,
+                            resolvedType, "null sentinel", $"{compositeDto.Name}.{ft.Field.Name}"));
+                    }
+                }
             }
 
             var generator = new CompositeDefinition(
@@ -305,13 +337,23 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
-        private static int GetTypeLength(string type, SchemaContext context)
+        private static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
         {
             int length;
             if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(type, out length)
                 && !context.CustomTypeLengths.TryGetValue(type, out length)
                 && !TypesCatalog.PrimitiveTypeLengths.TryGetValue(TypeTranslator.Translate(type).PrimitiveType, out length))
-                throw new ArgumentException($"Could not get type {type} length");
+            {
+                if (sourceContext.CancellationToken != default)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.UnresolvedTypeReference,
+                        Location.None,
+                        type,
+                        elementName));
+                }
+                return 0;
+            }
             return length;
         }
 

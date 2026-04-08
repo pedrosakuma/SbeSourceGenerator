@@ -95,14 +95,30 @@ namespace SbeSourceGenerator
                         var utilitiesGenerator = new UtilitiesCodeGenerator();
                         var validationGenerator = new ValidationGenerator();
 
-                        foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
-                            sourceContext.AddSource(item.name, item.content);
-                        foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
-                            sourceContext.AddSource(item.name, item.content);
-                        foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
-                            sourceContext.AddSource(item.name, item.content);
-                        foreach (var item in validationGenerator.Generate(ns, d, context, sourceContext))
-                            sourceContext.AddSource(item.name, item.content);
+                        var generators = new (string phase, ICodeGenerator gen)[]
+                        {
+                            ("types", typesGenerator),
+                            ("messages", messagesGenerator),
+                            ("utilities", utilitiesGenerator),
+                            ("validation", validationGenerator)
+                        };
+
+                        foreach (var (phase, gen) in generators)
+                        {
+                            try
+                            {
+                                foreach (var item in gen.Generate(ns, d, context, sourceContext))
+                                    sourceContext.AddSource(item.name, item.content);
+                            }
+                            catch (Exception genEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
+                            {
+                                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                    SbeDiagnostics.MalformedSchema,
+                                    Location.None,
+                                    path,
+                                    $"[{phase}] {genEx.Message}"));
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {

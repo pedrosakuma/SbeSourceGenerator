@@ -40,5 +40,25 @@ namespace SbeSourceGenerator
             { "float", sizeof(float)},
             { "double", sizeof(double)},
         };
+
+        public static string GetNullValue(string primitiveType)
+        {
+            return NullValueByType.TryGetValue(primitiveType, out var value) ? value : "default";
+        }
+
+        public static bool HasNullValue(string primitiveType)
+        {
+            return NullValueByType.ContainsKey(primitiveType);
+        }
+
+        public static int GetPrimitiveLength(string primitiveType)
+        {
+            return PrimitiveTypeLengths.TryGetValue(primitiveType, out var length) ? length : 0;
+        }
+
+        public static bool HasPrimitiveLength(string primitiveType)
+        {
+            return PrimitiveTypeLengths.ContainsKey(primitiveType);
+        }
     }
 }

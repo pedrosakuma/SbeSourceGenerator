@@ -78,5 +78,35 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "The schema specifies a byte order that differs from the platform's native endianness. The generator does not emit byte-swap logic, so multi-byte fields will be read/written incorrectly.");
+
+        // SBE008: Unresolved type reference
+        public static readonly DiagnosticDescriptor UnresolvedTypeReference = new DiagnosticDescriptor(
+            id: "SBE008",
+            title: "Unresolved type reference",
+            messageFormat: "Type '{0}' could not be resolved to a known primitive or custom type in element '{1}'",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: "A type reference in the schema could not be resolved. Check that the type is defined in the <types> section before it is used.");
+
+        // SBE009: Invalid numeric constraint
+        public static readonly DiagnosticDescriptor InvalidNumericConstraint = new DiagnosticDescriptor(
+            id: "SBE009",
+            title: "Invalid numeric constraint",
+            messageFormat: "Attribute '{0}' has non-numeric value '{1}' in field '{2}'. Constraint will be ignored.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A minValue or maxValue constraint must be a valid numeric literal. Non-numeric constraints are ignored during validation code generation.");
+
+        // SBE010: Unknown primitive type fallback
+        public static readonly DiagnosticDescriptor UnknownPrimitiveTypeFallback = new DiagnosticDescriptor(
+            id: "SBE010",
+            title: "Unknown primitive type fallback",
+            messageFormat: "Primitive type '{0}' is not recognized for {1} lookup in '{2}'. A fallback value will be used, which may produce incorrect generated code.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A primitive type used in the schema does not have a known mapping in the type catalog. The generator will use a fallback value (0 for length, 'default' for null sentinel), but the generated code may be incorrect. Verify the type name in the schema.");
     }
 }

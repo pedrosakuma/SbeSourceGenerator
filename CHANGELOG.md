@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **SBE007**: Warning for non-native byte order schemas (e.g., `bigEndian` on little-endian platforms).
+- **SBE008**: Error when a type reference cannot be resolved to any known primitive or custom type.
+- **SBE009**: Warning when `minValue`/`maxValue` constraints contain non-numeric values.
+- **SBE010**: Warning when a primitive type fallback is used for length or null sentinel lookups.
+- Generator phase isolation: each phase (Types, Messages, Utilities, Validation) runs in its own try/catch, so a failure in one does not block the others.
+- Safe dictionary accessors (`GetPrimitiveLength`, `GetNullValue`) with `TryGetValue` instead of bare indexers.
+
+### Fixed
+- **XXE vulnerability**: XML loading now uses `DtdProcessing.Prohibit` and `XmlResolver = null`.
+- **Group loop runaway**: `ConsumeVariableLengthSegments` now breaks on failed `TryRead` instead of silently continuing.
+- **Slice guard**: Added `blockLength > buffer.Length` validation before slicing in `TryParse`.
+- **Integer overflow**: `SumFieldLength()` now runs inside a `checked{}` block.
+- Required schema attributes validated via `GetRequiredAttribute` (emits SBE002) instead of silently using empty strings.
+- `sinceVersion` invalid values now emit SBE001 warning instead of being silently ignored.
+- `dimensionType` not found on groups now emits SBE005 warning when falling back to default.
+- `GetTypeLength()` emits SBE008 instead of throwing `ArgumentException` for unknown types.
+
 ## [0.2.0] - 2025-07-24
 
 ### Fixed

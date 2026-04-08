@@ -39,11 +39,11 @@ namespace SbeSourceGenerator.Generators
             var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
             foreach (XmlElement messageNode in messageNodes)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode, context);
+                var messageDto = SchemaParser.ParseMessage(messageNode, context, sourceContext);
 
                 var generatedMessageName = RegisterGeneratedTypeName(context, messageDto.Name);
 
-                var versions = GetMessageVersions(messageDto);
+                var versions = GetMessageVersions(messageDto, sourceContext);
                 var baseNamespace = StripSchemaVersion(ns);
 
                 foreach (var version in versions)
@@ -106,7 +106,7 @@ namespace SbeSourceGenerator.Generators
                                     )
                                     .ToList();
 
-                                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context), context);
+                                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
 
                                 return (IFileContentGenerator)new GroupDefinition(
                                     versionNamespace,
@@ -145,18 +145,29 @@ namespace SbeSourceGenerator.Generators
         /// Determines all versions needed for a message based on sinceVersion attributes.
         /// Returns a list like [0, 1, 2] for a message with fields at versions 0, 1, and 2.
         /// </summary>
-        private static List<int> GetMessageVersions(SchemaMessageDto messageDto)
+        private static List<int> GetMessageVersions(SchemaMessageDto messageDto, SourceProductionContext sourceContext)
         {
             var versions = new HashSet<int> { 0 }; // Always generate version 0
 
             foreach (var field in messageDto.Fields)
             {
-                if (!string.IsNullOrEmpty(field.SinceVersion) && int.TryParse(field.SinceVersion, out int sinceVersion))
+                if (!string.IsNullOrEmpty(field.SinceVersion))
                 {
-                    // Add this version and all intermediate versions
-                    for (int v = 0; v <= sinceVersion; v++)
+                    if (int.TryParse(field.SinceVersion, out int sinceVersion))
                     {
-                        versions.Add(v);
+                        for (int v = 0; v <= sinceVersion; v++)
+                        {
+                            versions.Add(v);
+                        }
+                    }
+                    else if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.InvalidIntegerAttribute,
+                            Location.None,
+                            "sinceVersion",
+                            field.SinceVersion,
+                            field.Name));
                     }
                 }
             }
@@ -231,14 +242,14 @@ namespace SbeSourceGenerator.Generators
             return fields
                 .Where(field =>
                 {
-                    // Include field if it has no sinceVersion or if sinceVersion <= current version
                     if (string.IsNullOrEmpty(field.SinceVersion))
                         return true;
 
                     if (int.TryParse(field.SinceVersion, out int sinceVersion))
                         return sinceVersion <= version;
 
-                    return true; // Include if we can't parse the version
+                    // sinceVersion is present but not a valid integer — already reported by GetMessageVersions
+                    return true;
                 })
                 .Select(field =>
                 {
@@ -250,28 +261,41 @@ namespace SbeSourceGenerator.Generators
                     var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
                     var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
 
-                    return isOptional
-                        ? new OptionalMessageFieldDefinition(
+                    if (isOptional)
+                    {
+                        var underlyingType = GetUnderlyingType(field.Type, context);
+                        if (underlyingType != null && !TypesCatalog.HasNullValue(underlyingType)
+                            && sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.UnknownPrimitiveTypeFallback,
+                                Location.None,
+                                underlyingType, "null sentinel", field.Name));
+                        }
+
+                        return (IFileContentGenerator)new OptionalMessageFieldDefinition(
                             generatedFieldName,
                             field.Id,
                             resolvedType,
-                            GetUnderlyingType(field.Type, context),
-                            field.Description,
-                            ParseOffset(field.Offset, field.Name, sourceContext),
-                            GetTypeLength(field.Type, context),
-                            field.SinceVersion,
-                            field.Deprecated
-                        )
-                        : (IFileContentGenerator)new MessageFieldDefinition(
-                            generatedFieldName,
-                            field.Id,
-                            resolvedType,
+                            underlyingType,
                             field.Description,
                             ParseOffset(field.Offset, field.Name, sourceContext),
                             GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated
                         );
+                    }
+
+                    return (IFileContentGenerator)new MessageFieldDefinition(
+                        generatedFieldName,
+                        field.Id,
+                        resolvedType,
+                        field.Description,
+                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        GetTypeLength(field.Type, context),
+                        field.SinceVersion,
+                        field.Deprecated
+                    );
                 })
                 .ToList();
         }
@@ -289,25 +313,42 @@ namespace SbeSourceGenerator.Generators
             return null;
         }
 
-        private static int GetTypeLength(string type, SchemaContext context)
+        private static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
         {
             int length;
             var translated = TypeTranslator.Translate(type).PrimitiveType;
             if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(translated, out length)
                 && !context.CustomTypeLengths.TryGetValue(type, out length))
-                throw new ArgumentException($"Could not get type {type} length");
+            {
+                if (sourceContext.CancellationToken != default)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.UnresolvedTypeReference,
+                        Location.None,
+                        type,
+                        elementName));
+                }
+                return 0;
+            }
             return length;
         }
 
-        private static string GetNumInGroupType(string dimensionType, SchemaContext context)
+        private static string GetNumInGroupType(string dimensionType, SchemaContext context, SourceProductionContext sourceContext = default)
         {
-            // Look up the type of the numInGroup field in the dimension composite type
             var key = $"{dimensionType}.numInGroup";
             if (context.CompositeFieldTypes.TryGetValue(key, out string? numInGroupType))
             {
                 return numInGroupType;
             }
-            // Fallback to "ushort" — the SBE spec default for numInGroup is uint16
+            if (sourceContext.CancellationToken != default)
+            {
+                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.UnsupportedConstruct,
+                    Location.None,
+                    "dimensionType",
+                    dimensionType,
+                    $"Composite type '{dimensionType}' not found. Falling back to ushort for numInGroup."));
+            }
             return "ushort";
         }
 

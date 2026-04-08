@@ -261,6 +261,10 @@ The generator provides comprehensive diagnostics:
 | SBE004 | Error | Malformed schema |
 | SBE005 | Warning | Unsupported construct |
 | SBE006 | Error | Invalid type length |
+| SBE007 | Warning | Non-native byte order |
+| SBE008 | Error | Unresolved type reference |
+| SBE009 | Warning | Invalid numeric constraint |
+| SBE010 | Warning | Unknown primitive type fallback |
 
 See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 

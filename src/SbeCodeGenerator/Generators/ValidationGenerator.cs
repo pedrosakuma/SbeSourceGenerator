@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Schema;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,8 +22,8 @@ namespace SbeSourceGenerator.Generators
             var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
             foreach (XmlElement messageNode in messageNodes)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode, context);
-                var validationCode = GenerateMessageValidation(ns, messageDto, context);
+                var messageDto = SchemaParser.ParseMessage(messageNode, context, sourceContext);
+                var validationCode = GenerateMessageValidation(ns, messageDto, context, sourceContext);
                 if (validationCode != null)
                 {
                     yield return (context.CreateHintName(ns, "Validation", $"{messageDto.Name.FirstCharToUpper()}Validation"), validationCode);
@@ -33,7 +34,7 @@ namespace SbeSourceGenerator.Generators
             var typeNodes = xmlDocument.SelectNodes("//types/type");
             foreach (XmlElement typeNode in typeNodes)
             {
-                var typeDto = SchemaParser.ParseType(typeNode);
+                var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
                 var validationCode = GenerateTypeValidation(ns, typeDto);
                 if (validationCode != null)
                 {
@@ -42,13 +43,51 @@ namespace SbeSourceGenerator.Generators
             }
         }
 
-        private string? GenerateMessageValidation(string ns, SchemaMessageDto messageDto, SchemaContext context)
+        private string? GenerateMessageValidation(string ns, SchemaMessageDto messageDto, SchemaContext context, SourceProductionContext sourceContext)
         {
             var fieldsWithConstraints = messageDto.Fields
                 .Where(f => !string.IsNullOrEmpty(f.MinValue) || !string.IsNullOrEmpty(f.MaxValue))
                 .ToList();
 
             if (!fieldsWithConstraints.Any())
+                return null;
+
+            // Filter out fields with non-numeric constraints and report diagnostics
+            var validFields = new List<SchemaFieldDto>();
+            foreach (var field in fieldsWithConstraints)
+            {
+                bool valid = true;
+                if (!string.IsNullOrEmpty(field.MinValue) && !double.TryParse(field.MinValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
+                {
+                    if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.InvalidNumericConstraint,
+                            Location.None,
+                            "minValue",
+                            field.MinValue,
+                            field.Name));
+                    }
+                    valid = false;
+                }
+                if (!string.IsNullOrEmpty(field.MaxValue) && !double.TryParse(field.MaxValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
+                {
+                    if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.InvalidNumericConstraint,
+                            Location.None,
+                            "maxValue",
+                            field.MaxValue,
+                            field.Name));
+                    }
+                    valid = false;
+                }
+                if (valid)
+                    validFields.Add(field);
+            }
+
+            if (!validFields.Any())
                 return null;
 
             StringBuilder sb = new StringBuilder();
@@ -72,7 +111,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"    public static bool TryValidate(this {messageDto.Name.FirstCharToUpper()} message, out string? errorMessage)");
             sb.AppendLine("    {");
 
-            foreach (var field in fieldsWithConstraints)
+            foreach (var field in validFields)
             {
                 string fieldName = field.Name.FirstCharToUpper();
 
