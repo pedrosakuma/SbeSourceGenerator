@@ -324,11 +324,17 @@ namespace SbeSourceGenerator.Generators
                     && sinceVersion > version)
                     continue;
 
+                var lengthPrefixType = "byte";
+                var lengthKey = $"{data.Type}.length";
+                if (context.CompositeFieldTypes.TryGetValue(lengthKey, out var resolvedLengthType))
+                    lengthPrefixType = resolvedLengthType;
+
                 result.Add(new DataFieldDefinition(
                     TypeTranslator.NormalizeName(data.Name),
                     data.Id,
                     ResolveTypeName(data.Type, context),
-                    data.Description
+                    data.Description,
+                    lengthPrefixType
                 ));
             }
             return result;

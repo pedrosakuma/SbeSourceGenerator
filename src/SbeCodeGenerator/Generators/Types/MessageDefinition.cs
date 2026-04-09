@@ -235,11 +235,11 @@ namespace SbeSourceGenerator
                 sb.AppendLine("/// </summary>", tabs);
                 sb.AppendTabs(tabs).Append("private static bool TryEncode").Append(data.Name.FirstCharToUpper()).AppendLine("(ref SpanWriter writer, ReadOnlySpan<byte> data)");
                 sb.AppendLine("{", tabs++);
-                sb.AppendTabs(tabs).AppendLine("// Write length prefix (uint8 for VarString8)");
-                sb.AppendTabs(tabs).AppendLine("if (data.Length > 255)");
+                sb.AppendTabs(tabs).Append("// Write length prefix (").Append(data.LengthPrefixType).AppendLine(")");
+                sb.AppendTabs(tabs).Append("if (data.Length > ").Append(data.MaxLength).AppendLine(")");
                 sb.AppendLine("    return false;", tabs + 1);
                 sb.AppendLine("", tabs);
-                sb.AppendLine("if (!writer.TryWrite((byte)data.Length))", tabs);
+                sb.AppendTabs(tabs).Append("if (!writer.TryWrite((").Append(data.LengthPrefixType).AppendLine(")data.Length))");
                 sb.AppendLine("    return false;", tabs + 1);
                 sb.AppendLine("", tabs);
                 sb.AppendTabs(tabs).AppendLine("// Write data bytes");
