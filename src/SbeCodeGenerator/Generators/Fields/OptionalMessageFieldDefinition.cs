@@ -40,9 +40,18 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
             if (PrimitiveType != null)
             {
+                var nullValue = TypesCatalog.GetNullValue(PrimitiveType);
                 sb.AppendTabs(tabs).Append("private ").Append(Type).Append(" ").Append(Name.FirstCharToLower()).AppendLine(";");
-                sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(Name.FirstCharToLower()).Append(" == ").Append(TypesCatalog.GetNullValue(PrimitiveType)).Append(" ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
-                sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(Name.FirstCharToLower()).Append(" = value ?? (").Append(Type).Append(")").Append(TypesCatalog.GetNullValue(PrimitiveType)).AppendLine(";");
+                if (TypesCatalog.IsFloatingPoint(PrimitiveType))
+                {
+                    sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => ").Append(PrimitiveType).Append(".IsNaN((").Append(PrimitiveType).Append(")").Append(Name.FirstCharToLower()).Append(") ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
+                    sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(Name.FirstCharToLower()).Append(" = value ?? (").Append(Type).Append(")").Append(nullValue).AppendLine(";");
+                }
+                else
+                {
+                    sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(Name.FirstCharToLower()).Append(" == ").Append(nullValue).Append(" ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
+                    sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(Name.FirstCharToLower()).Append(" = value ?? (").Append(Type).Append(")").Append(nullValue).AppendLine(";");
+                }
             }
             else
             {
