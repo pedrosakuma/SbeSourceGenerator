@@ -55,7 +55,8 @@ namespace SbeSourceGenerator.Generators
                         fieldsForVersion,
                         BuildConstants(messageDto.Constants, context),
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
-                        GetDataForVersion(messageDto.Data, version, context)
+                        GetDataForVersion(messageDto.Data, version, context),
+                        messageDto.BlockLength
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
                         + messageDto.Groups.Count * 1024 + messageDto.Data.Count * 512;

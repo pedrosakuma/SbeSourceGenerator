@@ -14,6 +14,7 @@ namespace SbeSourceGenerator.Schema
         List<SchemaFieldDto> Fields,
         List<SchemaFieldDto> Constants,
         List<SchemaGroupDto> Groups,
-        List<SchemaDataDto> Data
+        List<SchemaDataDto> Data,
+        string BlockLength = ""
     );
 }

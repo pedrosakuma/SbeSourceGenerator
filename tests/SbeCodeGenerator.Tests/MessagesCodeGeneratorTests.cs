@@ -283,5 +283,50 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("Memo", v1Result.content);
         }
 
+        [Fact]
+        public void Generate_WithExplicitBlockLength_UsesSchemaBlockLength()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <sbe:message name='PaddedMessage' id='1' blockLength='32' description='Message with padding'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <field name='price' id='2' type='int64'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+            var generator = new MessagesCodeGenerator();
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var msgResult = results.FirstOrDefault(r => r.name.Contains("PaddedMessage"));
+            Assert.NotEqual(default, msgResult);
+            // MESSAGE_SIZE should be 16 (8+8), but BLOCK_LENGTH should be 32
+            Assert.Contains("BLOCK_LENGTH = 32", msgResult.content);
+            Assert.Contains("MESSAGE_SIZE = 16", msgResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithoutExplicitBlockLength_BlockLengthEqualsMessageSize()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <sbe:message name='NormalMessage' id='1' description='Normal message'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <field name='price' id='2' type='int64'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+            var generator = new MessagesCodeGenerator();
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var msgResult = results.FirstOrDefault(r => r.name.Contains("NormalMessage"));
+            Assert.NotEqual(default, msgResult);
+            // BLOCK_LENGTH should equal MESSAGE_SIZE when not explicitly set
+            Assert.Contains("BLOCK_LENGTH = MESSAGE_SIZE", msgResult.content);
+        }
+
     }
 }
