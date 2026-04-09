@@ -8,27 +8,22 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 
 ## Features
 
-✅ **Fully Implemented SBE Features**:
-- All primitive types (int8, int16, int32, int64, uint8, uint16, uint32, uint64, char)
-- **Message encoding/decoding** with proper field layout
-- **Optional fields** with null value semantics and encoding support
-- Composite types with nested fields
-- Enumerations (enums)
-- Bit sets (choice sets with flags)
-- **Repeating groups** with dimension encoding (read and write)
-- **Variable-length data (varData)** encoding and decoding
+- All SBE primitive types (int8–int64, uint8–uint64, float, double, char)
+- Message encoding/decoding with proper field layout
+- Optional fields with null value semantics
+- Composite types (nested composites, `<ref>` elements)
+- Enumerations and bit sets (flag enums)
+- Repeating groups with nested groups (unlimited depth, ancestor context callbacks)
+- Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
-- Automatic and manual field offset calculation
-- **Byte order (endianness) handling** - Little-endian and big-endian support
+- Automatic and explicit field offset calculation
+- Byte order handling (little-endian native, big-endian with helpers)
+- Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data)
+- Custom `headerType` support
+- `characterEncoding` attribute (UTF-8, Latin1)
+- Explicit `blockLength` on messages
 - Validation constraints (min/max ranges)
-- Comprehensive diagnostics and error reporting
-
-⚠️ **Known Limitations**:
-- Nested groups (groups within groups) are not yet supported
-- Extended varData types (VarString16, VarString32) not yet available
-- Custom encoding/decoding hooks not yet available
-
-See [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) for detailed feature status.
+- Comprehensive build-time diagnostics (SBE001–SBE011)
 
 ## Quick Start
 
@@ -44,7 +39,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="0.4.0" />
+  <PackageReference Include="SbeSourceGenerator" Version="0.7.0" />
 </ItemGroup>
 ```
 
@@ -244,7 +239,9 @@ SBESourceGenerator (Orchestrator)
     │   └── Messages with Groups & parsing helpers
     │
     └── UtilitiesCodeGenerator
-        └── Helper Extensions
+        ├── EndianHelpers
+        ├── SpanReader
+        └── SpanWriter
 ```
 
 See [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) for detailed architecture diagrams.
@@ -265,6 +262,7 @@ The generator provides comprehensive diagnostics:
 | SBE008 | Error | Unresolved type reference |
 | SBE009 | Warning | Invalid numeric constraint |
 | SBE010 | Warning | Unknown primitive type fallback |
+| SBE011 | Error | Set choice bit position exceeds encoding width |
 
 See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 
@@ -273,13 +271,13 @@ See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for detai
 ### Run Unit Tests
 
 ```bash
-dotnet test SbeCodeGenerator.Tests
+dotnet test tests/SbeCodeGenerator.Tests/
 ```
 
 ### Run Integration Tests
 
 ```bash
-dotnet test SbeCodeGenerator.IntegrationTests
+dotnet test tests/SbeCodeGenerator.IntegrationTests/
 ```
 
 ### All Tests
@@ -288,20 +286,13 @@ dotnet test SbeCodeGenerator.IntegrationTests
 dotnet test
 ```
 
-**Current Status**: Unit and integration tests passing ✅ (see CI badge above)
-
-See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
-
 ## Documentation
 
-- **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
-- **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
-- **[SBE Generators Comparison](./docs/SBE_GENERATORS_COMPARISON.md)** - Competitive analysis vs other SBE generators
-- **[Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
+- **[Changelog](./CHANGELOG.md)** - Version history and release notes
+- **[Contributing](./CONTRIBUTING.md)** - Development setup and guidelines
 - **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture
 - **[Testing Guide](./docs/TESTING_GUIDE.md)** - How to test the generator
-- **[Schema DTOs Documentation](./src/SbeCodeGenerator/Schema/README.md)** - Schema parsing infrastructure
-- **[Changelog](./CHANGELOG.md)** - Version history and release notes
+- **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
 
 ## Project Structure
 
@@ -342,30 +333,15 @@ The generated code is designed for high performance:
 - Explicit memory layout for cache efficiency
 - Blittable types for P/Invoke scenarios
 
-**Benchmark Infrastructure**: Comprehensive benchmarks using BenchmarkDotNet are available in the `benchmarks/` directory.
-
-See [Performance Tuning Guide](./docs/PERFORMANCE_TUNING_GUIDE.md) for optimization best practices.
+**Benchmark Infrastructure**: Benchmarks using BenchmarkDotNet are available in the `benchmarks/` directory.
 
 ## Compliance
 
-The generator implements the core SBE 1.0 features needed for most use cases. Known spec gaps (nested groups, nested composites, `<ref>` in composites, custom `headerType`) are tracked as [GitHub issues](https://github.com/pedrosakuma/SbeSourceGenerator/labels/spec-compliance).
-
-See [Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md) for the full compliance matrix.
+The generator implements the FIX SBE 1.0 specification, including all core encoding types, repeating groups (with nesting), variable-length data, schema versioning, and field presence modes. See [Changelog](./CHANGELOG.md) for version history.
 
 ## Contributing
 
-Contributions are welcome! Priority areas:
-
-**High Impact, Easy**:
-- Add more tests and example schemas
-- Improve documentation
-
-**High Impact, Medium**:
-- Nested groups (groups within groups)
-- Extended varData types (VarString16, VarString32)
-- Custom encoding/decoding hooks
-
-See [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for more opportunities.
+Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ### Development Setup
 
@@ -399,5 +375,4 @@ For questions, issues, or feature requests:
 
 ---
 
-**Status**: Active Development  
-**Version**: 0.4.0 (see [Changelog](./CHANGELOG.md))
+**Version**: 0.7.0 (see [Changelog](./CHANGELOG.md))
