@@ -60,17 +60,38 @@ namespace SbeSourceGenerator.Generators
         {
             var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+            int maxBitPosition = TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType) * 8 - 1;
 
             var validChoices = enumDto.Choices
                 .Select(choice =>
                 {
                     var parsedValue = XmlParsingHelpers.ParseEnumFlagValue(choice.InnerText, choice.Name, sourceContext);
-                    return new EnumFieldDefinition(
-                        choice.Name,
-                        choice.Description,
-                        parsedValue?.ToString() ?? "0"
-                    );
+                    return new { choice, parsedValue };
                 })
+                .Where(x =>
+                {
+                    if (x.parsedValue.HasValue && x.parsedValue.Value > maxBitPosition)
+                    {
+                        if (sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.SetChoiceExceedsBitWidth,
+                                Location.None,
+                                x.choice.Name,
+                                enumDto.Name,
+                                x.parsedValue.Value,
+                                maxBitPosition,
+                                enumDto.EncodingType));
+                        }
+                        return false;
+                    }
+                    return true;
+                })
+                .Select(x => new EnumFieldDefinition(
+                    x.choice.Name,
+                    x.choice.Description,
+                    x.parsedValue?.ToString() ?? "0"
+                ))
                 .ToList();
 
             var generator = new EnumFlagsDefinition(
