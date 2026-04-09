@@ -209,25 +209,28 @@ namespace SbeSourceGenerator.Generators
                 if (isOptional)
                 {
                     var underlyingType = GetUnderlyingType(field.Type, context);
-                    if (underlyingType != null && !TypesCatalog.HasNullValue(underlyingType)
+                    var effectivePrimitiveType = underlyingType ?? resolvedType;
+                    if (!TypesCatalog.HasNullValue(effectivePrimitiveType)
+                        && string.IsNullOrEmpty(field.NullValue)
                         && sourceContext.CancellationToken != default)
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.UnknownPrimitiveTypeFallback,
                             Location.None,
-                            underlyingType, "null sentinel", field.Name));
+                            effectivePrimitiveType, "null sentinel", field.Name));
                     }
 
                     result.Add(new OptionalMessageFieldDefinition(
                         generatedFieldName,
                         field.Id,
                         resolvedType,
-                        underlyingType,
+                        effectivePrimitiveType,
                         field.Description,
                         ParseOffset(field.Offset, field.Name, sourceContext),
                         GetTypeLength(field.Type, context),
                         field.SinceVersion,
-                        field.Deprecated
+                        field.Deprecated,
+                        field.NullValue == "" ? null : field.NullValue
                     ));
                 }
                 else
