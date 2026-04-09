@@ -28,6 +28,7 @@ namespace SbeSourceGenerator.Schema
             string id = "";
             string description = "";
             string semanticVersion = "";
+            string headerType = "messageHeader";
 
             var settings = new XmlReaderSettings
             {
@@ -53,6 +54,7 @@ namespace SbeSourceGenerator.Schema
                             id = reader.GetAttribute("id") ?? "";
                             description = reader.GetAttribute("description") ?? "";
                             semanticVersion = reader.GetAttribute("semanticVersion") ?? "";
+                            headerType = reader.GetAttribute("headerType") ?? "messageHeader";
                             break;
 
                         case "types":
@@ -67,7 +69,7 @@ namespace SbeSourceGenerator.Schema
             }
 
             return new ParsedSchema(byteOrder, package, version, id, description, semanticVersion,
-                types, composites, enums, sets, messages);
+                types, composites, enums, sets, messages, headerType);
         }
 
         public static ParsedSchema Parse(string xmlContent)

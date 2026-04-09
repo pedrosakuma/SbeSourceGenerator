@@ -78,6 +78,9 @@ namespace SbeSourceGenerator
                             }
                         }
 
+                        if (!string.IsNullOrEmpty(schema.HeaderType))
+                            context.HeaderType = schema.HeaderType;
+
                         // Use specialized generators to handle different categories
                         var typesGenerator = new TypesCodeGenerator();
                         var messagesGenerator = new MessagesCodeGenerator();

@@ -462,5 +462,42 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("TryRead<GroupSizeEncoding>(out var groupAcceleration)", msgResult.content);
         }
 
+        [Fact]
+        public void Parse_WithCustomHeaderType_StoresHeaderTypeInSchema()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'
+                                   headerType='customHeader'>
+                    <types>
+                        <composite name='customHeader' description='Custom header'>
+                            <type name='blockLength' primitiveType='uint32'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='id' id='1' type='uint64'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            Assert.Equal("customHeader", schema.HeaderType);
+        }
+
+        [Fact]
+        public void Parse_WithDefaultHeaderType_UsesMessageHeader()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='id' id='1' type='uint64'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            Assert.Equal("messageHeader", schema.HeaderType);
+        }
+
     }
 }
