@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Schema;
@@ -23,8 +24,11 @@ namespace SbeSourceGenerator
             // Stage 1: Collect XML schema files from additional files
             IncrementalValuesProvider<AdditionalText> xmlSchemaFiles = CollectXmlSchemaFiles(initContext);
 
-            // Stage 2 & 3: Register source generation with diagnostic support
-            RegisterSourceGeneration(initContext, xmlSchemaFiles.Collect());
+            // Stage 2: Combine with analyzer config options (for SbeAssumeHostEndianness hint)
+            var combined = xmlSchemaFiles.Collect().Combine(initContext.AnalyzerConfigOptionsProvider);
+
+            // Stage 3: Register source generation with diagnostic support
+            RegisterSourceGeneration(initContext, combined);
         }
 
         /// <summary>
@@ -38,12 +42,23 @@ namespace SbeSourceGenerator
         /// <summary>
         /// Registers source output for each XML schema with diagnostic reporting.
         /// </summary>
-        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext, IncrementalValueProvider<ImmutableArray<AdditionalText>> xmlFiles)
+        private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext,
+            IncrementalValueProvider<(ImmutableArray<AdditionalText> Left, AnalyzerConfigOptionsProvider Right)> combined)
         {
-            initContext.RegisterSourceOutput(xmlFiles, (sourceContext, text) =>
+            initContext.RegisterSourceOutput(combined, (sourceContext, input) =>
             {
+                var (text, configOptions) = input;
+
                 if (text.IsDefaultOrEmpty)
                     return;
+
+                // Read the optional SbeAssumeHostEndianness MSBuild property
+                string? hostHint = null;
+                if (configOptions.GlobalOptions.TryGetValue("build_property.SbeAssumeHostEndianness", out var hintValue)
+                    && !string.IsNullOrEmpty(hintValue))
+                {
+                    hostHint = hintValue;
+                }
 
                 var emittedRuntimeNamespaces = new HashSet<string>(StringComparer.Ordinal);
 
@@ -67,16 +82,10 @@ namespace SbeSourceGenerator
                         if (!string.IsNullOrEmpty(schema.ByteOrder))
                         {
                             context.ByteOrder = schema.ByteOrder;
-                            if (!schema.ByteOrder.Equals("littleEndian", StringComparison.OrdinalIgnoreCase)
-                                && !sourceContext.CancellationToken.IsCancellationRequested)
-                            {
-                                sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                    SbeDiagnostics.NonNativeByteOrder,
-                                    Location.None,
-                                    path,
-                                    schema.ByteOrder));
-                            }
                         }
+
+                        context.EndianConversion = ComputeEndianConversion(
+                            context.ByteOrder, hostHint, sourceContext, path);
 
                         if (!string.IsNullOrEmpty(schema.HeaderType))
                             context.HeaderType = schema.HeaderType;
@@ -267,6 +276,57 @@ namespace SbeSourceGenerator
                 sb.Insert(0, '_');
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Computes the endian conversion strategy from schema byteOrder and optional host hint.
+        /// </summary>
+        private static EndianConversion ComputeEndianConversion(string schemaByteOrder, string? hostHint,
+            SourceProductionContext sourceContext, string schemaPath)
+        {
+            bool isBigEndianSchema = schemaByteOrder.Equals("bigEndian", StringComparison.OrdinalIgnoreCase);
+
+            if (hostHint == null)
+            {
+                // No hint: LE schemas use None (pragmatic — LE hosts are ~100% of .NET targets),
+                // BE schemas use Conditional (safe path)
+                if (isBigEndianSchema)
+                {
+                    if (!sourceContext.CancellationToken.IsCancellationRequested)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.NonNativeByteOrder,
+                            Location.None,
+                            schemaPath,
+                            schemaByteOrder));
+                    }
+                    return EndianConversion.Conditional;
+                }
+                return EndianConversion.None;
+            }
+
+            bool isLittleEndianHint = hostHint.Equals("LittleEndian", StringComparison.OrdinalIgnoreCase);
+            bool isBigEndianHint = hostHint.Equals("BigEndian", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLittleEndianHint && !isBigEndianHint)
+            {
+                // Invalid hint — warn and fall back to safe behavior
+                if (!sourceContext.CancellationToken.IsCancellationRequested)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.InvalidHostEndianness,
+                        Location.None,
+                        hostHint));
+                }
+                return isBigEndianSchema ? EndianConversion.Conditional : EndianConversion.None;
+            }
+
+            // Schema and hint match → no conversion needed
+            if (isBigEndianSchema == isBigEndianHint)
+                return EndianConversion.None;
+
+            // Schema and hint differ → always reverse
+            return EndianConversion.AlwaysReverse;
         }
     }
 }

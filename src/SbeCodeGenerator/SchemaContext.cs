@@ -58,6 +58,12 @@ namespace SbeSourceGenerator
         /// </summary>
         public string HeaderType { get; set; } = "messageHeader";
 
+        /// <summary>
+        /// Endian conversion strategy for multi-byte fields.
+        /// Computed from schema byteOrder and optional SbeAssumeHostEndianness hint.
+        /// </summary>
+        public EndianConversion EndianConversion { get; set; } = EndianConversion.None;
+
         public string CreateHintName(params string[] segments)
         {
             var builder = new StringBuilder(SchemaKey);

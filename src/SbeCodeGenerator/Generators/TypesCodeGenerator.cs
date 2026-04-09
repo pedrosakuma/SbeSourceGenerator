@@ -336,7 +336,8 @@ namespace SbeSourceGenerator.Generators
                             ft.Field.Description,
                             ResolveTypeName(ft.Translation.PrimitiveType, context),
                             GetTypeLength(ft.Translation.PrimitiveType, context),
-                            ft.Field.NullValue == "" ? null : ft.Field.NullValue
+                            ft.Field.NullValue == "" ? null : ft.Field.NullValue,
+                            context.EndianConversion
                         ),
                         ("", "0") => new ArrayFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
@@ -347,7 +348,8 @@ namespace SbeSourceGenerator.Generators
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
                             ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            GetTypeLength(ft.Translation.PrimitiveType, context)
+                            GetTypeLength(ft.Translation.PrimitiveType, context),
+                            context.EndianConversion
                         )
                     });
                 }
@@ -369,7 +371,8 @@ namespace SbeSourceGenerator.Generators
                 generatedName,
                 compositeDto.Description,
                 compositeDto.SemanticType,
-                fields
+                fields,
+                context.EndianConversion
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();

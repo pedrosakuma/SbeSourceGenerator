@@ -56,7 +56,8 @@ namespace SbeSourceGenerator.Generators
                         BuildConstants(messageDto.Constants, context),
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
                         GetDataForVersion(messageDto.Data, version, context),
-                        messageDto.BlockLength
+                        messageDto.BlockLength,
+                        context.EndianConversion
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
                         + messageDto.Groups.Count * 1024 + messageDto.Data.Count * 512;
@@ -230,11 +231,14 @@ namespace SbeSourceGenerator.Generators
                         GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
-                        field.NullValue == "" ? null : field.NullValue
+                        field.NullValue == "" ? null : field.NullValue,
+                        context.EndianConversion
                     ));
                 }
                 else
                 {
+                    // For enum fields, get the underlying primitive type for endian conversion
+                    var underlyingType = GetUnderlyingType(field.Type, context);
                     result.Add(new MessageFieldDefinition(
                         generatedFieldName,
                         field.Id,
@@ -243,7 +247,9 @@ namespace SbeSourceGenerator.Generators
                         ParseOffset(field.Offset, field.Name, sourceContext),
                         GetTypeLength(field.Type, context),
                         field.SinceVersion,
-                        field.Deprecated
+                        field.Deprecated,
+                        context.EndianConversion,
+                        underlyingType
                     ));
                 }
             }
@@ -283,6 +289,7 @@ namespace SbeSourceGenerator.Generators
                     var translatedField = TypeTranslator.Translate(field.Type);
                     var resolvedFieldType = ResolveTypeName(translatedField.PrimitiveType, context);
                     var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
+                    var underlyingFieldType = GetUnderlyingType(field.Type, context);
                     groupFields.Add(new MessageFieldDefinition(
                         generatedFieldName,
                         field.Id,
@@ -291,7 +298,9 @@ namespace SbeSourceGenerator.Generators
                         ParseOffset(field.Offset, field.Name, sourceContext),
                         GetTypeLength(field.Type, context),
                         field.SinceVersion,
-                        field.Deprecated
+                        field.Deprecated,
+                        context.EndianConversion,
+                        underlyingFieldType
                     ));
                 }
 
@@ -308,7 +317,8 @@ namespace SbeSourceGenerator.Generators
                     groupConstants,
                     numInGroupType,
                     group.Data != null ? BuildData(group.Data, context) : null,
-                    group.Groups != null ? BuildGroups(group.Groups, versionNamespace, context, sourceContext) : null
+                    group.Groups != null ? BuildGroups(group.Groups, versionNamespace, context, sourceContext) : null,
+                    context.EndianConversion
                 ));
             }
             return result;

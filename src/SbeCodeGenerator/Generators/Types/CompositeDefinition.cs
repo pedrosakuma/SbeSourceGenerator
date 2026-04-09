@@ -4,12 +4,16 @@ using System.Text;
 
 namespace SbeSourceGenerator
 {
-    public record CompositeDefinition(string Namespace, string Name, string Description, string SemanticType, List<IFileContentGenerator> Fields) : IFileContentGenerator
+    public record CompositeDefinition(string Namespace, string Name, string Description, string SemanticType,
+        List<IFileContentGenerator> Fields, EndianConversion EndianConversion = EndianConversion.None) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             bool blittable = Fields.All(f => f is IBlittable);
-            sb.AppendUsings(tabs, "System.Runtime.InteropServices");
+            if (EndianConversion != EndianConversion.None)
+                sb.AppendUsings(tabs, "System.Runtime.InteropServices", "System.Buffers.Binary");
+            else
+                sb.AppendUsings(tabs, "System.Runtime.InteropServices");
             sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(CompositeDefinition));
 
