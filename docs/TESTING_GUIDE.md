@@ -17,7 +17,7 @@ Snapshot tests use [Verify.Xunit](https://github.com/VerifyTests/Verify) to ensu
 
 - **TypesCodeGenerator**: Enums, Sets, Composites, and Custom Types
 - **MessagesCodeGenerator**: Message structures and parsing helpers
-- **UtilitiesCodeGenerator**: Utility classes like NumberExtensions
+- **UtilitiesCodeGenerator**: Utility classes like EndianHelpers, SpanReader, SpanWriter
 
 ### Test Data
 
