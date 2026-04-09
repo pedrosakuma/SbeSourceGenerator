@@ -6,9 +6,11 @@ namespace SbeSourceGenerator
 {
     public record GroupDefinition(string Namespace, string Name, string Id, string DimensionType, string Description,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
-        string NumInGroupType = "ushort", List<IFileContentGenerator>? Datas = null) : IFileContentGenerator
+        string NumInGroupType = "ushort", List<IFileContentGenerator>? Datas = null,
+        List<IFileContentGenerator>? NestedGroups = null) : IFileContentGenerator
     {
         private List<DataFieldDefinition>? _typedDatas;
+        private List<GroupDefinition>? _typedNestedGroups;
 
         public List<DataFieldDefinition> TypedDatas
         {
@@ -27,7 +29,25 @@ namespace SbeSourceGenerator
             }
         }
 
+        public List<GroupDefinition> TypedNestedGroups
+        {
+            get
+            {
+                if (_typedNestedGroups == null)
+                {
+                    _typedNestedGroups = new List<GroupDefinition>();
+                    if (NestedGroups != null)
+                    {
+                        foreach (var item in NestedGroups)
+                            _typedNestedGroups.Add((GroupDefinition)item);
+                    }
+                }
+                return _typedNestedGroups;
+            }
+        }
+
         public bool HasGroupData => Datas != null && Datas.Count > 0;
+        public bool HasNestedGroups => NestedGroups != null && NestedGroups.Count > 0;
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendStructDefinition(tabs, Description, Name, nameof(GroupDefinition));

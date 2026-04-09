@@ -12,6 +12,7 @@ namespace SbeSourceGenerator.Schema
         string Description,
         List<SchemaFieldDto> Fields,
         List<SchemaFieldDto> Constants,
-        List<SchemaDataDto>? Data = null
+        List<SchemaDataDto>? Data = null,
+        List<SchemaGroupDto>? Groups = null
     );
 }

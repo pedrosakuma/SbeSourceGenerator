@@ -284,6 +284,7 @@ namespace SbeSourceGenerator.Schema
             var fields = new List<SchemaFieldDto>(16);
             var constants = new List<SchemaFieldDto>(4);
             var dataList = new List<SchemaDataDto>();
+            var nestedGroups = new List<SchemaGroupDto>();
 
             if (!reader.IsEmptyElement)
             {
@@ -307,11 +308,16 @@ namespace SbeSourceGenerator.Schema
                     {
                         dataList.Add(ReadData(reader, sourceContext));
                     }
+                    else if (reader.LocalName == "group")
+                    {
+                        nestedGroups.Add(ReadGroup(reader, sourceContext));
+                    }
                 }
             }
 
             return new SchemaGroupDto(name, groupId, dimensionType, desc, fields, constants,
-                dataList.Count > 0 ? dataList : null);
+                dataList.Count > 0 ? dataList : null,
+                nestedGroups.Count > 0 ? nestedGroups : null);
         }
 
         private static SchemaDataDto ReadData(XmlReader reader, SourceProductionContext sourceContext)
