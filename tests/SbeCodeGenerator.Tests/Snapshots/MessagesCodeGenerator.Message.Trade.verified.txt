@@ -1,5 +1,6 @@
 ﻿using TestNamespace.V0;
 using TestNamespace.V0.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 namespace TestNamespace.V0;
 /// <summary>
@@ -43,10 +44,12 @@ public partial struct TradeData
 	/// </summary>
 	[FieldOffset(24)]
 	public Side Side;
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
 		return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
 		var reader = new SpanReader(buffer);
@@ -81,6 +84,7 @@ public partial struct TradeData
 		
 		return true;
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out TradeData message)
 	{
 		// Read the message data
@@ -104,6 +108,7 @@ public partial struct TradeData
 	/// <param name="buffer">The destination buffer.</param>
 	/// <param name="bytesWritten">Number of bytes written on success.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool TryEncode(Span<byte> buffer, out int bytesWritten)
 	{
 		if (buffer.Length < MESSAGE_SIZE)
@@ -123,6 +128,7 @@ public partial struct TradeData
 	/// </summary>
 	/// <param name="writer">The writer to use.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool TryEncodeWithWriter(ref SpanWriter writer)
 	{
 		return writer.TryWrite(this);
