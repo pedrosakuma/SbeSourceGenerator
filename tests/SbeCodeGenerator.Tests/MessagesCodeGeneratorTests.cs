@@ -328,5 +328,44 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("BLOCK_LENGTH = MESSAGE_SIZE", msgResult.content);
         }
 
+        [Fact]
+        public void Generate_WithVarString16_UsesUshortLengthPrefix()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <types>
+                        <composite name='MessageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='VarString16'>
+                            <type name='length' primitiveType='uint16'/>
+                            <type name='varData' length='0' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='LargeMessage' id='1' description='Message with large varData'>
+                        <field name='id' id='1' type='uint64'/>
+                        <data name='payload' id='2' type='VarString16'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var generator = new MessagesCodeGenerator();
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var msgResult = results.FirstOrDefault(r => r.name.Contains("LargeMessage"));
+            Assert.NotEqual(default, msgResult);
+            // Should use ushort cast and 65535 max, NOT byte/255
+            Assert.Contains("(ushort)data.Length", msgResult.content);
+            Assert.Contains("65535", msgResult.content);
+            Assert.DoesNotContain("(byte)data.Length", msgResult.content);
+        }
+
     }
 }
