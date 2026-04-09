@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
-using SbeSourceGenerator.Generators.Types;
 using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using System;
@@ -192,30 +191,7 @@ namespace SbeSourceGenerator.Generators
                 StringBuilder sb = new StringBuilder(1024);
                 generator.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Types", generatedName), sb.ToString());
-                if (generator is TypeDefinition typeDefinition)
-                {
-                    var semanticGenerator = (typeDefinition.SemanticType) switch
-                    {
-                        "LocalMktDate" => (IFileContentGenerator)new LocalMktDateSemanticTypeDefinition(typeDefinition.Namespace, typeDefinition.Name, false),
-                        _ => new NullSemanticTypeDefintion()
-                    };
-                    sb.Clear();
-                    semanticGenerator.AppendFileContent(sb);
-                    if (semanticGenerator is not NullSemanticTypeDefintion)
-                        yield return (context.CreateHintName(typeDefinition.Namespace, "Types", $"{typeDefinition.Name}.Semantic"), sb.ToString());
-                }
-                if (generator is OptionalTypeDefinition optionalTypeDefinition)
-                {
-                    var semanticGenerator = (optionalTypeDefinition.SemanticType) switch
-                    {
-                        "LocalMktDate" => (IFileContentGenerator)new LocalMktDateSemanticTypeDefinition(optionalTypeDefinition.Namespace, optionalTypeDefinition.Name, true),
-                        _ => new NullSemanticTypeDefintion()
-                    };
-                    sb.Clear();
-                    semanticGenerator.AppendFileContent(sb);
-                    if (semanticGenerator is not NullSemanticTypeDefintion)
-                        yield return (context.CreateHintName(optionalTypeDefinition.Namespace, "Types", $"{optionalTypeDefinition.Name}.Semantic"), sb.ToString());
-                }
+
             }
         }
 
@@ -400,25 +376,6 @@ namespace SbeSourceGenerator.Generators
             StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
-            var semanticGenerator = (generator.Name) switch
-            {
-                "Price" => (IFileContentGenerator)new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "Price8" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "PriceOptional" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "PriceOffset8Optional" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "Percentage" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "RatioQty" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "Fixed8" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "Percentage9" => new DecimalSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "MaturityMonthYear" => new MonthYearSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "UTCTimestampNanos" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                "UTCTimestampSeconds" => new UTCTimestampSemanticTypeDefinition(generator.Namespace, generator.Name, generator.Fields),
-                _ => new NullSemanticTypeDefintion()
-            };
-            sb.Clear();
-            semanticGenerator.AppendFileContent(sb);
-            if (semanticGenerator is not NullSemanticTypeDefintion)
-                yield return (context.CreateHintName(ns, "Composites", $"{generatedName}.Semantic"), sb.ToString());
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)

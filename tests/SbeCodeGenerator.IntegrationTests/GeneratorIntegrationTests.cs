@@ -131,13 +131,6 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void GeneratedUtilities_NumberExtensionsExist()
-        {
-            // Verify NumberExtensions utility class is generated
-            Assert.NotNull(typeof(Integration.Test.V0.NumberExtensions));
-        }
-
-        [Fact]
         public void GeneratedCode_HasCorrectNamespaces()
         {
             // Verify namespace generation from file names
