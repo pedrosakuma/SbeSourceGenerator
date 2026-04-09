@@ -282,8 +282,16 @@ namespace SbeSourceGenerator.Generators
         {
             var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
 
-            // Pre-translate all field primitive types once to avoid repeated dictionary lookups
-            var fieldTranslations = compositeDto.Fields
+            // Separate ref fields from primitive fields
+            var refFields = compositeDto.Fields
+                .Where(f => string.IsNullOrEmpty(f.PrimitiveType) && !string.IsNullOrEmpty(f.Type))
+                .ToList();
+            var primitiveFields = compositeDto.Fields
+                .Where(f => !string.IsNullOrEmpty(f.PrimitiveType))
+                .ToList();
+
+            // Pre-translate primitive field types
+            var fieldTranslations = primitiveFields
                 .Select(f => new { Field = f, Translation = TypeTranslator.Translate(f.PrimitiveType) })
                 .ToList();
 
@@ -304,13 +312,21 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            var generator = new CompositeDefinition(
-                ns,
-                generatedName,
-                compositeDto.Description,
-                compositeDto.SemanticType,
-                fieldTranslations
-                    .Select(ft => (IFileContentGenerator)((ft.Field.Presence, ft.Field.Length) switch
+            // Register ref fields in CompositeFieldTypes
+            foreach (var rf in refFields)
+            {
+                var resolvedRefType = ResolveTypeName(rf.Type, context);
+                context.CompositeFieldTypes[$"{compositeDto.Name}.{rf.Name}"] = resolvedRefType;
+            }
+
+            // Build field definitions preserving original order
+            var fields = new List<IFileContentGenerator>(compositeDto.Fields.Count);
+            foreach (var field in compositeDto.Fields)
+            {
+                if (!string.IsNullOrEmpty(field.PrimitiveType))
+                {
+                    var ft = fieldTranslations.First(x => x.Field == field);
+                    fields.Add((ft.Field.Presence, ft.Field.Length) switch
                     {
                         ("constant", _) => new ConstantTypeFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
@@ -331,14 +347,33 @@ namespace SbeSourceGenerator.Generators
                             ft.Field.Description,
                             "byte"
                         ),
-                        _ => new ValueFieldDefinition(
+                        _ => (IFileContentGenerator)new ValueFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
                             ResolveTypeName(ft.Translation.PrimitiveType, context),
                             GetTypeLength(ft.Translation.PrimitiveType, context)
                         )
-                    }))
-                    .ToList()
+                    });
+                }
+                else if (!string.IsNullOrEmpty(field.Type))
+                {
+                    var resolvedRefType = ResolveTypeName(field.Type, context);
+                    var refLength = context.CustomTypeLengths.TryGetValue(field.Type, out var len) ? len : 0;
+                    fields.Add(new CompositeRefFieldDefinition(
+                        TypeTranslator.NormalizeName(field.Name),
+                        field.Description,
+                        resolvedRefType,
+                        refLength
+                    ));
+                }
+            }
+
+            var generator = new CompositeDefinition(
+                ns,
+                generatedName,
+                compositeDto.Description,
+                compositeDto.SemanticType,
+                fields
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
