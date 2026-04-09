@@ -630,5 +630,63 @@ namespace SbeCodeGenerator.Tests
             // Should have StructLayout attribute for blittable types
             Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 1)]", compositeResult.content);
         }
+
+        [Fact]
+        public void Generate_WithRefInComposite_EmbedsReferencedType()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='Booster' description='Turbo booster'>
+                            <type name='boostType' primitiveType='char'/>
+                            <type name='horsePower' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='Engine' description='Engine details'>
+                            <type name='capacity' primitiveType='uint16'/>
+                            <type name='numCylinders' primitiveType='uint8'/>
+                            <ref name='booster' type='Booster'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var engineResult = results.FirstOrDefault(r => r.name.Contains("Engine"));
+            Assert.NotEqual(default, engineResult);
+            // Should embed Booster as a field
+            Assert.Contains("public Booster Booster;", engineResult.content);
+            // Engine should be blittable (all fields fixed-size)
+            Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 1)]", engineResult.content);
+            // MESSAGE_SIZE should include Booster size (1 char + 2 uint16 = 3) + capacity(2) + numCylinders(1) = 6
+            Assert.Contains("MESSAGE_SIZE = 6;", engineResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithRefInComposite_RegistersCompositeFieldType()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='Decimal' description='Decimal value'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8'/>
+                        </composite>
+                        <composite name='Quote' description='Quote with ref'>
+                            <type name='price' primitiveType='uint64'/>
+                            <ref name='decimal' type='Decimal'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // The ref field should be registered in CompositeFieldTypes
+            Assert.True(context.CompositeFieldTypes.ContainsKey("Quote.decimal"));
+            Assert.Equal("Decimal", context.CompositeFieldTypes["Quote.decimal"]);
+        }
     }
 }
