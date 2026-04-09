@@ -282,17 +282,28 @@ namespace SbeSourceGenerator
             }
         }
 
-        private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group)
+        private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group, List<string>? ancestorVarNames = null)
         {
+            var ancestors = ancestorVarNames ?? new List<string>();
+            var dataVarName = ancestors.Count == 0 ? "data" : "nestedData";
+
             sb.AppendTabs(tabs).Append("if (reader.TryRead<").Append(group.DimensionType).Append(">(out var group").Append(group.Name).AppendLine("))");
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("for (int i = 0; i < group").Append(group.Name).AppendLine(".NumInGroup; i++)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).AppendLine("Data>(out var data))");
+            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).Append("Data>(out var ").Append(dataVarName).AppendLine("))");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("break;", tabs);
             sb.AppendLine("}", --tabs);
-            sb.AppendTabs(tabs).Append("callback").Append(group.Name).AppendLine("(data);");
+
+            // Invoke callback with ancestor context
+            sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append("(");
+            foreach (var ancestorVar in ancestors)
+            {
+                sb.Append(ancestorVar).Append(", ");
+            }
+            sb.Append(dataVarName).AppendLine(");");
+
             // Read group-level variable data after each entry
             foreach (var groupData in group.TypedDatas)
             {
@@ -301,9 +312,11 @@ namespace SbeSourceGenerator
                 sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(groupData.Name).AppendLine(".TotalLength);");
             }
             // Read nested groups recursively
+            var ancestorsForChildren = new List<string>(ancestors);
+            ancestorsForChildren.Add(dataVarName);
             foreach (var nestedGroup in group.TypedNestedGroups)
             {
-                AppendGroupConsume(sb, tabs, nestedGroup);
+                AppendGroupConsume(sb, tabs, nestedGroup, ancestorsForChildren);
             }
             sb.AppendLine("}", --tabs);
             sb.AppendLine("}", --tabs);
@@ -572,13 +585,26 @@ namespace SbeSourceGenerator
             return string.Join(", ", parts);
         }
 
-        private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group)
+        private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group, List<string>? ancestorTypes = null)
         {
-            parts.Add($"Action<{group.Name}Data> callback{group.Name}");
+            var ancestors = ancestorTypes ?? new List<string>();
+            if (ancestors.Count == 0)
+            {
+                parts.Add($"Action<{group.Name}Data> callback{group.Name}");
+            }
+            else
+            {
+                var typeArgs = string.Join(", ", ancestors) + $", {group.Name}Data";
+                parts.Add($"Action<{typeArgs}> callback{group.Name}");
+            }
+
             foreach (var groupData in group.TypedDatas)
                 parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");
+
+            var ancestorsForChildren = new List<string>(ancestors);
+            ancestorsForChildren.Add($"{group.Name}Data");
             foreach (var nestedGroup in group.TypedNestedGroups)
-                AppendGroupCallbackParams(parts, nestedGroup);
+                AppendGroupCallbackParams(parts, nestedGroup, ancestorsForChildren);
         }
 
         private string BuildCallbackArgs()

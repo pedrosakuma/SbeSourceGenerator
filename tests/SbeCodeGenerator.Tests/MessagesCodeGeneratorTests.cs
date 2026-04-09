@@ -499,5 +499,53 @@ namespace SbeCodeGenerator.Tests
             Assert.Equal("messageHeader", schema.HeaderType);
         }
 
+        [Fact]
+        public void Generate_WithNestedGroups_CallbackIncludesParentContext()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <types>
+                        <composite name='MessageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='GroupSizeEncoding'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='numInGroup' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='CarMessage' id='1' description='Car with nested groups'>
+                        <field name='serialNumber' id='1' type='uint64'/>
+                        <group name='performanceFigures' id='2' dimensionType='GroupSizeEncoding'>
+                            <field name='octaneRating' id='3' type='uint8'/>
+                            <group name='acceleration' id='4' dimensionType='GroupSizeEncoding'>
+                                <field name='mph' id='5' type='uint16'/>
+                                <field name='seconds' id='6' type='uint32'/>
+                            </group>
+                        </group>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var generator = new MessagesCodeGenerator();
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var msgResult = results.FirstOrDefault(r => r.name.Contains("CarMessage"));
+            Assert.NotEqual(default, msgResult);
+
+            // Top-level group callback: Action<PerformanceFiguresData>
+            Assert.Contains("Action<PerformanceFiguresData> callbackPerformanceFigures", msgResult.content);
+            // Nested group callback should include parent as context: Action<PerformanceFiguresData, AccelerationData>
+            Assert.Contains("Action<PerformanceFiguresData, AccelerationData> callbackAcceleration", msgResult.content);
+            // Nested callback invocation should pass parent data
+            Assert.Contains("callbackAcceleration(data, nestedData)", msgResult.content);
+        }
+
     }
 }
