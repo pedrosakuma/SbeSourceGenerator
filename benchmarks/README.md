@@ -99,8 +99,7 @@ Target: 0 allocations (Gen0/Gen1 = "-", Allocated = "-")
 ## Continuous Benchmarking
 
 Benchmark results should be:
-1. Documented in `docs/BENCHMARK_RESULTS.md`
-2. Tracked over time to catch performance regressions
+1. Tracked over time to catch performance regressions
 3. Compared against previous versions
 4. Used to validate optimization efforts
 

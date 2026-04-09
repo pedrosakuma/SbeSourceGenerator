@@ -911,7 +911,6 @@ return sb.ToString();
 ## Additional Resources
 
 - [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) - Visual architecture diagrams
-- [GENERATOR_DECOMPOSITION_SUMMARY.md](./GENERATOR_DECOMPOSITION_SUMMARY.md) - Decomposition details
 - [TESTING_GUIDE.md](./TESTING_GUIDE.md) - Comprehensive testing guide
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
 - [SBE Specification](https://github.com/FIXTradingCommunity/fix-simple-binary-encoding) - Official SBE spec

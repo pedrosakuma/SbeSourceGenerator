@@ -471,7 +471,6 @@ Target metrics for well-optimized code:
 - [.NET Performance Tips](https://docs.microsoft.com/en-us/dotnet/framework/performance/)
 - [Span<T> Performance](https://docs.microsoft.com/en-us/archive/msdn-magazine/2018/january/csharp-all-about-span-exploring-a-new-net-mainstay)
 - [Memory Management](https://docs.microsoft.com/en-us/dotnet/standard/automatic-memory-management)
-- [Benchmark Results](./BENCHMARK_RESULTS.md)
 
 ---
 

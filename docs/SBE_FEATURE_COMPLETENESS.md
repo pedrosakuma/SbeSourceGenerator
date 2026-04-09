@@ -264,7 +264,6 @@ Schema versioning with `sinceVersion` attribute is now fully implemented.
 
 **Documentation**:
 - [Schema Versioning Guide](./SCHEMA_VERSIONING.md)
-- [Block Length Extension](./BLOCK_LENGTH_EXTENSION.md)
 
 **Tests**:
 - 8 integration tests in `VersioningIntegrationTests.cs`

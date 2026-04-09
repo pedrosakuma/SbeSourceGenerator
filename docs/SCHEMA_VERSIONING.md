@@ -370,6 +370,5 @@ If you have existing messages without versioning:
 ## References
 
 - [SBE Specification](https://github.com/FIXTradingCommunity/fix-simple-binary-encoding)
-- [Block Length Extension Documentation](./BLOCK_LENGTH_EXTENSION.md)
 - [Integration Tests](../tests/SbeCodeGenerator.IntegrationTests/VersioningIntegrationTests.cs)
 - [Test Schema](../tests/SbeCodeGenerator.IntegrationTests/TestSchemas/versioning-test-schema.xml)

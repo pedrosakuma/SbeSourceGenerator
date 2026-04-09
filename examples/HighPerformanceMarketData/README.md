@@ -127,8 +127,6 @@ See `Schemas/market-data.xml` for the complete schema definition.
 ## Learning Resources
 
 - [Performance Tuning Guide](../../docs/PERFORMANCE_TUNING_GUIDE.md)
-- [Benchmark Results](../../docs/BENCHMARK_RESULTS.md)
-- [Phase 4 Documentation](../../docs/PHASE4_IMPLEMENTATION.md)
 
 ## Expected Output
 
