@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-07-25
+
+### Added
+- **SBE011**: Diagnostic for set choice bit positions exceeding encoding type width (#98).
+- **sinceVersion/deprecated on enum and set values**: `[Obsolete]` attribute and version comments on individual enum values and set choices (#94).
+- **sinceVersion on data elements**: Variable-length data fields respect `sinceVersion` for versioned message generation (#95).
+- **Explicit blockLength**: Messages now respect the `blockLength` attribute from the schema, with `BLOCK_LENGTH` constant in generated code (#93).
+- **characterEncoding attribute**: Fixed-size char types now use `Encoding.UTF8` for `UTF-8` and `Encoding.Latin1` for all other encodings (#96).
+- **VarString16/VarString32**: Variable-width length prefix for varData fields — automatically resolves composite length field type (uint8→byte, uint16→ushort, uint32→uint) (#97).
+- **`<ref>` in composites**: Composites can now embed other composites via `<ref>` elements with correct size calculation (#88).
+- **Nested composites**: Inline `<composite>` and `<enum>` definitions within composites are parsed and generated recursively (#89).
+- **`<data>` in groups**: Groups can contain variable-length data fields with proper callback generation and SpanReader advancement (#91).
+- **Nested groups**: Groups within groups are fully supported with recursive parsing, struct generation, and ConsumeVariableLengthSegments (#90).
+- **Custom headerType**: The `headerType` attribute on `<messageSchema>` is now parsed and stored in `SchemaContext` (#92).
+
+### Changed
+- `DataFieldDefinition` now tracks `LengthPrefixType` for dynamic varData encoding.
+- `SchemaCompositeDto` supports `NestedComposites` and `NestedEnums` lists.
+- `SchemaGroupDto` supports `Data` and `Groups` lists for nested structures.
+- `GroupDefinition` supports `Datas` and `NestedGroups` with typed accessors.
+- `MessageDefinition.ConsumeVariableLengthSegments` refactored to recursive `AppendGroupConsume` for nested group support.
+- `TypesCodeGenerator.GenerateComposite` refactored to handle `<ref>` fields and nested types.
+
+### Fixed
+- `EnumDefinition` was using enum-level `Description` instead of per-field `Description` for XML doc comments.
+
 ## [0.4.0] - 2026-04-09
 
 ### Changed
@@ -57,9 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed broken relative links and old repository URLs across README, CONTRIBUTING, and docs.
 - SBE compliance updated to ~92-95%.
 
-### Known Limitations
-- Nested groups (groups within groups) are not yet supported.
-- Extended varData types (VarString16, VarString32) not yet available.
+### Known Limitations (Resolved in 0.5.0)
+- ~~Nested groups (groups within groups) are not yet supported.~~ → Resolved in #90.
+- ~~Extended varData types (VarString16, VarString32) not yet available.~~ → Resolved in #97.
 
 ## [0.1.0-preview.1] - 2024-10-06
 
@@ -70,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for primitive types, composites, enums, sets, messages, and groups
 - Comprehensive test suite with snapshot and integration tests
 
-[Unreleased]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.1.0-preview.1...v0.2.0
 [0.1.0-preview.1]: https://github.com/pedrosakuma/SbeSourceGenerator/releases/tag/v0.1.0-preview.1
