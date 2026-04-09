@@ -11,6 +11,7 @@ namespace SbeSourceGenerator.Schema
         string DimensionType,
         string Description,
         List<SchemaFieldDto> Fields,
-        List<SchemaFieldDto> Constants
+        List<SchemaFieldDto> Constants,
+        List<SchemaDataDto>? Data = null
     );
 }

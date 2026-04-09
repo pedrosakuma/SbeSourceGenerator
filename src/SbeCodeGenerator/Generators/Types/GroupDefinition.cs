@@ -1,11 +1,33 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using SbeSourceGenerator.Generators.Fields;
 
 namespace SbeSourceGenerator
 {
     public record GroupDefinition(string Namespace, string Name, string Id, string DimensionType, string Description,
-        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants, string NumInGroupType = "ushort") : IFileContentGenerator
+        List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
+        string NumInGroupType = "ushort", List<IFileContentGenerator>? Datas = null) : IFileContentGenerator
     {
+        private List<DataFieldDefinition>? _typedDatas;
+
+        public List<DataFieldDefinition> TypedDatas
+        {
+            get
+            {
+                if (_typedDatas == null)
+                {
+                    _typedDatas = new List<DataFieldDefinition>();
+                    if (Datas != null)
+                    {
+                        foreach (var item in Datas)
+                            _typedDatas.Add((DataFieldDefinition)item);
+                    }
+                }
+                return _typedDatas;
+            }
+        }
+
+        public bool HasGroupData => Datas != null && Datas.Count > 0;
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendStructDefinition(tabs, Description, Name, nameof(GroupDefinition));
