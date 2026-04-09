@@ -353,5 +353,4 @@ For existing codebases:
 
 ## See Also
 
-- [SBE Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 2.1: Validation Constraints
-- [SBE Feature Completeness](./SBE_FEATURE_COMPLETENESS.md) - Feature #14: Validation Constraints
+

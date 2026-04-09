@@ -67,7 +67,7 @@ public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ...)
    - Generates SpanReader-based parsing code instead of manual offset management
    - Maintains backward compatibility with existing callback patterns
 
-3. **UtilitiesCodeGenerator Enhancement**: Extended to generate the SpanReader along with NumberExtensions and EndianHelpers.
+3. **UtilitiesCodeGenerator Enhancement**: Extended to generate the SpanReader along with EndianHelpers.
 
 ## Features Supported
 
@@ -104,7 +104,7 @@ Variable-length data fields work correctly:
 ## Testing
 
 ### Unit Tests
-- Updated `UtilitiesCodeGeneratorTests` to expect 3 generated files (NumberExtensions, EndianHelpers, SpanReader)
+- Updated `UtilitiesCodeGeneratorTests` to expect 3 generated files (EndianHelpers, SpanReader, SpanWriter)
 - Added specific test for SpanReader generation
 - All 62 unit tests passing ✅
 
@@ -167,7 +167,6 @@ Added comprehensive integration tests:
 ## Related Documentation
 
 - [SPAN_READER_README.md](./SPAN_READER_README.md) - SpanReader API reference and examples
-- [SPAN_READER_IMPLEMENTATION_SUMMARY.md](./SPAN_READER_IMPLEMENTATION_SUMMARY.md) - Original prototype implementation
 - [SPAN_READER_EXTENSIBILITY.md](./SPAN_READER_EXTENSIBILITY.md) - Advanced features and custom parsing
 
 ## Conclusion

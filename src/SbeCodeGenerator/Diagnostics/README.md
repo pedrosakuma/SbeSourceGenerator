@@ -76,6 +76,12 @@ Provides compile-time diagnostics for:
 **Example**: A custom or misspelled type name used where a primitive is expected  
 **Resolution**: Verify the primitive type name in the schema. The generator uses fallback values (0 for length, `default` for null sentinel) which may produce incorrect code.
 
+### SBE011: Set Choice Bit Position Exceeds Encoding Width
+**Severity**: Error  
+**Triggered when**: A `<choice>` element in a `<set>` has a bit position that exceeds the maximum for the encoding type  
+**Example**: `<choice name="Flag">64</choice>` on a `uint64`-encoded set (max bit 63)  
+**Resolution**: Ensure choice bit positions are within range `0` to `(encodingWidth * 8 - 1)`.
+
 ## Usage
 
 Diagnostics are automatically reported during source generation. When you build a project that includes an invalid SBE schema as an additional file, you'll see these diagnostics in:

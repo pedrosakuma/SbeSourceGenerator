@@ -47,7 +47,7 @@ Each generator implements `ICodeGenerator` and returns `IEnumerable<(string name
 - **`SchemaContext`** — Per-schema mutable state container. Tracks type names, lengths, enum primitive types, optional types, composite field types, and byte order. Passed through the entire pipeline. Not global — one instance per schema file.
 - **`IFileContentGenerator`** — Implemented by all definition types (`EnumDefinition`, `CompositeDefinition`, `MessageDefinition`, field definitions). Each renders itself to a `StringBuilder` via `AppendFileContent(sb, tabs)`.
 - **`IBlittable` / `IBlittableMessageField`** — Track byte sizes and field offsets for `[StructLayout(LayoutKind.Explicit)]` struct generation. Offsets are auto-calculated sequentially in `FileContentGeneratorExtensions.SumFieldLength()`.
-- **Schema DTOs** (`SchemaFieldDto`, `SchemaMessageDto`, etc.) — Immutable `internal record` types parsed from XML by `SchemaParser`. One static `Parse*` method per construct.
+- **Schema DTOs** (`SchemaFieldDto`, `SchemaMessageDto`, etc.) — Immutable `internal record` types parsed from XML by `SchemaReader`. Produced in a single forward-only pass.
 - **`TypeTranslator`** — Maps SBE primitive types to C# types (e.g., `int8` → `sbyte`, `uint16` → `ushort`) and resolves null sentinel values for optional fields.
 
 ### Schema → Namespace Derivation
@@ -84,12 +84,22 @@ context.CustomTypeLengths[originalName] = length;
 
 ### Diagnostics
 
-Custom diagnostics use IDs `SBE001`–`SBE006` defined in `SbeDiagnostics.cs`. New diagnostics should follow the same pattern and be added to `AnalyzerReleases.Unshipped.md`.
+Custom diagnostics use IDs `SBE001`–`SBE011` defined in `SbeDiagnostics.cs`. New diagnostics should follow the same pattern and be added to `AnalyzerReleases.Unshipped.md`.
 
 ### Adding a New Schema Construct
 
 1. Create a DTO record in `Schema/` (e.g., `SchemaXyzDto.cs`)
-2. Add a `ParseXyz()` method to `SchemaParser`
+2. Add parsing logic in `SchemaReader` (`ReadXyz()` method)
 3. Create a definition builder in `Generators/Types/` or `Generators/Fields/` implementing `IFileContentGenerator` (and `IBlittable` if fixed-size)
 4. Wire it into the appropriate generator (`TypesCodeGenerator` or `MessagesCodeGenerator`)
 5. Add unit tests with inline XML and snapshot tests for regression
+
+### Documentation
+
+When making changes that affect user-facing behavior, update the relevant documentation:
+
+- **README.md** — Feature list, usage examples, diagnostics table, version references
+- **CHANGELOG.md** — Add entry under appropriate section (Added/Changed/Removed/Fixed)
+- **docs/** — Update relevant feature docs if the change modifies existing behavior
+- **src/SbeCodeGenerator/Diagnostics/README.md** — When adding or modifying diagnostics
+- **.github/copilot-instructions.md** — When adding new abstractions, conventions, or changing the pipeline

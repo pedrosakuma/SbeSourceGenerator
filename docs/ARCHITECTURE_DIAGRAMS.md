@@ -164,7 +164,6 @@ XML Schema File
 │               UtilitiesCodeGenerator                        │
 ├─────────────────────────────────────────────────────────────┤
 │ Handles:                                                    │
-│ • NumberExtensions                                          │
 │ • Future utility code                                       │
 └─────────────────────────────────────────────────────────────┘
 
@@ -204,8 +203,7 @@ XML Schema File
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  UtilitiesCodeGeneratorTests (2 tests)         │    │
-│  │  • Generate_ProducesNumberExtensions           │    │
+│  │  UtilitiesCodeGeneratorTests (1 test)           │    │
 │  │  • Generate_UsesProvidedNamespace              │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │

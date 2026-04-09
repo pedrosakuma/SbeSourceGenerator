@@ -383,23 +383,7 @@ public IEnumerable<(string name, string content)> Generate(
 **Responsibility**: Generate utility code and extensions
 
 **Handles:**
-- `NumberExtensions` class for byte order operations
 - Future utility code
-
-**Example:**
-
-```csharp
-public IEnumerable<(string name, string content)> Generate(
-    string ns, 
-    XmlDocument xmlDocument, 
-    SchemaContext context, 
-    SourceProductionContext sourceContext)
-{
-    StringBuilder sb = new StringBuilder();
-    new NumberExtensions(ns).AppendFileContent(sb);
-    yield return ($"Utilities\\NumberExtensions", sb.ToString());
-}
-```
 
 ## Extension Points
 
