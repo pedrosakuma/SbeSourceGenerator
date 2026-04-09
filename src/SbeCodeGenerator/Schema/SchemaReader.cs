@@ -16,11 +16,11 @@ namespace SbeSourceGenerator.Schema
     {
         public static ParsedSchema Parse(string xmlContent, SourceProductionContext sourceContext)
         {
-            var types = new List<SchemaTypeDto>();
-            var composites = new List<SchemaCompositeDto>();
-            var enums = new List<SchemaEnumDto>();
-            var sets = new List<SchemaEnumDto>();
-            var messages = new List<SchemaMessageDto>();
+            var types = new List<SchemaTypeDto>(16);
+            var composites = new List<SchemaCompositeDto>(8);
+            var enums = new List<SchemaEnumDto>(16);
+            var sets = new List<SchemaEnumDto>(8);
+            var messages = new List<SchemaMessageDto>(16);
 
             string byteOrder = "";
             string package = "";
@@ -147,7 +147,7 @@ namespace SbeSourceGenerator.Schema
             string desc = reader.GetAttribute("description") ?? "";
             string semanticType = reader.GetAttribute("semanticType") ?? "";
 
-            var fields = new List<SchemaFieldDto>();
+            var fields = new List<SchemaFieldDto>(16);
             if (!reader.IsEmptyElement)
             {
                 int depth = reader.Depth;
@@ -170,7 +170,7 @@ namespace SbeSourceGenerator.Schema
             string encodingType = GetRequiredAttribute(reader, "encodingType", "enum", sourceContext);
             string semanticType = reader.GetAttribute("semanticType") ?? "";
 
-            var choices = new List<SchemaFieldDto>();
+            var choices = new List<SchemaFieldDto>(16);
             if (!reader.IsEmptyElement)
             {
                 int depth = reader.Depth;
@@ -200,10 +200,10 @@ namespace SbeSourceGenerator.Schema
             string semanticType = reader.GetAttribute("semanticType") ?? "";
             string deprecated = reader.GetAttribute("deprecated") ?? "";
 
-            var fields = new List<SchemaFieldDto>();
-            var constants = new List<SchemaFieldDto>();
-            var groups = new List<SchemaGroupDto>();
-            var data = new List<SchemaDataDto>();
+            var fields = new List<SchemaFieldDto>(16);
+            var constants = new List<SchemaFieldDto>(4);
+            var groups = new List<SchemaGroupDto>(4);
+            var data = new List<SchemaDataDto>(4);
 
             if (!reader.IsEmptyElement)
             {
@@ -246,8 +246,8 @@ namespace SbeSourceGenerator.Schema
                 dimensionType = "GroupSizeEncoding";
             string desc = reader.GetAttribute("description") ?? "";
 
-            var fields = new List<SchemaFieldDto>();
-            var constants = new List<SchemaFieldDto>();
+            var fields = new List<SchemaFieldDto>(16);
+            var constants = new List<SchemaFieldDto>(4);
 
             if (!reader.IsEmptyElement)
             {

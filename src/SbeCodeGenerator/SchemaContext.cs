@@ -18,15 +18,15 @@ namespace SbeSourceGenerator
 
         public string SchemaKey { get; }
 
-        public Dictionary<string, string> EnumPrimitiveTypes { get; } = new Dictionary<string, string>();
-        public Dictionary<string, int> CustomTypeLengths { get; } = new Dictionary<string, int>();
-        public Dictionary<string, byte> CustomConstantTypes { get; } = new Dictionary<string, byte>();
+        public Dictionary<string, string> EnumPrimitiveTypes { get; } = new Dictionary<string, string>(16);
+        public Dictionary<string, int> CustomTypeLengths { get; } = new Dictionary<string, int>(32);
+        public Dictionary<string, byte> CustomConstantTypes { get; } = new Dictionary<string, byte>(8);
 
         /// <summary>
         /// Maps original schema identifiers to the generated identifiers emitted in C# code.
         /// Helps keep references (valueRef, composites, enums) consistent after normalization.
         /// </summary>
-        public Dictionary<string, string> GeneratedTypeNames { get; } = new Dictionary<string, string>();
+        public Dictionary<string, string> GeneratedTypeNames { get; } = new Dictionary<string, string>(32);
 
         /// <summary>
         /// Keeps track of runtime namespaces that already emitted SpanReader/SpanWriter helpers.
@@ -38,13 +38,13 @@ namespace SbeSourceGenerator
         /// Tracks which types are optional types (have presence="optional").
         /// Maps type name to its underlying primitive type (e.g., "Int64NULL" -> "long").
         /// </summary>
-        public Dictionary<string, string> OptionalTypes { get; } = new Dictionary<string, string>();
+        public Dictionary<string, string> OptionalTypes { get; } = new Dictionary<string, string>(8);
 
         /// <summary>
         /// Tracks composite types and their field types.
         /// Maps "CompositeName.FieldName" -> native type (e.g., "GroupSizeEncoding.numInGroup" -> "ushort").
         /// </summary>
-        public Dictionary<string, string> CompositeFieldTypes { get; } = new Dictionary<string, string>();
+        public Dictionary<string, string> CompositeFieldTypes { get; } = new Dictionary<string, string>(16);
 
         /// <summary>
         /// The byte order (endianness) specified in the schema.
