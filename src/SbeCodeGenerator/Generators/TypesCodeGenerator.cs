@@ -280,6 +280,26 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateComposite(string ns, SchemaCompositeDto compositeDto, SchemaContext context, SourceProductionContext sourceContext)
         {
+            // Recursively generate nested composites first so their types are registered
+            if (compositeDto.NestedComposites != null)
+            {
+                foreach (var nested in compositeDto.NestedComposites)
+                {
+                    foreach (var result in GenerateComposite(ns, nested, context, sourceContext))
+                        yield return result;
+                }
+            }
+
+            // Generate nested enums
+            if (compositeDto.NestedEnums != null)
+            {
+                foreach (var nestedEnum in compositeDto.NestedEnums)
+                {
+                    foreach (var result in GenerateEnum(ns, nestedEnum, context, sourceContext))
+                        yield return result;
+                }
+            }
+
             var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
 
             // Separate ref fields from primitive fields

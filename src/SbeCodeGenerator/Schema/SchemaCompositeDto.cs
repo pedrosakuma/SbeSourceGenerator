@@ -9,6 +9,8 @@ namespace SbeSourceGenerator.Schema
         string Name,
         string Description,
         string SemanticType,
-        List<SchemaFieldDto> Fields
+        List<SchemaFieldDto> Fields,
+        List<SchemaCompositeDto>? NestedComposites = null,
+        List<SchemaEnumDto>? NestedEnums = null
     );
 }
