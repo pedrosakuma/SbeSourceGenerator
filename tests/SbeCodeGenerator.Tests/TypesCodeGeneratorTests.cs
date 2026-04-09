@@ -219,6 +219,104 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("HighBit", setResult.content);
         }
 
+        [Fact]
+        public void Generate_WithEnum_DeprecatedValue_GeneratesObsoleteAttribute()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='OrderType' encodingType='uint8'>
+                            <validValue name='Market'>0</validValue>
+                            <validValue name='Limit'>1</validValue>
+                            <validValue name='StopLoss' deprecated='2'>2</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var enumResult = resultList.FirstOrDefault(r => r.name.Contains("OrderType"));
+            Assert.NotEqual(default, enumResult);
+            Assert.Contains("[Obsolete(", enumResult.content);
+            Assert.Contains("StopLoss", enumResult.content);
+            Assert.DoesNotContain("[Obsolete(", enumResult.content.Split("Market")[0]);
+        }
+
+        [Fact]
+        public void Generate_WithEnum_SinceVersionOnValue_GeneratesVersionComment()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Buy'>0</validValue>
+                            <validValue name='Sell'>1</validValue>
+                            <validValue name='SellShort' sinceVersion='2'>2</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var enumResult = resultList.FirstOrDefault(r => r.name.Contains("Side"));
+            Assert.NotEqual(default, enumResult);
+            Assert.Contains("Since version 2", enumResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithEnum_DeprecatedWithSinceVersion_GeneratesDetailedObsolete()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='TimeInForce' encodingType='uint8'>
+                            <validValue name='Day'>0</validValue>
+                            <validValue name='GoodTillCancel' sinceVersion='1' deprecated='3'>1</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var enumResult = resultList.FirstOrDefault(r => r.name.Contains("TimeInForce"));
+            Assert.NotEqual(default, enumResult);
+            Assert.Contains("[Obsolete(\"This value is deprecated since version 1\")]", enumResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSet_DeprecatedChoice_GeneratesObsoleteAttribute()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='Capabilities' encodingType='uint8'>
+                            <choice name='Read'>0</choice>
+                            <choice name='Write'>1</choice>
+                            <choice name='Legacy' deprecated='2'>2</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var setResult = resultList.FirstOrDefault(r => r.name.Contains("Capabilities"));
+            Assert.NotEqual(default, setResult);
+            Assert.Contains("[Obsolete(", setResult.content);
+            Assert.Contains("Legacy", setResult.content);
+        }
+
         // ===== Phase 1 Feature Tests =====
 
         [Fact]
