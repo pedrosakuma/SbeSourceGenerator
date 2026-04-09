@@ -16,7 +16,8 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("private ").Append(PrimitiveType).AppendLine(" value;");
-            sb.AppendTabs(tabs).Append("public ").Append(PrimitiveType).Append("? Value => value == ").Append(nullValue).AppendLine(" ? null : value;");
+            sb.AppendTabs(tabs).Append("public ").Append(PrimitiveType).Append("? Value");
+            NullableValueFieldDefinition.AppendNullCheck(sb, PrimitiveType, "value", nullValue);
             sb.AppendLine("}", --tabs);
             sb.AppendLine("#pragma warning restore CS0649", tabs);
         }

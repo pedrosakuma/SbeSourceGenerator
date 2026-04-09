@@ -21,6 +21,9 @@ namespace SbeSourceGenerator
             { "ushort", "65535" },
             { "uint", "4294967295" },
             { "ulong", "18446744073709551615UL" },
+
+            { "float", "float.NaN" },
+            { "double", "double.NaN" },
         };
 
         public static readonly Dictionary<string, int> PrimitiveTypeLengths = new Dictionary<string, int>
@@ -59,6 +62,11 @@ namespace SbeSourceGenerator
         public static bool HasPrimitiveLength(string primitiveType)
         {
             return PrimitiveTypeLengths.ContainsKey(primitiveType);
+        }
+
+        public static bool IsFloatingPoint(string primitiveType)
+        {
+            return primitiveType == "float" || primitiveType == "double";
         }
     }
 }

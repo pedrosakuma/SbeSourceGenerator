@@ -748,5 +748,65 @@ namespace SbeCodeGenerator.Tests
             Assert.NotEqual(default, enumResult);
             Assert.Contains("enum TagType", enumResult.content);
         }
+        [Fact]
+        public void Generate_WithOptionalFloatType_UsesIsNaN()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='optionalFloat' primitiveType='float' presence='optional'/>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var typeResult = results.FirstOrDefault(r => r.name.Contains("OptionalFloat"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("float.IsNaN(value)", typeResult.content);
+            Assert.DoesNotContain("value == ", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalDoubleType_UsesIsNaN()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='optionalDouble' primitiveType='double' presence='optional'/>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var typeResult = results.FirstOrDefault(r => r.name.Contains("OptionalDouble"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("double.IsNaN(value)", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalFloatInComposite_UsesIsNaN()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='PriceComposite' description='Price with optional float'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='float' presence='optional'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var compositeResult = results.FirstOrDefault(r => r.name.Contains("PriceComposite"));
+            Assert.NotEqual(default, compositeResult);
+            Assert.Contains("float.IsNaN(exponent)", compositeResult.content);
+        }
     }
 }
