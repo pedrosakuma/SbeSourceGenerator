@@ -13,9 +13,10 @@ namespace SbeSourceGenerator
         public int Length { get; }
         public string SinceVersion { get; }
         public string Deprecated { get; }
+        public string? NullValue { get; }
 
         public OptionalMessageFieldDefinition(string Name, string Id, string Type, string? PrimitiveType, string Description,
-            int? Offset, int Length, string SinceVersion = "", string Deprecated = "")
+            int? Offset, int Length, string SinceVersion = "", string Deprecated = "", string? NullValue = null)
         {
             this.Name = Name;
             this.Id = Id;
@@ -26,6 +27,7 @@ namespace SbeSourceGenerator
             this.Length = Length;
             this.SinceVersion = SinceVersion;
             this.Deprecated = Deprecated;
+            this.NullValue = NullValue;
         }
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
@@ -40,9 +42,9 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
             if (PrimitiveType != null)
             {
-                var nullValue = TypesCatalog.GetNullValue(PrimitiveType);
+                var nullValue = NullValue ?? TypesCatalog.GetNullValue(PrimitiveType);
                 sb.AppendTabs(tabs).Append("private ").Append(Type).Append(" ").Append(Name.FirstCharToLower()).AppendLine(";");
-                if (TypesCatalog.IsFloatingPoint(PrimitiveType))
+                if (NullValue == null && TypesCatalog.IsFloatingPoint(PrimitiveType))
                 {
                     sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => ").Append(PrimitiveType).Append(".IsNaN((").Append(PrimitiveType).Append(")").Append(Name.FirstCharToLower()).Append(") ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
                     sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(Name.FirstCharToLower()).Append(" = value ?? (").Append(Type).Append(")").Append(nullValue).AppendLine(";");

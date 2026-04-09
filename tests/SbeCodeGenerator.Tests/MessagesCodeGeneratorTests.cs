@@ -547,5 +547,29 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("callbackAcceleration(data, nestedData)", msgResult.content);
         }
 
+        [Fact]
+        public void Generate_WithFieldLevelNullValue_UsesCustomNullSentinel()
+        {
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <sbe:message name='OrderWithCustomNull' id='1'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <field name='price' id='2' type='int64' presence='optional' nullValue='0'/>
+                        <field name='quantity' id='3' type='int32' presence='optional' nullValue='-1'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var msgResult = results.FirstOrDefault(r => r.name.Contains("OrderWithCustomNull"));
+            Assert.NotEqual(default, msgResult);
+
+            // Should use custom nullValue=0 instead of default -9223372036854775808L
+            Assert.Contains("== 0", msgResult.content);
+            // Should use custom nullValue=-1 instead of default -2147483648
+            Assert.Contains("== -1", msgResult.content);
+        }
+
     }
 }
