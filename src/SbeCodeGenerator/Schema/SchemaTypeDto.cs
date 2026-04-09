@@ -13,6 +13,7 @@ namespace SbeSourceGenerator.Schema
         string Length,
         string InnerText,
         string MinValue,
-        string MaxValue
+        string MaxValue,
+        string CharacterEncoding = ""
     );
 }
