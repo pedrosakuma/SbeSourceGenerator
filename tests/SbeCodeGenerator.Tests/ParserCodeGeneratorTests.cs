@@ -1,6 +1,5 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
-using SbeSourceGenerator.Generators.Types;
 using System.Linq;
 using SbeSourceGenerator.Schema;
 using Xunit;

@@ -7,19 +7,14 @@ using System.Text;
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
-    /// Generates utility code (e.g., NumberExtensions, EndianHelpers).
+    /// Generates utility code (e.g., EndianHelpers, SpanReader, SpanWriter).
     /// </summary>
     internal class UtilitiesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            // Generate NumberExtensions
-            StringBuilder sb = new StringBuilder();
-            new NumberExtensions(ns).AppendFileContent(sb);
-            yield return (context.CreateHintName(ns, "Utilities", "NumberExtensions"), sb.ToString());
-
             // Generate EndianHelpers
-            sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             new EndianHelpers(ns).AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Utilities", "EndianHelpers"), sb.ToString());
 
