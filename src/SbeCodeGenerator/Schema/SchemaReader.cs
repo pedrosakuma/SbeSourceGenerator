@@ -279,11 +279,12 @@ namespace SbeSourceGenerator.Schema
             string dataId = GetRequiredAttribute(reader, "id", "data", sourceContext);
             string type = GetRequiredAttribute(reader, "type", "data", sourceContext);
             string desc = reader.GetAttribute("description") ?? "";
+            string sinceVersion = reader.GetAttribute("sinceVersion") ?? "";
 
             if (!reader.IsEmptyElement)
                 reader.Skip();
 
-            return new SchemaDataDto(name, dataId, type, desc);
+            return new SchemaDataDto(name, dataId, type, desc, sinceVersion);
         }
 
         private static SchemaFieldDto ReadField(XmlReader reader, SourceProductionContext sourceContext)

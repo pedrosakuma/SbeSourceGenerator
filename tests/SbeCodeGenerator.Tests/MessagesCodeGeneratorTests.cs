@@ -238,5 +238,50 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("(uint)", messageResult.content);
         }
 
+        [Fact]
+        public void Generate_WithDataSinceVersion_ExcludesDataFromEarlierVersions()
+        {
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                                   package='test' id='1' version='0'>
+                    <types>
+                        <composite name='MessageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                        <composite name='VarString8'>
+                            <type name='length' primitiveType='uint8'/>
+                            <type name='varData' length='0' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='Order' id='1' description='Order message'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <data name='symbol' id='2' type='VarString8'/>
+                        <data name='memo' id='3' type='VarString8' sinceVersion='1'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var context = new SchemaContext("test-schema");
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var generator = new MessagesCodeGenerator();
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // V0 should have symbol but NOT memo
+            var v0Result = results.FirstOrDefault(r => r.name.Contains("Order") && !r.name.Contains("V1"));
+            Assert.NotEqual(default, v0Result);
+            Assert.Contains("Symbol", v0Result.content);
+            Assert.DoesNotContain("Memo", v0Result.content);
+
+            // V1 should have both symbol and memo
+            var v1Result = results.FirstOrDefault(r => r.name.Contains("V1") && r.name.Contains("Order"));
+            Assert.NotEqual(default, v1Result);
+            Assert.Contains("Symbol", v1Result.content);
+            Assert.Contains("Memo", v1Result.content);
+        }
+
     }
 }

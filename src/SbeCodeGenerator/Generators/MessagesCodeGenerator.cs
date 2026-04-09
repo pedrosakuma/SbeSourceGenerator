@@ -55,7 +55,7 @@ namespace SbeSourceGenerator.Generators
                         fieldsForVersion,
                         BuildConstants(messageDto.Constants, context),
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
-                        BuildData(messageDto.Data, context)
+                        GetDataForVersion(messageDto.Data, version, context)
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
                         + messageDto.Groups.Count * 1024 + messageDto.Data.Count * 512;
@@ -97,6 +97,27 @@ namespace SbeSourceGenerator.Generators
                             "sinceVersion",
                             field.SinceVersion,
                             field.Name));
+                    }
+                }
+            }
+
+            foreach (var data in messageDto.Data)
+            {
+                if (!string.IsNullOrEmpty(data.SinceVersion))
+                {
+                    if (int.TryParse(data.SinceVersion, out int sinceVersion))
+                    {
+                        for (int v = 0; v <= sinceVersion; v++)
+                            versions.Add(v);
+                    }
+                    else if (sourceContext.CancellationToken != default)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.InvalidIntegerAttribute,
+                            Location.None,
+                            "sinceVersion",
+                            data.SinceVersion,
+                            data.Name));
                     }
                 }
             }
@@ -289,9 +310,19 @@ namespace SbeSourceGenerator.Generators
 
         private static List<IFileContentGenerator> BuildData(List<SchemaDataDto> dataList, SchemaContext context)
         {
+            return GetDataForVersion(dataList, int.MaxValue, context);
+        }
+
+        private static List<IFileContentGenerator> GetDataForVersion(List<SchemaDataDto> dataList, int version, SchemaContext context)
+        {
             var result = new List<IFileContentGenerator>(dataList.Count);
             foreach (var data in dataList)
             {
+                if (!string.IsNullOrEmpty(data.SinceVersion)
+                    && int.TryParse(data.SinceVersion, out int sinceVersion)
+                    && sinceVersion > version)
+                    continue;
+
                 result.Add(new DataFieldDefinition(
                     TypeTranslator.NormalizeName(data.Name),
                     data.Id,
