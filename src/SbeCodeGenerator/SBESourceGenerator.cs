@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
+using SbeSourceGenerator.Schema;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator
 {
@@ -52,40 +52,29 @@ namespace SbeSourceGenerator
                     try
                     {
                         string path = additionalText.Path;
-                        var d = new XmlDocument { XmlResolver = null };
-                        var readerSettings = new XmlReaderSettings
-                        {
-                            DtdProcessing = DtdProcessing.Prohibit,
-                            XmlResolver = null
-                        };
-                        using (var xmlReader = XmlReader.Create(path, readerSettings))
-                        {
-                            d.Load(xmlReader);
-                        }
+                        var xmlContent = additionalText.GetText(sourceContext.CancellationToken)?.ToString();
+                        if (string.IsNullOrEmpty(xmlContent))
+                            continue;
 
-                        string ns = GetNamespaceFromSchema(d, path);
+                        var schema = SchemaReader.Parse(xmlContent!, sourceContext);
+
+                        string ns = GetNamespaceFromSchema(schema, path);
                         string schemaKey = CreateSchemaKey(path);
 
                         // Create a per-schema context to hold mutable state (sharing runtime tracking)
                         var context = new SchemaContext(schemaKey, emittedRuntimeNamespaces);
 
-                        // Parse byteOrder attribute from messageSchema element
-                        var messageSchemaNode = d.DocumentElement;
-                        if (messageSchemaNode != null)
+                        if (!string.IsNullOrEmpty(schema.ByteOrder))
                         {
-                            var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-                            if (!string.IsNullOrEmpty(byteOrderAttr))
+                            context.ByteOrder = schema.ByteOrder;
+                            if (!schema.ByteOrder.Equals("littleEndian", StringComparison.OrdinalIgnoreCase)
+                                && !sourceContext.CancellationToken.IsCancellationRequested)
                             {
-                                context.ByteOrder = byteOrderAttr;
-                                if (!byteOrderAttr.Equals("littleEndian", StringComparison.OrdinalIgnoreCase)
-                                    && !sourceContext.CancellationToken.IsCancellationRequested)
-                                {
-                                    sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                        SbeDiagnostics.NonNativeByteOrder,
-                                        Location.None,
-                                        path,
-                                        byteOrderAttr));
-                                }
+                                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                    SbeDiagnostics.NonNativeByteOrder,
+                                    Location.None,
+                                    path,
+                                    schema.ByteOrder));
                             }
                         }
 
@@ -107,7 +96,7 @@ namespace SbeSourceGenerator
                         {
                             try
                             {
-                                foreach (var item in gen.Generate(ns, d, context, sourceContext))
+                                foreach (var item in gen.Generate(ns, schema, context, sourceContext))
                                     sourceContext.AddSource(item.name, item.content);
                             }
                             catch (Exception genEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
@@ -161,16 +150,12 @@ namespace SbeSourceGenerator
         }
 
 
-        private static string GetNamespaceFromSchema(XmlDocument document, string path)
+        private static string GetNamespaceFromSchema(ParsedSchema schema, string path)
         {
             var baseNamespaceFromPath = GetNamespaceFromPath(path);
 
-            XmlElement? root = document.DocumentElement;
-            if (root is null)
-                return baseNamespaceFromPath;
-
-            string package = root.GetAttribute("package");
-            string version = root.GetAttribute("version");
+            string package = schema.Package;
+            string version = schema.Version;
 
             string packageNamespace = NormalizePackage(package);
 

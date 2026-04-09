@@ -8,15 +8,15 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendLine($"namespace {Namespace};", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(EnumDefinition));
-            sb.AppendLine($"public enum {Name} : {ChangeTypeIfNeeded(EncodingType)}", tabs);
+            sb.AppendTabs(tabs).Append("public enum ").Append(Name).Append(" : ").Append(ChangeTypeIfNeeded(EncodingType)).AppendLine();
             sb.AppendLine("{", tabs++);
             foreach (var field in Fields)
             {
                 if (field.Description != "")
                     sb.AppendSummary(Description, tabs, nameof(EnumDefinition));
-                sb.AppendLine($"{field.Name} = {IncludeQuotationAndCastIfNeeded(field.Value, EncodingType)},", tabs);
+                sb.AppendTabs(tabs).Append(field.Name).Append(" = ").Append(IncludeQuotationAndCastIfNeeded(field.Value, EncodingType)).AppendLine(",");
             }
             sb.AppendLine("}", --tabs);
         }

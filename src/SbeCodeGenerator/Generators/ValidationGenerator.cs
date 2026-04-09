@@ -4,25 +4,18 @@ using SbeSourceGenerator.Schema;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Xml;
 
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
     /// Generates validation methods for SBE messages and types based on schema constraints.
     /// </summary>
-    public class ValidationGenerator : ICodeGenerator
+    internal class ValidationGenerator : ICodeGenerator
     {
-        public IEnumerable<(string name, string content)> Generate(string ns, XmlDocument xmlDocument, SchemaContext context, SourceProductionContext sourceContext)
+        public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDocument.NameTable);
-            nsmgr.AddNamespace("sbe", "http://fixprotocol.io/2016/sbe");
-
-            // Generate validation for messages
-            var messageNodes = xmlDocument.SelectNodes("//sbe:message", nsmgr);
-            foreach (XmlElement messageNode in messageNodes)
+            foreach (var messageDto in schema.Messages)
             {
-                var messageDto = SchemaParser.ParseMessage(messageNode, context, sourceContext);
                 var validationCode = GenerateMessageValidation(ns, messageDto, context, sourceContext);
                 if (validationCode != null)
                 {
@@ -30,11 +23,8 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            // Generate validation for types with constraints
-            var typeNodes = xmlDocument.SelectNodes("//types/type");
-            foreach (XmlElement typeNode in typeNodes)
+            foreach (var typeDto in schema.Types)
             {
-                var typeDto = SchemaParser.ParseType(typeNode, sourceContext);
                 var validationCode = GenerateTypeValidation(ns, typeDto);
                 if (validationCode != null)
                 {
@@ -93,22 +83,22 @@ namespace SbeSourceGenerator.Generators
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("using System;");
             sb.AppendLine();
-            sb.AppendLine($"namespace {ns};");
+            sb.Append("namespace ").Append(ns).AppendLine(";");
             sb.AppendLine();
             sb.AppendLine($"/// <summary>");
-            sb.AppendLine($"/// Validation extension methods for {messageDto.Name}.");
+            sb.Append("/// Validation extension methods for ").Append(messageDto.Name).AppendLine(".");
             sb.AppendLine($"/// </summary>");
-            sb.AppendLine($"public static class {messageDto.Name.FirstCharToUpper()}Validation");
+            sb.Append("public static class ").Append(messageDto.Name.FirstCharToUpper()).AppendLine("Validation");
             sb.AppendLine("{");
 
             // Generate TryValidate method first (contains the core logic)
             sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Attempts to validate all fields with constraints in {messageDto.Name}.");
+            sb.Append("    /// Attempts to validate all fields with constraints in ").Append(messageDto.Name).AppendLine(".");
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
             sb.AppendLine($"    /// <param name=\"errorMessage\">The error message if validation fails, or null if validation succeeds.</param>");
             sb.AppendLine($"    /// <returns>True if validation succeeds, false otherwise.</returns>");
-            sb.AppendLine($"    public static bool TryValidate(this {messageDto.Name.FirstCharToUpper()} message, out string? errorMessage)");
+            sb.Append("    public static bool TryValidate(this ").Append(messageDto.Name.FirstCharToUpper()).AppendLine(" message, out string? errorMessage)");
             sb.AppendLine("    {");
 
             foreach (var field in validFields)
@@ -117,25 +107,25 @@ namespace SbeSourceGenerator.Generators
 
                 if (!string.IsNullOrEmpty(field.MinValue) && !string.IsNullOrEmpty(field.MaxValue))
                 {
-                    sb.AppendLine($"        if (message.{fieldName} < {field.MinValue} || message.{fieldName} > {field.MaxValue})");
+                    sb.Append("        if (message.").Append(fieldName).Append(" < ").Append(field.MinValue).Append(" || message.").Append(fieldName).Append(" > ").Append(field.MaxValue).AppendLine(")");
                     sb.AppendLine("        {");
-                    sb.AppendLine($"            errorMessage = $\"{fieldName} must be between {field.MinValue} and {field.MaxValue}. Actual value was {{message.{fieldName}}}.\";");
+                    sb.Append("            errorMessage = $\"").Append(fieldName).Append(" must be between ").Append(field.MinValue).Append(" and ").Append(field.MaxValue).Append(". Actual value was {message.").Append(fieldName).AppendLine("}.\";");
                     sb.AppendLine("            return false;");
                     sb.AppendLine("        }");
                 }
                 else if (!string.IsNullOrEmpty(field.MinValue))
                 {
-                    sb.AppendLine($"        if (message.{fieldName} < {field.MinValue})");
+                    sb.Append("        if (message.").Append(fieldName).Append(" < ").Append(field.MinValue).AppendLine(")");
                     sb.AppendLine("        {");
-                    sb.AppendLine($"            errorMessage = $\"{fieldName} must be greater than or equal to {field.MinValue}. Actual value was {{message.{fieldName}}}.\";");
+                    sb.Append("            errorMessage = $\"").Append(fieldName).Append(" must be greater than or equal to ").Append(field.MinValue).Append(". Actual value was {message.").Append(fieldName).AppendLine("}.\";");
                     sb.AppendLine("            return false;");
                     sb.AppendLine("        }");
                 }
                 else if (!string.IsNullOrEmpty(field.MaxValue))
                 {
-                    sb.AppendLine($"        if (message.{fieldName} > {field.MaxValue})");
+                    sb.Append("        if (message.").Append(fieldName).Append(" > ").Append(field.MaxValue).AppendLine(")");
                     sb.AppendLine("        {");
-                    sb.AppendLine($"            errorMessage = $\"{fieldName} must be less than or equal to {field.MaxValue}. Actual value was {{message.{fieldName}}}.\";");
+                    sb.Append("            errorMessage = $\"").Append(fieldName).Append(" must be less than or equal to ").Append(field.MaxValue).Append(". Actual value was {message.").Append(fieldName).AppendLine("}.\";");
                     sb.AppendLine("            return false;");
                     sb.AppendLine("        }");
                 }
@@ -148,11 +138,11 @@ namespace SbeSourceGenerator.Generators
 
             // Generate Validate method that calls TryValidate
             sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Validates all fields with constraints in {messageDto.Name}.");
+            sb.Append("    /// Validates all fields with constraints in ").Append(messageDto.Name).AppendLine(".");
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when a field value is outside its valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(this {messageDto.Name.FirstCharToUpper()} message)");
+            sb.Append("    public static void Validate(this ").Append(messageDto.Name.FirstCharToUpper()).AppendLine(" message)");
             sb.AppendLine("    {");
             sb.AppendLine("        if (!message.TryValidate(out string? errorMessage))");
             sb.AppendLine("        {");
@@ -163,12 +153,12 @@ namespace SbeSourceGenerator.Generators
 
             // Generate factory method
             sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Creates a validated instance of {messageDto.Name.FirstCharToUpper()}.");
+            sb.Append("    /// Creates a validated instance of ").Append(messageDto.Name.FirstCharToUpper()).AppendLine(".");
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"message\">The message to validate.</param>");
             sb.AppendLine($"    /// <returns>The validated message.</returns>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when a field value is outside its valid range.</exception>");
-            sb.AppendLine($"    public static {messageDto.Name.FirstCharToUpper()} CreateValidated(this {messageDto.Name.FirstCharToUpper()} message)");
+            sb.Append("    public static ").Append(messageDto.Name.FirstCharToUpper()).Append(" CreateValidated(this ").Append(messageDto.Name.FirstCharToUpper()).AppendLine(" message)");
             sb.AppendLine("    {");
             sb.AppendLine("        message.Validate();");
             sb.AppendLine("        return message;");
@@ -186,12 +176,12 @@ namespace SbeSourceGenerator.Generators
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("using System;");
             sb.AppendLine();
-            sb.AppendLine($"namespace {ns};");
+            sb.Append("namespace ").Append(ns).AppendLine(";");
             sb.AppendLine();
             sb.AppendLine($"/// <summary>");
-            sb.AppendLine($"/// Validation extension methods for {typeDto.Name}.");
+            sb.Append("/// Validation extension methods for ").Append(typeDto.Name).AppendLine(".");
             sb.AppendLine($"/// </summary>");
-            sb.AppendLine($"public static class {typeDto.Name}Validation");
+            sb.Append("public static class ").Append(typeDto.Name).AppendLine("Validation");
             sb.AppendLine("{");
 
             // Generate TryValidate method first (contains the core logic)
@@ -201,30 +191,30 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
             sb.AppendLine($"    /// <param name=\"errorMessage\">The error message if validation fails, or null if validation succeeds.</param>");
             sb.AppendLine($"    /// <returns>True if validation succeeds, false otherwise.</returns>");
-            sb.AppendLine($"    public static bool TryValidate(this {typeDto.Name} value, out string? errorMessage)");
+            sb.Append("    public static bool TryValidate(this ").Append(typeDto.Name).AppendLine(" value, out string? errorMessage)");
             sb.AppendLine("    {");
 
             if (!string.IsNullOrEmpty(typeDto.MinValue) && !string.IsNullOrEmpty(typeDto.MaxValue))
             {
-                sb.AppendLine($"        if (value.Value < {typeDto.MinValue} || value.Value > {typeDto.MaxValue})");
+                sb.Append("        if (value.Value < ").Append(typeDto.MinValue).Append(" || value.Value > ").Append(typeDto.MaxValue).AppendLine(")");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            errorMessage = $\"{typeDto.Name} must be between {typeDto.MinValue} and {typeDto.MaxValue}. Actual value was {{value.Value}}.\";");
+                sb.Append("            errorMessage = $\"").Append(typeDto.Name).Append(" must be between ").Append(typeDto.MinValue).Append(" and ").Append(typeDto.MaxValue).AppendLine(". Actual value was {value.Value}.\";");
                 sb.AppendLine("            return false;");
                 sb.AppendLine("        }");
             }
             else if (!string.IsNullOrEmpty(typeDto.MinValue))
             {
-                sb.AppendLine($"        if (value.Value < {typeDto.MinValue})");
+                sb.Append("        if (value.Value < ").Append(typeDto.MinValue).AppendLine(")");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            errorMessage = $\"{typeDto.Name} must be greater than or equal to {typeDto.MinValue}. Actual value was {{value.Value}}.\";");
+                sb.Append("            errorMessage = $\"").Append(typeDto.Name).Append(" must be greater than or equal to ").Append(typeDto.MinValue).AppendLine(". Actual value was {value.Value}.\";");
                 sb.AppendLine("            return false;");
                 sb.AppendLine("        }");
             }
             else if (!string.IsNullOrEmpty(typeDto.MaxValue))
             {
-                sb.AppendLine($"        if (value.Value > {typeDto.MaxValue})");
+                sb.Append("        if (value.Value > ").Append(typeDto.MaxValue).AppendLine(")");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            errorMessage = $\"{typeDto.Name} must be less than or equal to {typeDto.MaxValue}. Actual value was {{value.Value}}.\";");
+                sb.Append("            errorMessage = $\"").Append(typeDto.Name).Append(" must be less than or equal to ").Append(typeDto.MaxValue).AppendLine(". Actual value was {value.Value}.\";");
                 sb.AppendLine("            return false;");
                 sb.AppendLine("        }");
             }
@@ -240,7 +230,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when the value is outside the valid range.</exception>");
-            sb.AppendLine($"    public static void Validate(this {typeDto.Name} value)");
+            sb.Append("    public static void Validate(this ").Append(typeDto.Name).AppendLine(" value)");
             sb.AppendLine("    {");
             sb.AppendLine("        if (!value.TryValidate(out string? errorMessage))");
             sb.AppendLine("        {");
@@ -251,12 +241,12 @@ namespace SbeSourceGenerator.Generators
 
             // Generate factory method
             sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// Creates a validated instance of {typeDto.Name}.");
+            sb.Append("    /// Creates a validated instance of ").Append(typeDto.Name).AppendLine(".");
             sb.AppendLine($"    /// </summary>");
             sb.AppendLine($"    /// <param name=\"value\">The value to validate.</param>");
             sb.AppendLine($"    /// <returns>The validated value.</returns>");
             sb.AppendLine($"    /// <exception cref=\"ArgumentOutOfRangeException\">Thrown when the value is outside the valid range.</exception>");
-            sb.AppendLine($"    public static {typeDto.Name} CreateValidated(this {typeDto.Name} value)");
+            sb.Append("    public static ").Append(typeDto.Name).Append(" CreateValidated(this ").Append(typeDto.Name).AppendLine(" value)");
             sb.AppendLine("    {");
             sb.AppendLine("        value.Validate();");
             sb.AppendLine("        return value;");

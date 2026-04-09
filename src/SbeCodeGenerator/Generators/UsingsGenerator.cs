@@ -19,7 +19,7 @@ namespace SbeSourceGenerator
                 if (!emitted.Add(ns))
                     continue;
 
-                sb.AppendLine($"using {ns};", tabs);
+                sb.AppendTabs(tabs).Append("using ").Append(ns).AppendLine(";");
             }
         }
     }

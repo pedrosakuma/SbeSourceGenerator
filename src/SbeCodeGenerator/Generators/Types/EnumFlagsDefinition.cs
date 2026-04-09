@@ -9,10 +9,10 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendLine($"namespace {Namespace};", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(EnumFlagsDefinition));
-            sb.AppendLine($"[System.Flags]", tabs);
-            sb.AppendLine($"public enum {Name} : {EncodingType}", tabs);
+            sb.AppendTabs(tabs).AppendLine("[System.Flags]");
+            sb.AppendTabs(tabs).Append("public enum ").Append(Name).Append(" : ").Append(EncodingType).AppendLine();
             sb.AppendLine("{", tabs++);
             foreach (var field in Fields)
             {
@@ -20,7 +20,7 @@ namespace SbeSourceGenerator
                     sb.AppendSummary(Description, tabs, nameof(EnumFlagsDefinition));
 
                 string fieldValue = GetFlagValueLiteral(EncodingType, field.Value);
-                sb.AppendLine($"{field.Name} = {fieldValue},", tabs);
+                sb.AppendTabs(tabs).Append(field.Name).Append(" = ").Append(fieldValue).AppendLine(",");
             }
             sb.AppendLine("}", --tabs);
         }

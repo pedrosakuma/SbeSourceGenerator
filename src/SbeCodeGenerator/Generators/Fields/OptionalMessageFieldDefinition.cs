@@ -35,18 +35,18 @@ namespace SbeSourceGenerator
                 var deprecatedSince = string.IsNullOrEmpty(SinceVersion)
                     ? "This field is deprecated"
                     : $"This field is deprecated since version {SinceVersion}";
-                sb.AppendLine($"[Obsolete(\"{deprecatedSince}\")]", tabs);
+                sb.AppendTabs(tabs).Append("[Obsolete(\"").Append(deprecatedSince).AppendLine("\")]");
             }
-            sb.AppendLine($"[FieldOffset({Offset})]", tabs);
+            sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
             if (PrimitiveType != null)
             {
-                sb.AppendLine($"private {Type} {Name.FirstCharToLower()};", tabs);
-                sb.AppendLine($"public {Type}? {Name} => ({PrimitiveType}){Name.FirstCharToLower()} == {TypesCatalog.GetNullValue(PrimitiveType)} ? null : {Name.FirstCharToLower()};", tabs);
-                sb.AppendLine($"public void Set{Name}({Type}? value) => {Name.FirstCharToLower()} = value ?? ({Type}){TypesCatalog.GetNullValue(PrimitiveType)};", tabs);
+                sb.AppendTabs(tabs).Append("private ").Append(Type).Append(" ").Append(Name.FirstCharToLower()).AppendLine(";");
+                sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(Name.FirstCharToLower()).Append(" == ").Append(TypesCatalog.GetNullValue(PrimitiveType)).Append(" ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
+                sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(Name.FirstCharToLower()).Append(" = value ?? (").Append(Type).Append(")").Append(TypesCatalog.GetNullValue(PrimitiveType)).AppendLine(";");
             }
             else
             {
-                sb.AppendLine($"public {Type} {Name};", tabs);
+                sb.AppendTabs(tabs).Append("public ").Append(Type).Append(" ").Append(Name).AppendLine(";");
             }
         }
 
@@ -55,18 +55,18 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <summary>", tabs);
             if (!string.IsNullOrEmpty(description))
             {
-                sb.AppendLine($"/// {description}", tabs);
+                sb.AppendTabs(tabs).Append("/// ").Append(description).AppendLine();
             }
             else
             {
-                sb.AppendLine($"/// ", tabs);
+                sb.AppendTabs(tabs).AppendLine("/// ");
             }
             if (!string.IsNullOrEmpty(sinceVersion))
             {
-                sb.AppendLine($"/// ", tabs);
-                sb.AppendLine($"/// Since version {sinceVersion}", tabs);
+                sb.AppendTabs(tabs).AppendLine("/// ");
+                sb.AppendTabs(tabs).Append("/// Since version ").Append(sinceVersion).AppendLine();
             }
-            sb.AppendLine($"/// ({nameof(OptionalMessageFieldDefinition)})", tabs);
+            sb.AppendTabs(tabs).Append("/// (").Append(nameof(OptionalMessageFieldDefinition)).AppendLine(")");
             sb.AppendLine("/// </summary>", tabs);
         }
     }

@@ -10,22 +10,22 @@ namespace SbeSourceGenerator
         {
             bool blittable = Fields.All(f => f is IBlittable);
             sb.AppendUsings(tabs, "System.Runtime.InteropServices");
-            sb.AppendLine($"namespace {Namespace};", tabs);
+            sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
             sb.AppendSummary(Description, tabs, nameof(CompositeDefinition));
 
             if (blittable)
             {
                 sb.AppendLine("[StructLayout(LayoutKind.Sequential, Pack = 1)]", tabs);
-                sb.AppendLine($"public partial struct {Name}", tabs);
+                sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
             }
             else
-                sb.AppendLine($"public readonly ref partial struct {Name}", tabs);
+                sb.AppendTabs(tabs).Append("public readonly ref partial struct ").Append(Name).AppendLine();
 
             sb.AppendLine("{", tabs++);
             if (blittable)
             {
-                sb.AppendLine($"public const int MESSAGE_SIZE = {Fields.SumFieldLength()};", tabs);
-                sb.AppendLine($"public static bool TryParse(ReadOnlySpan<byte> buffer, out {Name} value, out ReadOnlySpan<byte> remaining)", tabs);
+                sb.AppendTabs(tabs).Append("public const int MESSAGE_SIZE = ").Append(Fields.SumFieldLength()).AppendLine(";");
+                sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, out ").Append(Name).AppendLine(" value, out ReadOnlySpan<byte> remaining)");
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
                 sb.AppendLine("{", tabs++);
@@ -33,7 +33,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("remaining = default;", tabs);
                 sb.AppendLine("return false;", tabs);
                 sb.AppendLine("}", --tabs);
-                sb.AppendLine($"value = MemoryMarshal.AsRef<{Name}>(buffer);", tabs);
+                sb.AppendTabs(tabs).Append("value = MemoryMarshal.AsRef<").Append(Name).AppendLine(">(buffer);");
                 sb.AppendLine("remaining = buffer.Slice(MESSAGE_SIZE);", tabs);
                 sb.AppendLine("return true;", tabs);
                 sb.AppendLine("}", --tabs);
@@ -48,12 +48,12 @@ namespace SbeSourceGenerator
                     if (field is ValueFieldDefinition vfd)
                     {
                         sb.AppendSummary(vfd.Description, tabs, nameof(ValueFieldDefinition));
-                        sb.AppendLine($"public readonly {vfd.PrimitiveType} {vfd.Name};", tabs);
+                        sb.AppendTabs(tabs).Append("public readonly ").Append(vfd.PrimitiveType).Append(" ").Append(vfd.Name).AppendLine(";");
                     }
                     else if (field is ArrayFieldDefinition afd)
                     {
                         sb.AppendSummary(afd.Description, tabs, nameof(ArrayFieldDefinition));
-                        sb.AppendLine($"public readonly ReadOnlySpan<{afd.PrimitiveType}> {afd.Name};", tabs);
+                        sb.AppendTabs(tabs).Append("public readonly ReadOnlySpan<").Append(afd.PrimitiveType).Append("> ").Append(afd.Name).AppendLine(";");
                     }
                     else
                     {
@@ -77,18 +77,18 @@ namespace SbeSourceGenerator
                 var arrayField = Fields.Where(f => f is ArrayFieldDefinition).Cast<ArrayFieldDefinition>().First();
 
                 sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs, nameof(CompositeDefinition));
-                sb.AppendLine($"public {Name}({valueField.PrimitiveType} {valueField.Name.FirstCharToLower()}, ReadOnlySpan<{arrayField.PrimitiveType}> {arrayField.Name.FirstCharToLower()})", tabs);
+                sb.AppendTabs(tabs).Append("public ").Append(Name).Append("(").Append(valueField.PrimitiveType).Append(" ").Append(valueField.Name.FirstCharToLower()).Append(", ReadOnlySpan<").Append(arrayField.PrimitiveType).Append("> ").Append(arrayField.Name.FirstCharToLower()).AppendLine(")");
                 sb.AppendLine("{", tabs++);
-                sb.AppendLine($"{valueField.Name} = {valueField.Name.FirstCharToLower()};", tabs);
-                sb.AppendLine($"{arrayField.Name} = {arrayField.Name.FirstCharToLower()};", tabs);
+                sb.AppendTabs(tabs).Append(valueField.Name).Append(" = ").Append(valueField.Name.FirstCharToLower()).AppendLine(";");
+                sb.AppendTabs(tabs).Append(arrayField.Name).Append(" = ").Append(arrayField.Name.FirstCharToLower()).AppendLine(";");
                 sb.AppendLine("}", --tabs);
                 sb.AppendLine("", tabs);
 
                 sb.AppendSummary("Create instance from buffer", tabs, nameof(CompositeDefinition));
-                sb.AppendLine($"public static {Name} Create(ReadOnlySpan<byte> buffer) => new {Name}(MemoryMarshal.AsRef<byte>(buffer), buffer.Slice(1));", tabs);
+                sb.AppendTabs(tabs).Append("public static ").Append(Name).Append(" Create(ReadOnlySpan<byte> buffer) => new ").Append(Name).AppendLine("(MemoryMarshal.AsRef<byte>(buffer), buffer.Slice(1));");
 
                 sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs, nameof(CompositeDefinition));
-                sb.AppendLine($"public delegate void Callback({Name} data);", tabs);
+                sb.AppendTabs(tabs).Append("public delegate void Callback(").Append(Name).AppendLine(" data);");
             }
             sb.AppendLine("}", --tabs);
         }

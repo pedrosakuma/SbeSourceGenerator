@@ -1,6 +1,6 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -14,8 +14,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <enum name='TestEnum' encodingType='uint8'>
@@ -26,7 +25,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -44,8 +43,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='CustomType' primitiveType='uint32' description='A custom type'/>
@@ -53,7 +51,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -69,8 +67,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <composite name='TestComposite' description='Test composite'>
@@ -81,7 +78,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -97,8 +94,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <set name='TestSet' encodingType='uint8'>
@@ -109,7 +105,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -129,8 +125,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='OrderId' primitiveType='uint64' description='Order identifier'/>
@@ -138,7 +133,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -154,8 +149,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='Price' primitiveType='int64' description='Price value'/>
@@ -163,7 +157,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -179,8 +173,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='Quantity' primitiveType='uint32' description='Quantity value'/>
@@ -188,7 +181,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -204,8 +197,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='UserId' primitiveType='int32' description='User identifier'/>
@@ -213,7 +205,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -229,8 +221,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <type name='TradeId' primitiveType='uint64' description='Trade identifier'/>
@@ -238,7 +229,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -263,8 +254,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange - Phase 3 Option 1: readonly ref structs
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <composite name='VarString8' description='Variable length UTF-8 string'>
@@ -275,7 +265,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -296,8 +286,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange - Phase 3 Option 1: ref struct constructors
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <composite name='VarString8' description='Variable length UTF-8 string'>
@@ -308,7 +297,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -327,8 +316,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange - Phase 3 Option 1: Create method should use constructor
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <composite name='VarString8' description='Variable length UTF-8 string'>
@@ -339,7 +327,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -359,8 +347,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange - Blittable composites should NOT be readonly ref structs
             var generator = new TypesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <messageSchema>
                     <types>
                         <composite name='MessageHeader' description='Message header'>
@@ -371,7 +358,7 @@ namespace SbeCodeGenerator.Tests
                 </messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();

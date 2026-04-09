@@ -10,8 +10,8 @@ namespace SbeSourceGenerator
             string nullValue = NullValue ?? TypesCatalog.GetNullValue(PrimitiveType);
             sb.AppendSummary(Description, tabs, nameof(NullableValueFieldDefinition));
             sb.AppendLine("#pragma warning disable CS0649", tabs);
-            sb.AppendLine($"private {PrimitiveType} {Name.FirstCharToLower()};", tabs);
-            sb.AppendLine($"public {PrimitiveType}? {Name} => {Name.FirstCharToLower()} == {nullValue} ? null : {Name.FirstCharToLower()};", tabs);
+            sb.AppendTabs(tabs).Append("private ").Append(PrimitiveType).Append(" ").Append(Name.FirstCharToLower()).AppendLine(";");
+            sb.AppendTabs(tabs).Append("public ").Append(PrimitiveType).Append("? ").Append(Name).Append(" => ").Append(Name.FirstCharToLower()).Append(" == ").Append(nullValue).Append(" ? null : ").Append(Name.FirstCharToLower()).AppendLine(";");
             sb.AppendLine("#pragma warning restore CS0649", tabs);
         }
     }

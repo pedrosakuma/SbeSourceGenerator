@@ -10,9 +10,9 @@ namespace SbeSourceGenerator
         {
             sb.AppendSummary(Description, tabs, nameof(ConstantTypeFieldDefinition));
             if (Value == "")
-                sb.AppendLine($"public const {PrimitiveType} {Name} = ({PrimitiveType}){ValueRef};", tabs);
+                sb.AppendTabs(tabs).Append("public const ").Append(PrimitiveType).Append(" ").Append(Name).Append(" = (").Append(PrimitiveType).Append(")").Append(ValueRef).AppendLine(";");
             else
-                sb.AppendLine($"public const {PrimitiveType} {Name} = {Value};", tabs);
+                sb.AppendTabs(tabs).Append("public const ").Append(PrimitiveType).Append(" ").Append(Name).Append(" = ").Append(Value).AppendLine(";");
         }
     }
 }

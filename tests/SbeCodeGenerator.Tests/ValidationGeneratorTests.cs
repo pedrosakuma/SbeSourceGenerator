@@ -2,7 +2,7 @@ using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Schema;
 using System.Linq;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
@@ -26,13 +26,12 @@ namespace SbeCodeGenerator.Tests
     </sbe:message>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.NotEmpty(results);
@@ -70,13 +69,12 @@ namespace SbeCodeGenerator.Tests
     </sbe:message>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.Empty(results);
@@ -96,13 +94,12 @@ namespace SbeCodeGenerator.Tests
     </types>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.Single(results);
@@ -125,13 +122,12 @@ namespace SbeCodeGenerator.Tests
     </types>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.Single(results);
@@ -156,13 +152,12 @@ namespace SbeCodeGenerator.Tests
     </sbe:message>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.Single(results);
@@ -190,13 +185,12 @@ namespace SbeCodeGenerator.Tests
     </sbe:message>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.NotEmpty(results);
@@ -233,13 +227,12 @@ namespace SbeCodeGenerator.Tests
     </sbe:message>
 </sbe:messageSchema>";
 
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            var schema = SchemaReader.Parse(xml);
             var context = new SchemaContext("test-schema");
             var generator = new ValidationGenerator();
 
             // Act
-            var results = generator.Generate("Test.Namespace", doc, context, default).ToList();
+            var results = generator.Generate("Test.Namespace", schema, context, default).ToList();
 
             // Assert
             Assert.NotEmpty(results);

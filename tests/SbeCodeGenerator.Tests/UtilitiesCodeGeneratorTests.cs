@@ -1,6 +1,6 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -14,11 +14,10 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new UtilitiesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+            var schema = SchemaReader.Parse("<messageSchema></messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -33,11 +32,10 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new UtilitiesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+            var schema = SchemaReader.Parse("<messageSchema></messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -52,11 +50,10 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new UtilitiesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+            var schema = SchemaReader.Parse("<messageSchema></messageSchema>");
 
             // Act
-            var results = generator.Generate("MyCustomNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("MyCustomNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -70,11 +67,10 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new UtilitiesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+            var schema = SchemaReader.Parse("<messageSchema></messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -89,11 +85,10 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new UtilitiesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml("<messageSchema></messageSchema>");
+            var schema = SchemaReader.Parse("<messageSchema></messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();

@@ -1,5 +1,5 @@
 using SbeSourceGenerator;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests
@@ -20,8 +20,7 @@ namespace SbeCodeGenerator.Tests
         public void ParseSchema_WithLittleEndianAttribute_SetsLittleEndian()
         {
             // Arrange
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"<?xml version=""1.0"" encoding=""UTF-8""?>
+            var schema = SchemaReader.Parse(@"<?xml version=""1.0"" encoding=""UTF-8""?>
                 <sbe:messageSchema xmlns:sbe=""http://fixprotocol.io/2016/sbe""
                                    byteOrder=""littleEndian"">
                 </sbe:messageSchema>");
@@ -29,14 +28,9 @@ namespace SbeCodeGenerator.Tests
             var context = new SchemaContext("test-schema");
 
             // Act
-            var messageSchemaNode = xmlDoc.DocumentElement;
-            if (messageSchemaNode != null)
+            if (!string.IsNullOrEmpty(schema.ByteOrder))
             {
-                var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-                if (!string.IsNullOrEmpty(byteOrderAttr))
-                {
-                    context.ByteOrder = byteOrderAttr;
-                }
+                context.ByteOrder = schema.ByteOrder;
             }
 
             // Assert
@@ -47,8 +41,7 @@ namespace SbeCodeGenerator.Tests
         public void ParseSchema_WithBigEndianAttribute_SetsBigEndian()
         {
             // Arrange
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"<?xml version=""1.0"" encoding=""UTF-8""?>
+            var schema = SchemaReader.Parse(@"<?xml version=""1.0"" encoding=""UTF-8""?>
                 <sbe:messageSchema xmlns:sbe=""http://fixprotocol.io/2016/sbe""
                                    byteOrder=""bigEndian"">
                 </sbe:messageSchema>");
@@ -56,14 +49,9 @@ namespace SbeCodeGenerator.Tests
             var context = new SchemaContext("test-schema");
 
             // Act
-            var messageSchemaNode = xmlDoc.DocumentElement;
-            if (messageSchemaNode != null)
+            if (!string.IsNullOrEmpty(schema.ByteOrder))
             {
-                var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-                if (!string.IsNullOrEmpty(byteOrderAttr))
-                {
-                    context.ByteOrder = byteOrderAttr;
-                }
+                context.ByteOrder = schema.ByteOrder;
             }
 
             // Assert
@@ -74,22 +62,16 @@ namespace SbeCodeGenerator.Tests
         public void ParseSchema_WithoutByteOrderAttribute_DefaultsToLittleEndian()
         {
             // Arrange
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"<?xml version=""1.0"" encoding=""UTF-8""?>
+            var schema = SchemaReader.Parse(@"<?xml version=""1.0"" encoding=""UTF-8""?>
                 <sbe:messageSchema xmlns:sbe=""http://fixprotocol.io/2016/sbe"">
                 </sbe:messageSchema>");
 
             var context = new SchemaContext("test-schema");
 
             // Act
-            var messageSchemaNode = xmlDoc.DocumentElement;
-            if (messageSchemaNode != null)
+            if (!string.IsNullOrEmpty(schema.ByteOrder))
             {
-                var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-                if (!string.IsNullOrEmpty(byteOrderAttr))
-                {
-                    context.ByteOrder = byteOrderAttr;
-                }
+                context.ByteOrder = schema.ByteOrder;
             }
 
             // Assert - should remain default

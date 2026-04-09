@@ -1,7 +1,7 @@
 using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using System.Linq;
-using System.Xml;
+using SbeSourceGenerator.Schema;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -15,8 +15,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='A test message'>
                         <field name='field1' id='1' type='uint32'/>
@@ -25,7 +24,7 @@ namespace SbeCodeGenerator.Tests
                 </sbe:messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -43,8 +42,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='A test message'>
                         <field name='field1' id='1' type='uint32'/>
@@ -53,7 +51,7 @@ namespace SbeCodeGenerator.Tests
                 </sbe:messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -69,8 +67,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='Message1' id='1' description='First message'>
                         <field name='field1' id='1' type='uint32'/>
@@ -81,7 +78,7 @@ namespace SbeCodeGenerator.Tests
                 </sbe:messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -96,8 +93,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='A test message'>
                         <field name='activeField' id='1' type='uint32' description='Active field'/>
@@ -106,7 +102,7 @@ namespace SbeCodeGenerator.Tests
                 </sbe:messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -129,8 +125,7 @@ namespace SbeCodeGenerator.Tests
             // Arrange
             var generator = new MessagesCodeGenerator();
             var context = new SchemaContext("test-schema");
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
                     <sbe:message name='TestMessage' id='1' description='A test message'>
                         <field name='activeField' id='1' type='uint32' description='Active field'/>
@@ -140,7 +135,7 @@ namespace SbeCodeGenerator.Tests
                 </sbe:messageSchema>");
 
             // Act
-            var results = generator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext));
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
 
             // Assert
             var resultList = results.ToList();
@@ -158,8 +153,7 @@ namespace SbeCodeGenerator.Tests
         public void Generate_WithGroupUsingUint16NumInGroup_ProducesUshortCast()
         {
             // Arrange - Schema with uint16 numInGroup (standard SBE default)
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
                                    package='test' id='1' version='0'>
                     <types>
@@ -187,10 +181,10 @@ namespace SbeCodeGenerator.Tests
 
             // Act - Run TypesCodeGenerator first to populate CompositeFieldTypes
             var typesGenerator = new TypesCodeGenerator();
-            _ = typesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+            _ = typesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
 
             var messagesGenerator = new MessagesCodeGenerator();
-            var results = messagesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+            var results = messagesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
 
             // Assert
             Assert.NotEmpty(results);
@@ -204,8 +198,7 @@ namespace SbeCodeGenerator.Tests
         public void Generate_WithGroupUsingUint32NumInGroup_ProducesUintCast()
         {
             // Arrange - Schema with uint32 numInGroup (like B3 market data)
-            var xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(@"
+            var schema = SchemaReader.Parse(@"
                 <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
                                    package='test' id='1' version='0'>
                     <types>
@@ -233,10 +226,10 @@ namespace SbeCodeGenerator.Tests
 
             // Act - Run TypesCodeGenerator first to populate CompositeFieldTypes
             var typesGenerator = new TypesCodeGenerator();
-            _ = typesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+            _ = typesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
 
             var messagesGenerator = new MessagesCodeGenerator();
-            var results = messagesGenerator.Generate("TestNamespace", xmlDoc, context, default(SourceProductionContext)).ToList();
+            var results = messagesGenerator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
 
             // Assert
             Assert.NotEmpty(results);
