@@ -17,7 +17,20 @@ namespace SbeSourceGenerator
             foreach (var field in Fields)
             {
                 if (field.Description != "")
-                    sb.AppendSummary(Description, tabs, nameof(EnumFlagsDefinition));
+                    sb.AppendSummary(field.Description, tabs, nameof(EnumFlagsDefinition));
+                else if (!string.IsNullOrEmpty(field.SinceVersion))
+                {
+                    sb.AppendTabs(tabs).AppendLine("/// <summary>");
+                    sb.AppendTabs(tabs).Append("/// Since version ").AppendLine(field.SinceVersion);
+                    sb.AppendTabs(tabs).AppendLine("/// </summary>");
+                }
+                if (!string.IsNullOrEmpty(field.Deprecated))
+                {
+                    var msg = string.IsNullOrEmpty(field.SinceVersion)
+                        ? "This value is deprecated"
+                        : $"This value is deprecated since version {field.SinceVersion}";
+                    sb.AppendTabs(tabs).Append("[Obsolete(\"").Append(msg).AppendLine("\")]");
+                }
 
                 string fieldValue = GetFlagValueLiteral(EncodingType, field.Value);
                 sb.AppendTabs(tabs).Append(field.Name).Append(" = ").Append(fieldValue).AppendLine(",");

@@ -90,7 +90,9 @@ namespace SbeSourceGenerator.Generators
                 .Select(x => new EnumFieldDefinition(
                     x.choice.Name,
                     x.choice.Description,
-                    x.parsedValue?.ToString() ?? "0"
+                    x.parsedValue?.ToString() ?? "0",
+                    x.choice.SinceVersion,
+                    x.choice.Deprecated
                 ))
                 .ToList();
 
@@ -242,7 +244,9 @@ namespace SbeSourceGenerator.Generators
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
                             choice.Description,
-                            choice.InnerText
+                            choice.InnerText,
+                            choice.SinceVersion,
+                            choice.Deprecated
                         ))
                         .ToList()
                 ),
@@ -257,7 +261,9 @@ namespace SbeSourceGenerator.Generators
                         .Select(choice => new EnumFieldDefinition(
                             choice.Name,
                             choice.Description,
-                            choice.InnerText
+                            choice.InnerText,
+                            choice.SinceVersion,
+                            choice.Deprecated
                         ))
                         .ToList()
                 )
