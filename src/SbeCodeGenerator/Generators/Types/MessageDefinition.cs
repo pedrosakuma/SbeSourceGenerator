@@ -280,6 +280,13 @@ namespace SbeSourceGenerator
                     sb.AppendLine("break;", tabs);
                     sb.AppendLine("}", --tabs);
                     sb.AppendTabs(tabs).Append("callback").Append(group.Name).AppendLine("(data);");
+                    // Read group-level variable data after each entry
+                    foreach (var groupData in group.TypedDatas)
+                    {
+                        sb.AppendTabs(tabs).Append("var datas").Append(groupData.Name).Append(" = ").Append(groupData.Type).AppendLine(".Create(reader.Remaining);");
+                        sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append(groupData.Name).Append("(datas").Append(groupData.Name).AppendLine(");");
+                        sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(groupData.Name).AppendLine(".TotalLength);");
+                    }
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("}", --tabs);
                 }
@@ -540,7 +547,11 @@ namespace SbeSourceGenerator
         {
             var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
             foreach (var group in TypedGroups)
+            {
                 parts.Add($"Action<{group.Name}Data> callback{group.Name}");
+                foreach (var groupData in group.TypedDatas)
+                    parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");
+            }
             foreach (var data in TypedDatas)
                 parts.Add($"{data.Type}.Callback callback{data.Name}");
             return string.Join(", ", parts);
@@ -550,7 +561,11 @@ namespace SbeSourceGenerator
         {
             var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
             foreach (var group in TypedGroups)
+            {
                 parts.Add($"callback{group.Name}");
+                foreach (var groupData in group.TypedDatas)
+                    parts.Add($"callback{group.Name}{groupData.Name}");
+            }
             foreach (var data in TypedDatas)
                 parts.Add($"callback{data.Name}");
             return string.Join(", ", parts);

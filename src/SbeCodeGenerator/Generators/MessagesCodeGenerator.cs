@@ -303,7 +303,8 @@ namespace SbeSourceGenerator.Generators
                     group.Description,
                     groupFields,
                     groupConstants,
-                    numInGroupType
+                    numInGroupType,
+                    group.Data != null ? BuildData(group.Data, context) : null
                 ));
             }
             return result;
