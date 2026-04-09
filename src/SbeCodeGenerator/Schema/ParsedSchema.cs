@@ -18,6 +18,7 @@ namespace SbeSourceGenerator.Schema
         List<SchemaCompositeDto> Composites,
         List<SchemaEnumDto> Enums,
         List<SchemaEnumDto> Sets,
-        List<SchemaMessageDto> Messages
+        List<SchemaMessageDto> Messages,
+        string HeaderType = "messageHeader"
     );
 }

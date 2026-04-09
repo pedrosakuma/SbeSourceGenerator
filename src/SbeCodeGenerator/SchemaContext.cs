@@ -52,6 +52,12 @@ namespace SbeSourceGenerator
         /// </summary>
         public string ByteOrder { get; set; } = "littleEndian";
 
+        /// <summary>
+        /// The composite type name used for the message header.
+        /// Defaults to "messageHeader" per SBE spec.
+        /// </summary>
+        public string HeaderType { get; set; } = "messageHeader";
+
         public string CreateHintName(params string[] segments)
         {
             var builder = new StringBuilder(SchemaKey);
