@@ -688,5 +688,65 @@ namespace SbeCodeGenerator.Tests
             Assert.True(context.CompositeFieldTypes.ContainsKey("Quote.decimal"));
             Assert.Equal("Decimal", context.CompositeFieldTypes["Quote.decimal"]);
         }
+
+        [Fact]
+        public void Generate_WithNestedComposite_GeneratesBothTypes()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='Outer' description='Outer composite'>
+                            <type name='id' primitiveType='uint32'/>
+                            <composite name='Inner' description='Inner composite'>
+                                <type name='value1' primitiveType='uint16'/>
+                                <type name='value2' primitiveType='uint8'/>
+                            </composite>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Inner composite should be generated as its own type
+            var innerResult = results.FirstOrDefault(r => r.name.Contains("Inner"));
+            Assert.NotEqual(default, innerResult);
+            Assert.Contains("public partial struct Inner", innerResult.content);
+            Assert.Contains("MESSAGE_SIZE = 3;", innerResult.content);
+
+            // Outer composite should embed Inner as a field
+            var outerResult = results.FirstOrDefault(r => r.name.Contains("Outer") && !r.name.Contains("Inner"));
+            Assert.NotEqual(default, outerResult);
+            Assert.Contains("public Inner Inner;", outerResult.content);
+            // Outer size: uint32(4) + Inner(3) = 7
+            Assert.Contains("MESSAGE_SIZE = 7;", outerResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNestedEnumInComposite_GeneratesEnum()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='Tagged' description='Tagged composite'>
+                            <type name='value' primitiveType='uint32'/>
+                            <enum name='TagType' encodingType='uint8'>
+                                <validValue name='A'>0</validValue>
+                                <validValue name='B'>1</validValue>
+                            </enum>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Nested enum should be generated
+            var enumResult = results.FirstOrDefault(r => r.name.Contains("TagType"));
+            Assert.NotEqual(default, enumResult);
+            Assert.Contains("enum TagType", enumResult.content);
+        }
     }
 }

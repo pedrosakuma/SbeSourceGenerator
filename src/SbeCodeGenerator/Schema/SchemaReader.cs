@@ -148,6 +148,9 @@ namespace SbeSourceGenerator.Schema
             string semanticType = reader.GetAttribute("semanticType") ?? "";
 
             var fields = new List<SchemaFieldDto>(16);
+            var nestedComposites = new List<SchemaCompositeDto>();
+            var nestedEnums = new List<SchemaEnumDto>();
+
             if (!reader.IsEmptyElement)
             {
                 int depth = reader.Depth;
@@ -156,11 +159,42 @@ namespace SbeSourceGenerator.Schema
                     if (reader.NodeType == XmlNodeType.EndElement && reader.Depth == depth)
                         break;
                     if (reader.NodeType == XmlNodeType.Element)
-                        fields.Add(ReadField(reader, sourceContext));
+                    {
+                        switch (reader.LocalName)
+                        {
+                            case "composite":
+                                var nested = ReadComposite(reader, sourceContext);
+                                nestedComposites.Add(nested);
+                                // Add a ref-like field placeholder to preserve ordering
+                                fields.Add(new SchemaFieldDto(nested.Name, nested.Description,
+                                    "", "", "", "", "", "", "", "", nested.Name, "", "", "", ""));
+                                break;
+                            case "enum":
+                                var nestedEnum = ReadEnum(reader, sourceContext);
+                                nestedEnums.Add(nestedEnum);
+                                break;
+                            case "set":
+                                // Sets inside composites are handled similarly to enums
+                                // Skip the set element content for now
+                                if (!reader.IsEmptyElement)
+                                {
+                                    int setDepth = reader.Depth;
+                                    while (reader.Read())
+                                    {
+                                        if (reader.NodeType == XmlNodeType.EndElement && reader.Depth == setDepth)
+                                            break;
+                                    }
+                                }
+                                break;
+                            default:
+                                fields.Add(ReadField(reader, sourceContext));
+                                break;
+                        }
+                    }
                 }
             }
 
-            return new SchemaCompositeDto(name, desc, semanticType, fields);
+            return new SchemaCompositeDto(name, desc, semanticType, fields, nestedComposites, nestedEnums);
         }
 
         private static SchemaEnumDto ReadEnum(XmlReader reader, SourceProductionContext sourceContext)
