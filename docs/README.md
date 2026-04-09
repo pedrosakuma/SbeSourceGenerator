@@ -11,7 +11,6 @@ This folder contains documentation for the SBE Code Generator project.
 
 - **[SBE_FEATURE_COMPLETENESS.md](./SBE_FEATURE_COMPLETENESS.md)** - Current feature implementation status
 - **[SBE_IMPLEMENTATION_ROADMAP.md](./SBE_IMPLEMENTATION_ROADMAP.md)** - Development roadmap
-- **[SBE_FEATURE_GAPS.md](./SBE_FEATURE_GAPS.md)** - Known feature gaps
 - **[SBE_GENERATORS_COMPARISON.md](./SBE_GENERATORS_COMPARISON.md)** - Comparison with other SBE generators
 
 ## Feature Documentation
@@ -29,7 +28,6 @@ This folder contains documentation for the SBE Code Generator project.
 
 ### Encoding (SpanWriter)
 - **[FLUENT_ENCODER_API.md](./FLUENT_ENCODER_API.md)** - Fluent encoding API
-- **[WRITING_SUPPORT_README.md](./WRITING_SUPPORT_README.md)** - Writing support overview
 
 ### Validation
 - **[VALIDATION_PATTERNS.md](./VALIDATION_PATTERNS.md)** - Design comparison of all validation patterns

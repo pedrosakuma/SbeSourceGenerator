@@ -679,6 +679,6 @@ reader.TryRead<T>(out var data);
 
 ## See Also
 
-- [Full Evaluation Study](./SPAN_READER_EVALUATION.md) - Detailed analysis and design decisions
+- [Design Rationale](./SPAN_READER_DESIGN_RATIONALE.md) - Design decisions and tradeoffs
 - [Implementation Summary](./SPAN_READER_IMPLEMENTATION_SUMMARY.md) - Technical implementation details
-- [Executive Summary (PT)](./SPAN_READER_RESUMO_EXECUTIVO.md) - Portuguese summary for stakeholders
+- [Extensibility](./SPAN_READER_EXTENSIBILITY.md) - Advanced features and custom parsing patterns

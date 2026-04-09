@@ -4,9 +4,9 @@ This document tracks the implementation status of features from the [FIX SBE Spe
 
 ## Overview
 
-**Last Updated**: 2025-10-15  
+**Last Updated**: 2026-04-09  
 **SBE Specification Version**: 1.0  
-**Generator Version**: Based on PcapSbePocConsole implementation
+**Generator Version**: 0.4.0
 
 ## Feature Implementation Status
 
@@ -504,55 +504,34 @@ See: `ARCHITECTURE_DIAGRAMS.md`, `IMPLEMENTATION_SUMMARY.md`
 
 ### SBE 1.0 Specification Compliance
 
-| Feature Category | Status | Completeness |
-|------------------|--------|--------------|
-| **Core Types & Encoding** | ✅ Implemented | 100% |
-| **Messages** | ✅ Implemented | 95% |
-| **Composites** | ✅ Implemented | 100% |
-| **Enums & Sets** | ✅ Implemented | 100% |
-| **Repeating Groups** | ✅ Implemented | 90% |
-| **Nested Groups** | ❌ Not Implemented | 0% |
-| **Optional Fields** | ✅ Implemented | 100% |
-| **Constant Fields** | ✅ Implemented | 100% |
-| **Variable Data** | ✅ Implemented | 90% |
-| **Schema Versioning** | ✅ Implemented | 95% |
-| **Validation** | ✅ Implemented | 100% |
-| **Byte Order** | ✅ Implemented | 100% |
+| Feature Category | Status | Notes |
+|------------------|--------|-------|
+| **Primitive Types** (int8–uint64, char, float, double) | ✅ Implemented | All 11 SBE primitives mapped to C# |
+| **Type Definitions** (presence, nullValue, length, minValue/maxValue) | ✅ Implemented | `characterEncoding` parsed but not used ([#96](https://github.com/pedrosakuma/SbeSourceGenerator/issues/96)) |
+| **Composite Types** | ⚠️ Partial | Flat composites work. Nested composites, `<ref>`, inline enum/set **not supported** ([#88](https://github.com/pedrosakuma/SbeSourceGenerator/issues/88), [#89](https://github.com/pedrosakuma/SbeSourceGenerator/issues/89)) |
+| **Enums** | ✅ Implemented | `sinceVersion`/`deprecated` on validValues not applied ([#94](https://github.com/pedrosakuma/SbeSourceGenerator/issues/94)) |
+| **Sets (Bitsets)** | ✅ Implemented | Max 64 choices not validated ([#98](https://github.com/pedrosakuma/SbeSourceGenerator/issues/98)) |
+| **Messages** | ⚠️ Partial | Explicit `blockLength` not read from schema ([#93](https://github.com/pedrosakuma/SbeSourceGenerator/issues/93)). Custom `headerType` not supported ([#92](https://github.com/pedrosakuma/SbeSourceGenerator/issues/92)) |
+| **Fields** | ✅ Implemented | `presence`, `offset`, `valueRef`, `sinceVersion`, `deprecated` all work. `epoch`/`timeUnit` not parsed (deprecated in spec) |
+| **Repeating Groups** | ⚠️ Partial | Flat groups work. **Nested groups not supported** ([#90](https://github.com/pedrosakuma/SbeSourceGenerator/issues/90)). Data in groups not supported ([#91](https://github.com/pedrosakuma/SbeSourceGenerator/issues/91)). Explicit `blockLength` on groups not read ([#93](https://github.com/pedrosakuma/SbeSourceGenerator/issues/93)) |
+| **Variable Data** | ✅ Implemented | uint8 and uint16 length prefixes. uint32 not supported ([#97](https://github.com/pedrosakuma/SbeSourceGenerator/issues/97)). `sinceVersion` on data not parsed ([#95](https://github.com/pedrosakuma/SbeSourceGenerator/issues/95)) |
+| **Optional Fields** | ✅ Implemented | Null sentinel values fully supported |
+| **Constant Fields** | ✅ Implemented | In messages, composites, and groups |
+| **Schema Versioning** | ✅ Implemented | `sinceVersion`, `deprecated`, block length extension |
+| **Validation** | ✅ Implemented | minValue/maxValue range checks |
+| **Byte Order** | ✅ Implemented | Little-endian and big-endian with runtime detection |
 
-**Overall Completeness**: ~92-95% of SBE 1.0 specification
+Open gaps tracked at: [spec-compliance issues](https://github.com/pedrosakuma/SbeSourceGenerator/labels/spec-compliance)
 
 ---
 
 ## Recommendations
 
-### High Priority — Completed ✅
+All spec compliance gaps and feature requests are tracked as [GitHub issues](https://github.com/pedrosakuma/SbeSourceGenerator/labels/spec-compliance). Key gaps:
 
-1. ~~**Variable-Length Data Support** (varData)~~ — ✅ Implemented
-   - `<data>` element parsing and code generation
-   - Length prefix handling (VarString8, VarData)
-   - UTF-8 strings and binary blobs
-
-2. ~~**Deprecated Field Marking**~~ — ✅ Implemented (see Section 18)
-   - `[Obsolete]` attributes on deprecated fields
-   - Compiler warnings for usage
-
-### Medium Priority
-   - ✅ Generate validation methods
-
-5. **Byte Order Handling**
-   - ✅ Implemented and tested
-   - Parse `byteOrder` attribute from schema
-   - Support both little-endian and big-endian encoding/decoding
-
-### Low Priority
-
-6. **Custom Encoding Hooks**
-   - Design extensibility API
-   - Allow custom serialization logic
-
-7. **Multi-Schema Support**
-   - Test and document cross-schema references
-   - Improve namespace handling
+- **High priority**: Composite `<ref>` support ([#88](https://github.com/pedrosakuma/SbeSourceGenerator/issues/88)), nested composites ([#89](https://github.com/pedrosakuma/SbeSourceGenerator/issues/89)), nested groups ([#90](https://github.com/pedrosakuma/SbeSourceGenerator/issues/90))
+- **Medium priority**: Data in groups ([#91](https://github.com/pedrosakuma/SbeSourceGenerator/issues/91)), custom headerType ([#92](https://github.com/pedrosakuma/SbeSourceGenerator/issues/92)), explicit blockLength ([#93](https://github.com/pedrosakuma/SbeSourceGenerator/issues/93))
+- **Low priority**: Enum versioning ([#94](https://github.com/pedrosakuma/SbeSourceGenerator/issues/94)), data sinceVersion ([#95](https://github.com/pedrosakuma/SbeSourceGenerator/issues/95)), characterEncoding ([#96](https://github.com/pedrosakuma/SbeSourceGenerator/issues/96)), extended varData ([#97](https://github.com/pedrosakuma/SbeSourceGenerator/issues/97)), set validation ([#98](https://github.com/pedrosakuma/SbeSourceGenerator/issues/98))
 
 ---
 
