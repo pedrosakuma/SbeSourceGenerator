@@ -44,7 +44,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="0.1.0-preview.1" />
+  <PackageReference Include="SbeSourceGenerator" Version="0.4.0" />
 </ItemGroup>
 ```
 
@@ -288,7 +288,7 @@ dotnet test SbeCodeGenerator.IntegrationTests
 dotnet test
 ```
 
-**Current Status**: All tests passing ✅
+**Current Status**: Unit and integration tests passing ✅ (see CI badge above)
 
 See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 
@@ -297,7 +297,6 @@ See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for testing guidelines.
 - **[CI/CD Pipeline](./docs/CICD_PIPELINE.md)** - CI/CD configuration and NuGet publishing
 - **[SBE Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md)** - Detailed feature implementation status
 - **[SBE Generators Comparison](./docs/SBE_GENERATORS_COMPARISON.md)** - Competitive analysis vs other SBE generators
-- **[Análise Competitiva SBE](./docs/ANALISE_COMPETITIVA_SBE.md)** - Competitive analysis (Portuguese)
 - **[Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md)** - Future development plans
 - **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture
 - **[Testing Guide](./docs/TESTING_GUIDE.md)** - How to test the generator
@@ -322,6 +321,8 @@ SbeSourceGenerator/
 ├── examples/                     # Example applications
 │   ├── SbeBinanceConsole/       # Binance market data processing
 │   └── HighPerformanceMarketData/ # High-performance SBE patterns
+├── benchmarks/                   # BenchmarkDotNet performance benchmarks
+├── profiling/                    # Profiling tools and scripts
 └── docs/                        # Documentation files
 ```
 
@@ -343,27 +344,26 @@ The generated code is designed for high performance:
 
 **Benchmark Infrastructure**: Comprehensive benchmarks using BenchmarkDotNet are available in the `benchmarks/` directory.
 
-See [Performance Tuning Guide](./docs/PERFORMANCE_TUNING_GUIDE.md) for optimization best practices and [Benchmark Results](./docs/BENCHMARK_RESULTS.md) for detailed performance analysis.
+See [Performance Tuning Guide](./docs/PERFORMANCE_TUNING_GUIDE.md) for optimization best practices.
 
 ## Compliance
 
-**SBE 1.0 Specification Compliance**: ~92-95%
+The generator implements the core SBE 1.0 features needed for most use cases. Known spec gaps (nested groups, nested composites, `<ref>` in composites, custom `headerType`) are tracked as [GitHub issues](https://github.com/pedrosakuma/SbeSourceGenerator/labels/spec-compliance).
 
-The generator implements the core SBE features needed for most use cases. See the [Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md) document for what's currently supported and what's planned.
+See [Feature Completeness](./docs/SBE_FEATURE_COMPLETENESS.md) for the full compliance matrix.
 
 ## Contributing
 
 Contributions are welcome! Priority areas:
 
 **High Impact, Easy**:
-- Add more tests
+- Add more tests and example schemas
 - Improve documentation
-- Add example schemas
 
 **High Impact, Medium**:
-- Implement variable-length data support
-- Add validation constraints
-- Improve diagnostics
+- Nested groups (groups within groups)
+- Extended varData types (VarString16, VarString32)
+- Custom encoding/decoding hooks
 
 See [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for more opportunities.
 
@@ -376,9 +376,9 @@ See [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for more oppo
 
 ## Requirements
 
-- .NET 9.0 SDK or later
-- C# 12.0 language features
-- Roslyn Source Generators support
+- .NET SDK 9.0+ (for building examples and tests)
+- The generator itself targets **netstandard2.0** and works with any compatible runtime
+- Roslyn Source Generators support (Visual Studio 2022+, .NET SDK 6.0+)
 
 ## References
 
@@ -400,5 +400,4 @@ For questions, issues, or feature requests:
 ---
 
 **Status**: Active Development  
-**Version**: Pre-1.0 (see roadmap for 1.0 timeline)  
-**Last Updated**: 2025-10-15
+**Version**: 0.4.0 (see [Changelog](./CHANGELOG.md))

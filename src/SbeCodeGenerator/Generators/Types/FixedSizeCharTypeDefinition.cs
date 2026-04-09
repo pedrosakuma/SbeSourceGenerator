@@ -21,17 +21,14 @@ namespace SbeSourceGenerator
                 sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
                 sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
                 sb.AppendTabs(tabs).Append("[System.Runtime.CompilerServices.InlineArray(").Append(Length).AppendLine(")]");
-                sb.AppendTabs(tabs).Append("public unsafe struct ").Append(Name).AppendLine();
+                sb.AppendTabs(tabs).Append("public struct ").Append(Name).AppendLine();
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("private byte value;", tabs);
                 sb.AppendLine("public override string ToString()", tabs);
                 sb.AppendLine("{", tabs++);
-                sb.AppendLine("fixed (byte* ptr = &value)", tabs);
-                sb.AppendLine("{", tabs++);
-                sb.AppendTabs(tabs).Append("var span = new Span<byte>(ptr, ").Append(Length).AppendLine(");");
+                sb.AppendLine("ReadOnlySpan<byte> span = this;", tabs);
                 sb.AppendTabs(tabs).AppendLine("var index = span.IndexOf((byte)0);");
-                sb.AppendTabs(tabs).Append("return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((nint)ptr, index == -1 ? ").Append(Length).AppendLine(" : index)!;");
-                sb.AppendLine("}", --tabs);
+                sb.AppendTabs(tabs).Append("return System.Text.Encoding.Latin1.GetString(span.Slice(0, index == -1 ? ").Append(Length).AppendLine(" : index));");
                 sb.AppendLine("}", --tabs);
                 sb.AppendLine("}", --tabs);
             }

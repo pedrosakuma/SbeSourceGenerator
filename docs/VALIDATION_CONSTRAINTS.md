@@ -355,4 +355,3 @@ For existing codebases:
 
 - [SBE Implementation Roadmap](./SBE_IMPLEMENTATION_ROADMAP.md) - Phase 2.1: Validation Constraints
 - [SBE Feature Completeness](./SBE_FEATURE_COMPLETENESS.md) - Feature #14: Validation Constraints
-- [SBE Checklist](./SBE_CHECKLIST.md) - Validation constraints implementation status

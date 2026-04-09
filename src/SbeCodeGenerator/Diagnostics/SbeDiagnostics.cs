@@ -108,5 +108,14 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "A primitive type used in the schema does not have a known mapping in the type catalog. The generator will use a fallback value (0 for length, 'default' for null sentinel), but the generated code may be incorrect. Verify the type name in the schema.");
+        // SBE011: Set choice exceeds encoding type bit width
+        public static readonly DiagnosticDescriptor SetChoiceExceedsBitWidth = new DiagnosticDescriptor(
+            id: "SBE011",
+            title: "Set choice exceeds encoding type bit width",
+            messageFormat: "Choice '{0}' in set '{1}' has bit position {2} which exceeds the maximum ({3}) for encoding type '{4}'",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A set choice bit position must be less than the bit width of the encoding type (e.g., 0-7 for uint8, 0-15 for uint16). Choices exceeding the width are excluded from generated code.");
     }
 }

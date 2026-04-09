@@ -117,6 +117,108 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("Flag2", setResult.content);
         }
 
+        [Fact]
+        public void Generate_WithSet_ChoiceExceedsBitWidth_ExcludesInvalidChoice()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='BadSet' encodingType='uint8'>
+                            <choice name='ValidFlag'>7</choice>
+                            <choice name='InvalidFlag'>8</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var setResult = resultList.FirstOrDefault(r => r.name.Contains("BadSet"));
+            Assert.NotEqual(default, setResult);
+            Assert.Contains("ValidFlag", setResult.content);
+            Assert.DoesNotContain("InvalidFlag", setResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSet_Uint8MaxBitPosition_IsValid()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='FullSet' encodingType='uint8'>
+                            <choice name='Bit0'>0</choice>
+                            <choice name='Bit1'>1</choice>
+                            <choice name='Bit2'>2</choice>
+                            <choice name='Bit3'>3</choice>
+                            <choice name='Bit4'>4</choice>
+                            <choice name='Bit5'>5</choice>
+                            <choice name='Bit6'>6</choice>
+                            <choice name='Bit7'>7</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var setResult = resultList.FirstOrDefault(r => r.name.Contains("FullSet"));
+            Assert.NotEqual(default, setResult);
+            Assert.Contains("Bit0", setResult.content);
+            Assert.Contains("Bit7", setResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSet_Uint16_ChoiceExceedsBitWidth_ExcludesInvalidChoice()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='WideSet' encodingType='uint16'>
+                            <choice name='ValidFlag'>15</choice>
+                            <choice name='InvalidFlag'>16</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var setResult = resultList.FirstOrDefault(r => r.name.Contains("WideSet"));
+            Assert.NotEqual(default, setResult);
+            Assert.Contains("ValidFlag", setResult.content);
+            Assert.DoesNotContain("InvalidFlag", setResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSet_Uint64_MaxBitPosition63_IsValid()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='BigSet' encodingType='uint64'>
+                            <choice name='LowBit'>0</choice>
+                            <choice name='HighBit'>63</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            var resultList = results.ToList();
+            var setResult = resultList.FirstOrDefault(r => r.name.Contains("BigSet"));
+            Assert.NotEqual(default, setResult);
+            Assert.Contains("LowBit", setResult.content);
+            Assert.Contains("HighBit", setResult.content);
+        }
+
         // ===== Phase 1 Feature Tests =====
 
         [Fact]

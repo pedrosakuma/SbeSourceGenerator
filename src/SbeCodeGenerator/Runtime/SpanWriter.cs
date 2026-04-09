@@ -132,7 +132,7 @@ namespace SbeSourceGenerator.Runtime
         public void Write<T>(T value) where T : struct
         {
             if (!TryWrite(value))
-                throw new InvalidOperationException($"Insufficient buffer space to write {typeof(T).Name}. Required: {Unsafe.SizeOf<T>()}, Available: {RemainingBytes}");
+                throw new InvalidOperationException($"Insufficient buffer space. Required: {Unsafe.SizeOf<T>()} bytes, Available: {RemainingBytes}");
         }
 
         /// <summary>
@@ -290,7 +290,7 @@ namespace SbeSourceGenerator.Runtime
         public void WriteWith<T>(SpanEncoder<T> encoder, T value)
         {
             if (!TryWriteWith(encoder, value))
-                throw new InvalidOperationException($"Failed to encode {typeof(T).Name} using custom encoder");
+                throw new InvalidOperationException($"Failed to encode value using custom encoder. Available: {RemainingBytes} bytes");
         }
     }
 }

@@ -344,7 +344,7 @@ Based on design analysis:
 2. `/tests/SbeCodeGenerator.Tests/Runtime/SpanReaderTests.cs` - Unit tests
 3. `/tests/SbeCodeGenerator.IntegrationTests/SpanReaderIntegrationTests.cs` - Integration tests
 4. `/benchmarks/SpanReaderBenchmark.cs` - Performance benchmarks
-5. `/docs/SPAN_READER_EVALUATION.md` - Detailed evaluation study
+5. `/docs/SPAN_READER_DESIGN_RATIONALE.md` - Design decisions and tradeoffs
 6. `/docs/SPAN_READER_IMPLEMENTATION_SUMMARY.md` - This document
 
 ## Test Results
