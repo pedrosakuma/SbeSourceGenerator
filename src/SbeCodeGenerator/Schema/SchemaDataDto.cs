@@ -7,6 +7,7 @@ namespace SbeSourceGenerator.Schema
         string Name,
         string Id,
         string Type,
-        string Description
+        string Description,
+        string SinceVersion = ""
     );
 }
