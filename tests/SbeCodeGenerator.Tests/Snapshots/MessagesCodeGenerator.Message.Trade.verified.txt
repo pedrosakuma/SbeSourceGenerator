@@ -21,6 +21,11 @@ public partial struct TradeData
 	/// </summary>
 	public const int MESSAGE_SIZE = 25;
 	/// <summary>
+	/// Block length for wire protocol
+	/// (ConstantMessageFieldDefinition)
+	/// </summary>
+	public const int BLOCK_LENGTH = MESSAGE_SIZE;
+	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
@@ -47,7 +52,7 @@ public partial struct TradeData
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, out TradeData message, out ReadOnlySpan<byte> variableData)
 	{
-		return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);
+		return TryParse(buffer, BLOCK_LENGTH, out message, out variableData);
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)

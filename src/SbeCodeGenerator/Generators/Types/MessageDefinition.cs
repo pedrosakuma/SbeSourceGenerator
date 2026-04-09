@@ -6,7 +6,7 @@ namespace SbeSourceGenerator
 {
     public record MessageDefinition(string Namespace, string RuntimeNamespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
-        List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas) : IFileContentGenerator
+        List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas, string SchemaBlockLength = "") : IFileContentGenerator
     {
         private List<GroupDefinition>? _typedGroups;
         private List<DataFieldDefinition>? _typedDatas;
@@ -71,7 +71,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, out ").Append(Name).AppendLine("Data message, out ReadOnlySpan<byte> variableData)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).AppendLine("return TryParse(buffer, MESSAGE_SIZE, out message, out variableData);");
+            sb.AppendTabs(tabs).AppendLine("return TryParse(buffer, BLOCK_LENGTH, out message, out variableData);");
             sb.AppendLine("}", --tabs);
 
             // TryParse with blockLength parameter for schema evolution support
@@ -304,6 +304,13 @@ namespace SbeSourceGenerator
                 Id.ToString()).AppendFileContent(sb, tabs);
             new ConstantMessageFieldDefinition("MessageSize", "Size", "int", "Message Size",
                 Fields.SumFieldLength().ToString()).AppendFileContent(sb, tabs);
+
+            string blockLengthValue = !string.IsNullOrEmpty(SchemaBlockLength)
+                ? SchemaBlockLength
+                : "MESSAGE_SIZE";
+            new ConstantMessageFieldDefinition("BlockLength", "BlockLength", "int",
+                "Block length for wire protocol",
+                blockLengthValue).AppendFileContent(sb, tabs);
         }
 
         private void AppendConstantsFileContent(StringBuilder sb, int tabs)

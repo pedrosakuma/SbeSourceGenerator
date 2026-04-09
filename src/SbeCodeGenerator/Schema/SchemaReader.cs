@@ -199,6 +199,7 @@ namespace SbeSourceGenerator.Schema
             string desc = reader.GetAttribute("description") ?? "";
             string semanticType = reader.GetAttribute("semanticType") ?? "";
             string deprecated = reader.GetAttribute("deprecated") ?? "";
+            string blockLengthAttr = reader.GetAttribute("blockLength") ?? "";
 
             var fields = new List<SchemaFieldDto>(16);
             var constants = new List<SchemaFieldDto>(4);
@@ -234,7 +235,7 @@ namespace SbeSourceGenerator.Schema
                 }
             }
 
-            return new SchemaMessageDto(name, msgId, desc, semanticType, deprecated, fields, constants, groups, data);
+            return new SchemaMessageDto(name, msgId, desc, semanticType, deprecated, fields, constants, groups, data, blockLengthAttr);
         }
 
         private static SchemaGroupDto ReadGroup(XmlReader reader, SourceProductionContext sourceContext)
