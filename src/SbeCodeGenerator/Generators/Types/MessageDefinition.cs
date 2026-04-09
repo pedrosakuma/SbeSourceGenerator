@@ -271,24 +271,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("{", tabs++);
                 foreach (var group in TypedGroups)
                 {
-                    sb.AppendTabs(tabs).Append("if (reader.TryRead<").Append(group.DimensionType).Append(">(out var group").Append(group.Name).AppendLine("))");
-                    sb.AppendLine("{", tabs++);
-                    sb.AppendTabs(tabs).Append("for (int i = 0; i < group").Append(group.Name).AppendLine(".NumInGroup; i++)");
-                    sb.AppendLine("{", tabs++);
-                    sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).AppendLine("Data>(out var data))");
-                    sb.AppendLine("{", tabs++);
-                    sb.AppendLine("break;", tabs);
-                    sb.AppendLine("}", --tabs);
-                    sb.AppendTabs(tabs).Append("callback").Append(group.Name).AppendLine("(data);");
-                    // Read group-level variable data after each entry
-                    foreach (var groupData in group.TypedDatas)
-                    {
-                        sb.AppendTabs(tabs).Append("var datas").Append(groupData.Name).Append(" = ").Append(groupData.Type).AppendLine(".Create(reader.Remaining);");
-                        sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append(groupData.Name).Append("(datas").Append(groupData.Name).AppendLine(");");
-                        sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(groupData.Name).AppendLine(".TotalLength);");
-                    }
-                    sb.AppendLine("}", --tabs);
-                    sb.AppendLine("}", --tabs);
+                    AppendGroupConsume(sb, tabs, group);
                 }
                 foreach (var data in TypedDatas)
                 {
@@ -299,10 +282,46 @@ namespace SbeSourceGenerator
             }
         }
 
+        private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group)
+        {
+            sb.AppendTabs(tabs).Append("if (reader.TryRead<").Append(group.DimensionType).Append(">(out var group").Append(group.Name).AppendLine("))");
+            sb.AppendLine("{", tabs++);
+            sb.AppendTabs(tabs).Append("for (int i = 0; i < group").Append(group.Name).AppendLine(".NumInGroup; i++)");
+            sb.AppendLine("{", tabs++);
+            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).AppendLine("Data>(out var data))");
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("break;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendTabs(tabs).Append("callback").Append(group.Name).AppendLine("(data);");
+            // Read group-level variable data after each entry
+            foreach (var groupData in group.TypedDatas)
+            {
+                sb.AppendTabs(tabs).Append("var datas").Append(groupData.Name).Append(" = ").Append(groupData.Type).AppendLine(".Create(reader.Remaining);");
+                sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append(groupData.Name).Append("(datas").Append(groupData.Name).AppendLine(");");
+                sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(groupData.Name).AppendLine(".TotalLength);");
+            }
+            // Read nested groups recursively
+            foreach (var nestedGroup in group.TypedNestedGroups)
+            {
+                AppendGroupConsume(sb, tabs, nestedGroup);
+            }
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("}", --tabs);
+        }
+
         private void AppendGroupsFileContent(StringBuilder sb, int tabs)
         {
             foreach (var group in Groups)
+            {
                 group.AppendFileContent(sb, tabs);
+                // Also generate nested group structs
+                var typedGroup = (GroupDefinition)group;
+                if (typedGroup.HasNestedGroups)
+                {
+                    foreach (var nested in typedGroup.NestedGroups!)
+                        nested.AppendFileContent(sb, tabs);
+                }
+            }
         }
 
         private void AppendMessageDefinitionConstants(StringBuilder sb, int tabs)
@@ -547,28 +566,38 @@ namespace SbeSourceGenerator
         {
             var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
             foreach (var group in TypedGroups)
-            {
-                parts.Add($"Action<{group.Name}Data> callback{group.Name}");
-                foreach (var groupData in group.TypedDatas)
-                    parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");
-            }
+                AppendGroupCallbackParams(parts, group);
             foreach (var data in TypedDatas)
                 parts.Add($"{data.Type}.Callback callback{data.Name}");
             return string.Join(", ", parts);
+        }
+
+        private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group)
+        {
+            parts.Add($"Action<{group.Name}Data> callback{group.Name}");
+            foreach (var groupData in group.TypedDatas)
+                parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");
+            foreach (var nestedGroup in group.TypedNestedGroups)
+                AppendGroupCallbackParams(parts, nestedGroup);
         }
 
         private string BuildCallbackArgs()
         {
             var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
             foreach (var group in TypedGroups)
-            {
-                parts.Add($"callback{group.Name}");
-                foreach (var groupData in group.TypedDatas)
-                    parts.Add($"callback{group.Name}{groupData.Name}");
-            }
+                AppendGroupCallbackArgs(parts, group);
             foreach (var data in TypedDatas)
                 parts.Add($"callback{data.Name}");
             return string.Join(", ", parts);
+        }
+
+        private static void AppendGroupCallbackArgs(List<string> parts, GroupDefinition group)
+        {
+            parts.Add($"callback{group.Name}");
+            foreach (var groupData in group.TypedDatas)
+                parts.Add($"callback{group.Name}{groupData.Name}");
+            foreach (var nestedGroup in group.TypedNestedGroups)
+                AppendGroupCallbackArgs(parts, nestedGroup);
         }
     }
 }

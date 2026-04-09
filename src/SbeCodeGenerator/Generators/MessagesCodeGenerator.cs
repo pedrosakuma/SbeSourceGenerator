@@ -304,7 +304,8 @@ namespace SbeSourceGenerator.Generators
                     groupFields,
                     groupConstants,
                     numInGroupType,
-                    group.Data != null ? BuildData(group.Data, context) : null
+                    group.Data != null ? BuildData(group.Data, context) : null,
+                    group.Groups != null ? BuildGroups(group.Groups, versionNamespace, context, sourceContext) : null
                 ));
             }
             return result;
