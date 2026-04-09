@@ -317,6 +317,64 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("Legacy", setResult.content);
         }
 
+        [Fact]
+        public void Generate_FixedSizeChar_WithUtf8Encoding_UsesUtf8()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='Symbol' primitiveType='char' length='8' characterEncoding='UTF-8'/>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("Symbol"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("Encoding.UTF8", typeResult.content);
+            Assert.DoesNotContain("Encoding.Latin1", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_FixedSizeChar_WithAsciiEncoding_UsesLatin1()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='Exchange' primitiveType='char' length='4' characterEncoding='US-ASCII'/>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("Exchange"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("Encoding.Latin1", typeResult.content);
+        }
+
+        [Fact]
+        public void Generate_FixedSizeChar_NoEncoding_DefaultsToLatin1()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='Ticker' primitiveType='char' length='6'/>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var resultList = results.ToList();
+            var typeResult = resultList.FirstOrDefault(r => r.name.Contains("Ticker"));
+            Assert.NotEqual(default, typeResult);
+            Assert.Contains("Encoding.Latin1", typeResult.content);
+        }
+
         // ===== Phase 1 Feature Tests =====
 
         [Fact]

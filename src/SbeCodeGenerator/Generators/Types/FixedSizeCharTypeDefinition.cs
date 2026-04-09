@@ -3,8 +3,14 @@
 namespace SbeSourceGenerator
 {
     public record FixedSizeCharTypeDefinition(string Namespace, string Name, string Description,
-        int Length) : IFileContentGenerator, IBlittable
+        int Length, string CharacterEncoding = "") : IFileContentGenerator, IBlittable
     {
+        private string ResolvedEncoding => CharacterEncoding.ToUpperInvariant() switch
+        {
+            "UTF-8" or "UTF8" => "Encoding.UTF8",
+            _ => "Encoding.Latin1"
+        };
+
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             if (Length == 0)
@@ -28,7 +34,7 @@ namespace SbeSourceGenerator
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("ReadOnlySpan<byte> span = this;", tabs);
                 sb.AppendTabs(tabs).AppendLine("var index = span.IndexOf((byte)0);");
-                sb.AppendTabs(tabs).Append("return System.Text.Encoding.Latin1.GetString(span.Slice(0, index == -1 ? ").Append(Length).AppendLine(" : index));");
+                sb.AppendTabs(tabs).Append("return System.Text.").Append(ResolvedEncoding).Append(".GetString(span.Slice(0, index == -1 ? ").Append(Length).AppendLine(" : index));");
                 sb.AppendLine("}", --tabs);
                 sb.AppendLine("}", --tabs);
             }

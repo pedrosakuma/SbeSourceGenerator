@@ -151,7 +151,8 @@ namespace SbeSourceGenerator.Generators
                         ns,
                         generatedName,
                         typeDto.Description,
-                        lengthValue
+                        lengthValue,
+                        typeDto.CharacterEncoding
                     ),
                     (_, "optional") => new OptionalTypeDefinition(
                         ns,

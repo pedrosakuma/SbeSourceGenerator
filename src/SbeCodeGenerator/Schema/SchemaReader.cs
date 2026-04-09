@@ -138,7 +138,7 @@ namespace SbeSourceGenerator.Schema
                 }
             }
 
-            return new SchemaTypeDto(name, desc, primitiveType, semanticType, presence, nullValue, length, innerText, minValue, maxValue);
+            return new SchemaTypeDto(name, desc, primitiveType, semanticType, presence, nullValue, length, innerText, minValue, maxValue, characterEncoding);
         }
 
         private static SchemaCompositeDto ReadComposite(XmlReader reader, SourceProductionContext sourceContext)
