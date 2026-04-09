@@ -371,3 +371,7 @@ FodyWeavers.xsd
 
 # LaunchSettings
 **/launchSettings.json
+
+# Profiling traces
+*.nettrace
+*.speedscope.json
