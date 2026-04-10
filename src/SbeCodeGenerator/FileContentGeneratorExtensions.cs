@@ -32,15 +32,21 @@ namespace SbeSourceGenerator
         internal static void AppendToString(StringBuilder sb, int tabs, string structName, List<IFileContentGenerator> fields)
         {
             var fieldNames = new List<string>();
+            bool hasDeprecated = false;
             foreach (var field in fields)
             {
                 string? name = GetFieldName(field);
                 if (name != null)
                     fieldNames.Add(name);
+                if (IsDeprecated(field))
+                    hasDeprecated = true;
             }
 
             if (fieldNames.Count == 0)
                 return;
+
+            if (hasDeprecated)
+                sb.AppendLine("#pragma warning disable CS0618", tabs);
 
             sb.AppendLine("/// <summary>Returns a string representation of this struct for debugging.</summary>", tabs);
             sb.AppendTabs(tabs).Append("public readonly override string ToString() => $\"").Append(structName).Append(" {{ ");
@@ -53,6 +59,18 @@ namespace SbeSourceGenerator
             }
 
             sb.AppendLine(" }}\";");
+
+            if (hasDeprecated)
+                sb.AppendLine("#pragma warning restore CS0618", tabs);
+        }
+
+        private static bool IsDeprecated(IFileContentGenerator field)
+        {
+            if (field is MessageFieldDefinition mfd)
+                return !string.IsNullOrEmpty(mfd.Deprecated);
+            if (field is OptionalMessageFieldDefinition omfd)
+                return !string.IsNullOrEmpty(omfd.Deprecated);
+            return false;
         }
 
         private static string? GetFieldName(IFileContentGenerator field)
