@@ -49,14 +49,15 @@ public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ...)
     {
         for (int i = 0; i < groupBids.NumInGroup; i++)
         {
-            if (reader.TryRead<BidsData>(out var data))
-            {
-                callbackBids(data);
-            }
+            if (!reader.TryReadBlock<BidsData>(groupBids.BlockLength, out var data))
+                break;
+            callbackBids(in data);
         }
     }
 }
 ```
+
+> **v0.9.0 Changes**: Group entries are now read with `TryReadBlock<T>(blockLength, out T)` instead of `TryRead<T>`, which correctly advances by the wire `blockLength` rather than `sizeof(T)`. This fixes zero-field groups and enables schema forward/backward compatibility. Callbacks use `in` delegates to avoid struct copies.
 
 ### Implementation Details
 
@@ -73,9 +74,16 @@ public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ...)
 
 ### ✅ Schema Evolution
 The SpanReader integration maintains full support for schema evolution:
-- `TryRead<T>` automatically handles type size calculations
+- `TryReadBlock<T>(int blockLength, out T value)` advances by wire blockLength, not sizeof(T)
+- When `blockLength > sizeof(T)` (newer schema): reads struct and skips extra bytes (forward compat)
+- When `blockLength < sizeof(T)` (older schema): partial read with zero-padded trailing fields (backward compat)
+- When `blockLength == 0` (data-only groups): returns `default(T)` without advancing
 - Failed reads are gracefully handled with boolean returns
-- Older/newer message versions can be parsed without errors
+
+### ✅ Zero-Copy Decode
+- `ReadBlockRef<T>(int blockLength)` returns `ref readonly T` directly into the buffer (zero copies)
+- Returns `Unsafe.NullRef<T>()` on failure — check with `Unsafe.IsNullRef(ref value)`
+- Generated group callbacks use `in` delegates to pass structs by readonly reference
 
 ### ✅ Memory Alignment
 The SpanReader uses `MemoryMarshal.Read<T>` which properly handles:
@@ -135,14 +143,20 @@ Added comprehensive integration tests:
 ## Migration Impact
 
 ### For Code Generator Maintainers
-- Changes are internal to code generation
-- No public API changes
-- Existing tests updated and passing
+- SpanReader now has `TryReadBlock<T>` and `ReadBlockRef<T>` in addition to `TryRead<T>`
+- Group callbacks generate custom delegate types with `in` parameters
+- Nested groups use depth-indexed variable names (`nestedData1`, `nestedData2`)
 
 ### For Library Users
-- **No Breaking Changes**: Generated code signatures remain the same
-- **Transparent Integration**: Existing code using `ConsumeVariableLengthSegments` works without modification
-- **Same Behavior**: Functionally equivalent to previous implementation
+- **Breaking Change (v0.9.0)**: Group callbacks changed from `Action<GroupData>` to `{GroupName}Handler(in GroupData data)`. Add `in` keyword to lambda parameters:
+  ```csharp
+  // Before:
+  decoded.ConsumeVariableLengthSegments(buffer, bid => ProcessBid(bid));
+  // After:
+  decoded.ConsumeVariableLengthSegments(buffer, (in BidsData bid) => ProcessBid(bid));
+  ```
+- `TryParse` now uses `TryReadBlock<T>` internally for correct schema evolution handling
+- Generated `readonly` property getters prevent defensive copies when accessed through `in` refs
 
 ## Files Modified
 

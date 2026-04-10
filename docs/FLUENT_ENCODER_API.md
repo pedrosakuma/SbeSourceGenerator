@@ -249,3 +249,27 @@ The fluent API has **zero performance overhead** compared to the traditional API
 - ⚙️ When sharing a single writer across multiple messages
 - ⚙️ When you need fine-grained control over the encoding process
 - ⚙️ Custom encoding logic that doesn't fit the fluent pattern
+
+## Breaking Changes (v0.9.0)
+
+### Group Callback Delegates
+
+Group callbacks in `ConsumeVariableLengthSegments` changed from `Action<T>` to custom delegate types with `in` parameters:
+
+```csharp
+// Before (v0.8.x):
+decoded.ConsumeVariableLengthSegments(
+    variableData,
+    bid => ProcessBid(bid),
+    ask => ProcessAsk(ask)
+);
+
+// After (v0.9.0):
+decoded.ConsumeVariableLengthSegments(
+    variableData,
+    (in BidsData bid) => ProcessBid(in bid),
+    (in AsksData ask) => ProcessAsk(in ask)
+);
+```
+
+This change eliminates struct copies on every callback invocation, which is significant for large message structs. The `in` keyword passes structs by readonly reference instead of by value.

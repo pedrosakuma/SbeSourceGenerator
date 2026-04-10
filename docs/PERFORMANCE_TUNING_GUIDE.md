@@ -218,12 +218,12 @@ if (TradeData.TryParse(buffer, out var trade, out _))
 For large messages, process groups incrementally:
 
 ```csharp
-// ✅ Good: Process groups as they're consumed
+// ✅ Good: Process groups as they're consumed (v0.9.0 uses in delegates)
 MarketDataData.TryParse(buffer, out var data, out var variableData);
 data.ConsumeVariableLengthSegments(
     variableData,
-    bid => ProcessBid(bid),      // Process immediately
-    ask => ProcessAsk(ask)       // Process immediately
+    (in BidData bid) => ProcessBid(in bid),    // Zero-copy via in
+    (in AskData ask) => ProcessAsk(in ask)     // Zero-copy via in
 );
 
 // ❌ Bad: Collect all groups first
@@ -231,8 +231,8 @@ var bids = new List<BidData>(); // Heap allocations
 var asks = new List<AskData>();
 data.ConsumeVariableLengthSegments(
     variableData,
-    bid => bids.Add(bid),
-    ask => asks.Add(ask)
+    (in BidData bid) => bids.Add(bid),
+    (in AskData ask) => asks.Add(ask)
 );
 ProcessBids(bids);
 ProcessAsks(asks);
@@ -249,8 +249,8 @@ Process repeating groups without materializing collections:
 long totalVolume = 0;
 data.ConsumeVariableLengthSegments(
     variableData,
-    bid => totalVolume += bid.Quantity,
-    ask => totalVolume += ask.Quantity
+    (in BidData bid) => totalVolume += bid.Quantity,
+    (in AskData ask) => totalVolume += ask.Quantity
 );
 
 // ❌ Bad: Materialize groups
@@ -258,8 +258,8 @@ var allBids = new List<BidData>();
 var allAsks = new List<AskData>();
 data.ConsumeVariableLengthSegments(
     variableData,
-    bid => allBids.Add(bid),
-    ask => allAsks.Add(ask)
+    (in BidData bid) => allBids.Add(bid),
+    (in AskData ask) => allAsks.Add(ask)
 );
 long totalVolume = allBids.Sum(b => b.Quantity) + allAsks.Sum(a => a.Quantity);
 ```
@@ -397,23 +397,30 @@ ProcessSymbolBytes(symbolBytes);
 ### 4. Defensive Copying
 
 ```csharp
-// ❌ Bad: Readonly struct in causes defensive copy
-public readonly struct Trade
+// ❌ Bad: Non-readonly property accessed through in/ref causes defensive copy
+public struct Trade
 {
-    public void Process() { /* ... */ }
+    public long Price { get => _price; }
 }
 
 void ProcessTrade(in Trade trade)
 {
-    trade.Process(); // Defensive copy!
+    var p = trade.Price; // Defensive copy of entire struct!
 }
 
-// ✅ Good: Mark method readonly
-public readonly struct Trade
+// ✅ Good: readonly prevents defensive copy (v0.9.0 generated code)
+public struct Trade
 {
-    public readonly void Process() { /* ... */ }
+    public readonly long Price { get => _price; }
+}
+
+void ProcessTrade(in Trade trade)
+{
+    var p = trade.Price; // Direct field load — no copy
 }
 ```
+
+> **Note**: On .NET 9 RyuJIT, the JIT elides defensive copies for trivial getters even without `readonly`. However, `readonly` is enforced at compile time and protects against Mono, NativeAOT, and alternative JITs. All v0.9.0 generated properties are `readonly`.
 
 ### 5. Closure Allocations
 
@@ -474,4 +481,4 @@ Target metrics for well-optimized code:
 
 ---
 
-**Last Updated**: 2025-10-15
+**Last Updated**: 2025-10-16

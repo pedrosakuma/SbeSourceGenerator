@@ -140,7 +140,7 @@ if (reader.CanRead(16))
 public bool TryRead<T>(out T value) where T : struct
 ```
 
-Attempts to read a blittable structure from the buffer and advances the reader position.
+Attempts to read a blittable structure from the buffer and advances by `Unsafe.SizeOf<T>()` bytes. Best for fixed-size types where `sizeof(T)` matches the wire size (e.g., headers, composites).
 
 **Example**:
 ```csharp
@@ -148,6 +148,48 @@ if (reader.TryRead<MessageHeader>(out var header))
 {
     Console.WriteLine($"Header: {header.TemplateId}");
 }
+```
+
+#### TryReadBlock<T>
+```csharp
+public bool TryReadBlock<T>(int blockLength, out T value) where T : struct
+```
+
+Reads a struct from the buffer advancing by `blockLength` bytes (wire size) instead of `sizeof(T)`. Handles schema evolution:
+- `blockLength == 0`: Returns `default(T)` (data-only groups)
+- `blockLength < sizeof(T)`: Partial read with zero-padded trailing fields (backward compat)
+- `blockLength >= sizeof(T)`: Full read, skips extra bytes (forward compat)
+
+**Example**:
+```csharp
+if (reader.TryRead<GroupSizeEncoding>(out var groupHeader))
+{
+    for (int i = 0; i < groupHeader.NumInGroup; i++)
+    {
+        if (reader.TryReadBlock<BidsData>(groupHeader.BlockLength, out var bid))
+            ProcessBid(bid);
+    }
+}
+```
+
+#### ReadBlockRef<T>
+```csharp
+public ref readonly T ReadBlockRef<T>(int blockLength) where T : struct
+```
+
+Returns a `ref readonly` directly into the buffer — **zero copies**. Advances by `blockLength` bytes. Returns `Unsafe.NullRef<T>()` when `blockLength == 0` or buffer is exhausted.
+
+**Example**:
+```csharp
+ref readonly var entry = ref reader.ReadBlockRef<EntryData>(blockLength);
+if (!Unsafe.IsNullRef(ref Unsafe.AsRef(in entry)))
+{
+    // Access fields directly from the buffer — no copy
+    Console.WriteLine(entry.Price);
+}
+```
+
+> ⚠️ The returned reference is only valid while the underlying buffer is alive. Do not store it beyond the buffer's lifetime.
 ```
 
 #### TryReadBytes
@@ -306,12 +348,26 @@ if (reader.TryPeek<MessageHeader>(out var header))
 }
 ```
 
-### Callback Pattern
+### Callback Pattern (v0.9.0+)
+
+Generated code uses custom delegates with `in` parameters to avoid struct copies:
 
 ```csharp
-void ProcessGroups(ReadOnlySpan<byte> buffer, 
-    Action<BidEntry> onBid, 
-    Action<AskEntry> onAsk)
+// Generated delegates:
+// public delegate void BidsHandler(in BidsData data);
+// public delegate void AsksHandler(in AsksData data);
+
+decoded.ConsumeVariableLengthSegments(
+    variableData,
+    (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
+    (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
+);
+```
+
+For manual parsing with TryReadBlock:
+
+```csharp
+void ProcessGroups(ReadOnlySpan<byte> buffer)
 {
     var reader = new SpanReader(buffer);
     
@@ -320,8 +376,9 @@ void ProcessGroups(ReadOnlySpan<byte> buffer,
     {
         for (int i = 0; i < bids.NumInGroup; i++)
         {
-            if (reader.TryRead<BidEntry>(out var bid))
-                onBid(bid);
+            if (!reader.TryReadBlock<BidEntry>(bids.BlockLength, out var bid))
+                break;
+            ProcessBid(in bid);
         }
     }
     
@@ -330,8 +387,9 @@ void ProcessGroups(ReadOnlySpan<byte> buffer,
     {
         for (int i = 0; i < asks.NumInGroup; i++)
         {
-            if (reader.TryRead<AskEntry>(out var ask))
-                onAsk(ask);
+            if (!reader.TryReadBlock<AskEntry>(asks.BlockLength, out var ask))
+                break;
+            ProcessAsk(in ask);
         }
     }
 }
@@ -494,11 +552,6 @@ if (reader.TryRead<MessageHeader>(out var header))
         // Continue with standard reads
         if (reader.TryRead<Footer>(out var footer))
         {
-            ProcessMessage(header, content, footer);
-        }
-    }
-}
-```
             ProcessMessage(header, content, footer);
         }
     }
