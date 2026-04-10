@@ -285,6 +285,7 @@ namespace SbeSourceGenerator
                 {
                     sb.AppendTabs(tabs).Append("var datas").Append(data.Name).Append(" = ").Append(data.Type).AppendLine(".Create(reader.Remaining);");
                     sb.AppendTabs(tabs).Append("callback").Append(data.Name).Append("(datas").Append(data.Name).AppendLine(");");
+                    sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(data.Name).AppendLine(".TotalLength);");
                 }
                 sb.AppendLine("}", --tabs);
             }
@@ -294,10 +295,11 @@ namespace SbeSourceGenerator
         {
             var ancestors = ancestorVarNames ?? new List<string>();
             var dataVarName = ancestors.Count == 0 ? "data" : "nestedData";
+            var loopVar = ancestors.Count == 0 ? "i" : $"j{ancestors.Count}";
 
             sb.AppendTabs(tabs).Append("if (reader.TryRead<").Append(group.DimensionType).Append(">(out var group").Append(group.Name).AppendLine("))");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).Append("for (int i = 0; i < group").Append(group.Name).AppendLine(".NumInGroup; i++)");
+            sb.AppendTabs(tabs).Append("for (int ").Append(loopVar).Append(" = 0; ").Append(loopVar).Append(" < group").Append(group.Name).Append(".NumInGroup; ").Append(loopVar).AppendLine("++)");
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).Append("Data>(out var ").Append(dataVarName).AppendLine("))");
             sb.AppendLine("{", tabs++);

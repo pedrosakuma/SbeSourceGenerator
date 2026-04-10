@@ -593,7 +593,8 @@ namespace SbeCodeGenerator.Tests
             Assert.NotEqual(default, compositeResult);
             
             // Verify Create method uses constructor instead of object initializer
-            Assert.Contains("public static VarString8 Create(ReadOnlySpan<byte> buffer) => new VarString8(", compositeResult.content);
+            Assert.Contains("public static VarString8 Create(ReadOnlySpan<byte> buffer)", compositeResult.content);
+            Assert.Contains("new VarString8(length,", compositeResult.content);
             
             // Should NOT use object initializer syntax
             Assert.DoesNotContain("new VarString8 {", compositeResult.content);

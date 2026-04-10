@@ -726,11 +726,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((byte)4, symbolLength);
             Assert.Equal("AAPL", symbolStr);
             
-            // Verify data was read correctly
-            // Note: Data fields use reader.Remaining without advancing the reader,
-            // so the reader position stays the same. This allows the caller to manage
-            // the reader position after processing all variable-length data.
-            Assert.Equal(5, reader.RemainingBytes); // VarString8 header (1) + data (4)
+            // Verify the reader was advanced past the data segment
+            Assert.Equal(0, reader.RemainingBytes);
         }
     }
 }
