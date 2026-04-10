@@ -4,10 +4,29 @@ Este documento descreve a configuração e funcionamento da pipeline de CI/CD pa
 
 ## Visão Geral
 
-O projeto utiliza **GitHub Actions** para automação de CI/CD com dois workflows principais:
+O projeto utiliza **GitHub Actions** para automação de CI/CD com três workflows:
 
-1. **CI (Continuous Integration)** - Build, testes e validação de código
-2. **CD (Continuous Deployment)** - Publicação automática no NuGet
+1. **CI (Continuous Integration)** — Build, testes e validação de código em PRs e pushes
+2. **Release** — Pipeline principal: tag push → build → test → GitHub Release → NuGet publish
+3. **CD Manual** — Fallback para publicação manual no NuGet via workflow_dispatch
+
+## Fluxo de Release
+
+```
+Desenvolvedor
+  │
+  ├─── Push/PR ─────────────────────────► CI Workflow (build + test)
+  │
+  └─── git tag v1.2.3 && git push tag ──► Release Workflow
+                                              │
+                                              ├── Build + Test
+                                              ├── Pack NuGet (.nupkg)
+                                              ├── Validate package
+                                              ├── Create GitHub Release (com .nupkg anexado)
+                                              └── Publish to NuGet.org
+```
+
+**Um único comando (`git push origin v1.2.3`) executa todo o pipeline de release automaticamente.**
 
 ## Workflow de CI
 
@@ -15,147 +34,91 @@ O projeto utiliza **GitHub Actions** para automação de CI/CD com dois workflow
 
 ### Gatilhos
 
-O workflow de CI é executado automaticamente nos seguintes eventos:
-
 - **Push** nos branches: `master`, `main`, `develop`
 - **Pull Requests** para os branches: `master`, `main`, `develop`
-- **Manualmente** através do botão "Run workflow" na interface do GitHub Actions
+- **Manualmente** via workflow_dispatch
 
-### Etapas do Workflow
+### Etapas
 
-1. **Checkout do código**
-   - Faz o clone do repositório
-   
-2. **Setup .NET**
-   - Instala o SDK .NET 9.0.x
-   
-3. **Restore dependencies**
-   - Restaura as dependências do projeto: `dotnet restore`
-   
-4. **Build**
-   - Compila o projeto em modo Release: `dotnet build --configuration Release`
-   
-5. **Build Tests**
-   - Compila os projetos de teste
-   
-6. **Test**
-   - Executa todos os testes: `dotnet test --configuration Release`
-   - Exibe os resultados dos testes no log
-   
-7. **Pack NuGet package (dry-run)**
-   - Cria o pacote NuGet sem publicá-lo (validação)
-   - Gera o arquivo `.nupkg`
-   
-8. **Upload build artifacts**
-   - Faz upload do pacote NuGet gerado como artefato
-   - Retenção: 7 dias
-   - Útil para validação antes da publicação
+1. Checkout + Setup .NET 9.0
+2. Restore dependencies
+3. Build (Release)
+4. Build + Run Tests
+5. Pack NuGet (dry-run validation)
+6. Upload artifacts (7 dias)
 
-### Como Visualizar Resultados
+## Workflow de Release (Principal)
 
-1. Navegue até a aba **Actions** no GitHub
-2. Selecione o workflow **CI**
-3. Clique na execução desejada para ver os logs detalhados
-4. Os artefatos gerados podem ser baixados na seção "Artifacts"
+### Arquivo: `.github/workflows/release.yml`
 
-## Workflow de CD (Publicação no NuGet)
+### Gatilho
 
-### Arquivo: `.github/workflows/publish.yml`
+```yaml
+on:
+  push:
+    tags:
+      - 'v*'
+```
 
-### Gatilhos
+Acionado automaticamente quando uma tag no formato `v*` é pushada (ex: `v1.0.1`, `v2.0.0-beta.1`).
 
-O workflow de CD é executado automaticamente quando:
+### Etapas
 
-1. **Uma release é publicada no GitHub**
-   - Ao criar uma nova release/tag no formato `vX.Y.Z` (ex: `v1.0.0`)
-   - A versão é extraída automaticamente da tag
-
-2. **Manualmente através do workflow_dispatch**
-   - Permite executar manualmente especificando a versão
-   - Útil para republicações ou correções
-
-### Etapas do Workflow
-
-1. **Checkout do código**
-   - Faz o clone do repositório
-   
-2. **Setup .NET**
-   - Instala o SDK .NET 9.0.x
-   
-3. **Extract version from tag**
-   - Extrai a versão da tag (ex: `v1.0.0` → `1.0.0`)
-   - Ou usa a versão fornecida manualmente
-   
-4. **Restore dependencies**
-   - Restaura as dependências: `dotnet restore`
-   
-5. **Build**
-   - Compila com a versão específica: `dotnet build /p:Version=X.Y.Z`
-   
-6. **Test**
-   - Executa todos os testes para garantir qualidade
-   
-7. **Pack NuGet package**
-   - Cria o pacote NuGet com a versão correta
-   - Formato: `SbeSourceGenerator.X.Y.Z.nupkg`
-   
-8. **Push to NuGet**
-   - Publica o pacote no NuGet.org
-   - Utiliza a API Key armazenada nos secrets
-   - Flag `--skip-duplicate` previne erros se a versão já existir
-   
-9. **Upload release artifacts**
-   - Faz upload do pacote como artefato da execução
-   - Retenção: 90 dias
+1. Checkout + Setup .NET 9.0
+2. Extract version from tag (`v1.0.1` → `1.0.1`)
+3. Restore + Build (com `/p:Version`)
+4. Build + Run Tests
+5. Pack NuGet (com `/p:PackageVersion`)
+6. Validate package (verifica `analyzers/dotnet/cs/`)
+7. **Create GitHub Release** (com release notes geradas automaticamente + `.nupkg` anexado)
+8. **Push to NuGet.org**
+9. Upload artifacts (90 dias)
 
 ### Como Publicar uma Nova Versão
 
-#### Método 1: Criar uma Release (Recomendado)
+```bash
+# 1. Atualize a versão no csproj, CHANGELOG.md e README.md
+# 2. Faça commit e push das mudanças (via PR)
+# 3. Após merge, crie e push a tag:
+git tag v1.2.0
+git push origin v1.2.0
 
-1. Navegue até **Releases** no GitHub
-2. Clique em **"Draft a new release"**
-3. Crie uma nova tag no formato `vX.Y.Z` (ex: `v1.0.0`)
-4. Preencha o título e descrição da release
-5. Clique em **"Publish release"**
-6. O workflow será executado automaticamente
+# Pronto! O pipeline faz o resto automaticamente:
+# ✅ Build + Test
+# ✅ GitHub Release criada com .nupkg
+# ✅ Pacote publicado no NuGet.org
+```
 
-#### Método 2: Execução Manual
+## Workflow de CD Manual (Fallback)
 
-1. Navegue até **Actions** → **CD - Publish to NuGet**
+### Arquivo: `.github/workflows/publish.yml`
+
+### Gatilho
+
+Apenas `workflow_dispatch` com input de versão. Use apenas como fallback em situações excepcionais (ex: republicação, correção de pacote).
+
+⚠️ **Nota**: Este workflow NÃO cria GitHub Release. Prefira o fluxo de tag push.
+
+### Execução Manual
+
+1. Navegue até **Actions** → **CD - Manual NuGet Publish**
 2. Clique em **"Run workflow"**
-3. Selecione o branch
-4. Digite a versão (ex: `1.0.0`)
-5. Clique em **"Run workflow"**
+3. Digite a versão (ex: `1.0.1`)
+4. Clique em **"Run workflow"**
 
 ## Configuração de Secrets
 
 ### NUGET_API_KEY
 
-Para que a publicação no NuGet funcione, é necessário configurar a API Key:
+1. **Obter API Key no NuGet.org**
+   - Account Settings → API Keys → Create
+   - Key Name: `SbeSourceGenerator-CI`
+   - Scopes: `Push` + `Push new packages and package versions`
+   - Glob Pattern: `SbeSourceGenerator`
 
-#### 1. Obter API Key do NuGet.org
-
-1. Acesse [NuGet.org](https://www.nuget.org/)
-2. Faça login na sua conta
-3. Vá em **Account Settings** → **API Keys**
-4. Clique em **"Create"**
-5. Configure:
-   - **Key Name**: `SbeSourceGenerator-CI`
-   - **Scopes**: Selecione `Push` e `Push new packages and package versions`
-   - **Select Packages**: 
-     - **Glob Pattern**: `SbeSourceGenerator`
-   - **Expiration**: Escolha um período apropriado (ex: 365 dias)
-6. Clique em **"Create"**
-7. **COPIE A API KEY** (ela será exibida apenas uma vez)
-
-#### 2. Adicionar Secret no GitHub
-
-1. No repositório GitHub, vá em **Settings** → **Secrets and variables** → **Actions**
-2. Clique em **"New repository secret"**
-3. Configure:
-   - **Name**: `NUGET_API_KEY`
-   - **Value**: Cole a API Key copiada do NuGet.org
-4. Clique em **"Add secret"**
+2. **Adicionar Secret no GitHub**
+   - Repository → Settings → Secrets and variables → Actions
+   - New repository secret: `NUGET_API_KEY` = (valor da API Key)
 
 ⚠️ **IMPORTANTE**: Nunca exponha a API Key em código, logs ou documentação pública!
 
@@ -167,212 +130,52 @@ O projeto segue [Semantic Versioning 2.0.0](https://semver.org/):
 MAJOR.MINOR.PATCH[-PRERELEASE]
 
 Exemplos:
-- 1.0.0       - Release estável
-- 1.0.1       - Patch (correção de bugs)
-- 1.1.0       - Minor (novos recursos, retrocompatível)
-- 2.0.0       - Major (mudanças que quebram compatibilidade)
-- 1.0.0-beta.1 - Pre-release
-- 1.0.0-rc.1   - Release candidate
+- 1.0.0         - Release estável
+- 1.0.1         - Patch (correção de bugs)
+- 1.1.0         - Minor (novos recursos, retrocompatível)
+- 2.0.0         - Major (mudanças que quebram compatibilidade)
+- 1.0.0-beta.1  - Pre-release
 ```
 
-### Diretrizes de Versionamento
-
-- **MAJOR**: Mudanças que quebram compatibilidade com versões anteriores
-- **MINOR**: Novos recursos mantendo retrocompatibilidade
-- **PATCH**: Correções de bugs mantendo retrocompatibilidade
-- **PRERELEASE**: Versões de teste (alpha, beta, rc)
-
-## Boas Práticas
-
-### Antes de Publicar
-
-1. ✅ Todos os testes devem passar
-2. ✅ O build deve ser bem-sucedido
-3. ✅ A documentação deve estar atualizada
-4. ✅ O CHANGELOG deve incluir as mudanças
-5. ✅ A versão deve seguir o Semantic Versioning
-
-### Checklist de Release
+## Checklist de Release
 
 - [ ] Atualizar CHANGELOG.md com as mudanças
-- [ ] Atualizar versão em `SbeSourceGenerator.csproj` (se necessário)
+- [ ] Atualizar versão em `SbeSourceGenerator.csproj`
+- [ ] Atualizar versão no `README.md`
 - [ ] Fazer merge de todas as PRs necessárias
 - [ ] Executar testes localmente: `dotnet test`
-- [ ] Criar tag e release no GitHub
-- [ ] Verificar publicação no NuGet.org
-- [ ] Validar que o pacote pode ser instalado
-
-### Monitoramento
-
-#### GitHub Actions
-
-- Verifique regularmente a aba **Actions** para garantir que os workflows estão executando corretamente
-- Configure notificações para falhas de workflow
-
-#### NuGet.org
-
-- Monitore as estatísticas de download em [NuGet.org](https://www.nuget.org/)
-- Verifique se há problemas reportados na página do pacote
-
-## Checklist para Primeira Release
-
-### Pré-requisitos
-
-- [ ] Todos os testes passando localmente (`dotnet test`)
-- [ ] Build Release sem erros (`dotnet build -c Release`)
-- [ ] CHANGELOG.md atualizado com as mudanças da versão
-- [ ] Versão definida no formato semver (ex: `0.2.0-preview.1`)
-
-### Configuração (uma vez)
-
-1. **Criar conta no NuGet.org** (se ainda não existir)
-   - Acesse https://www.nuget.org/ e crie uma conta Microsoft
-
-2. **Gerar API Key no NuGet.org**
-   - Account Settings → API Keys → Create
-   - Key Name: `SbeSourceGenerator-CI`
-   - Scopes: `Push` + `Push new packages and package versions`
-   - Glob Pattern: `SbeSourceGenerator`
-   - Expiration: 365 dias
-
-3. **Configurar secret no GitHub**
-   - Repository → Settings → Secrets and variables → Actions
-   - New repository secret: `NUGET_API_KEY` = (valor da API Key)
-
-### Publicação
-
-1. **Criar tag e release**
-   ```bash
-   # Definir versão
-   VERSION="0.2.0-preview.1"
-   
-   # Criar tag
-   git tag "v${VERSION}"
-   git push origin "v${VERSION}"
-   ```
-
-2. **Criar GitHub Release**
-   - Ir em Releases → Draft a new release
-   - Selecionar a tag criada
-   - Título: `v${VERSION}`
-   - Descrever as mudanças (copiar do CHANGELOG.md)
-   - Publicar release
-
-3. **Verificar publicação**
-   - Acompanhar o workflow "CD - Publish to NuGet" na aba Actions
-   - Verificar se o pacote aparece em https://www.nuget.org/packages/SbeSourceGenerator/
-   - Nota: pode demorar alguns minutos para indexação
-
-4. **Validar instalação**
-   ```bash
-   # Criar projeto teste
-   dotnet new console -n TestInstall
-   cd TestInstall
-   dotnet add package SbeSourceGenerator --version ${VERSION}
-   dotnet build
-   ```
-
-### Pós-publicação
-
-- [ ] Pacote visível no NuGet.org
-- [ ] Badge no README.md mostrando versão correta
-- [ ] Instalação funciona em projeto novo
-- [ ] Source generator executa corretamente no projeto consumidor
+- [ ] Criar e push tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+- [ ] Verificar workflow na aba Actions
+- [ ] Verificar GitHub Release criada com .nupkg
+- [ ] Verificar pacote no NuGet.org
 
 ## Troubleshooting
 
+### Tag criada mas Release não aparece
+
+**Causa**: A tag precisa ser pushada (`git push origin vX.Y.Z`), não apenas criada localmente.
+
+**Solução**: `git push origin vX.Y.Z`
+
 ### Erro: "Package already exists"
 
-**Causa**: Tentativa de publicar uma versão que já existe no NuGet.org
+**Causa**: Versão já publicada no NuGet.org.
 
-**Solução**: 
-- Use uma nova versão incrementada
-- O flag `--skip-duplicate` no workflow previne que isso cause falha
+**Solução**: Use uma nova versão. O flag `--skip-duplicate` previne falha.
 
 ### Erro: "Authentication failed"
 
-**Causa**: API Key inválida ou expirada
+**Causa**: API Key inválida ou expirada.
 
-**Solução**:
-1. Gere uma nova API Key no NuGet.org
-2. Atualize o secret `NUGET_API_KEY` no GitHub
+**Solução**: Gere nova API Key no NuGet.org e atualize o secret.
 
-### Erro: "Build failed"
+### NuGet publicado sem GitHub Release
 
-**Causa**: Problemas de compilação ou dependências
+**Causa**: Workflow manual (publish.yml) não cria releases.
 
-**Solução**:
-1. Execute `dotnet build` localmente
-2. Resolva os erros de compilação
-3. Faça commit das correções
-4. O workflow será executado novamente
-
-### Erro: "Tests failed"
-
-**Causa**: Testes falhando
-
-**Solução**:
-1. Execute `dotnet test` localmente
-2. Corrija os testes falhando
-3. Faça commit das correções
-4. Aguarde nova execução do workflow
-
-## Status e Badges
-
-Adicione badges no README.md para mostrar o status dos workflows:
-
-```markdown
-[![CI](https://github.com/pedrosakuma/SbeSourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/pedrosakuma/SbeSourceGenerator/actions/workflows/ci.yml)
-[![NuGet](https://img.shields.io/nuget/v/SbeSourceGenerator.svg)](https://www.nuget.org/packages/SbeSourceGenerator/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/SbeSourceGenerator.svg)](https://www.nuget.org/packages/SbeSourceGenerator/)
-```
-
-## Arquitetura da Pipeline
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Desenvolvedor                        │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ├─── Push/PR ────────────────────┐
-                 │                                 │
-                 ├─── Create Release ──────┐      │
-                 │                         │      │
-                 v                         v      v
-┌────────────────────────────┐   ┌──────────────────────────┐
-│      CI Workflow           │   │    CD Workflow           │
-├────────────────────────────┤   ├──────────────────────────┤
-│ 1. Checkout                │   │ 1. Checkout              │
-│ 2. Setup .NET              │   │ 2. Setup .NET            │
-│ 3. Restore                 │   │ 3. Extract Version       │
-│ 4. Build                   │   │ 4. Restore               │
-│ 5. Test                    │   │ 5. Build (versioned)     │
-│ 6. Pack (dry-run)          │   │ 6. Test                  │
-│ 7. Upload Artifacts        │   │ 7. Pack (versioned)      │
-└────────────┬───────────────┘   │ 8. Push to NuGet.org     │
-             │                   │ 9. Upload Artifacts      │
-             v                   └────────────┬─────────────┘
-   ✅ Build Status                            │
-   ✅ Test Results                            v
-   📦 Artifacts (7 days)              ✅ Published to NuGet
-                                      📦 Artifacts (90 days)
-```
-
-## Recursos Adicionais
-
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Publishing NuGet packages](https://docs.microsoft.com/en-us/nuget/nuget-org/publish-a-package)
-- [Semantic Versioning](https://semver.org/)
-- [.NET CLI Reference](https://docs.microsoft.com/en-us/dotnet/core/tools/)
-
-## Contato e Suporte
-
-Para questões sobre a pipeline de CI/CD:
-- Abra uma issue no GitHub
-- Consulte a documentação do projeto
-- Verifique os logs de execução no GitHub Actions
+**Solução**: Use o fluxo de tag push (`release.yml`), ou crie a release manualmente via `gh release create vX.Y.Z`.
 
 ---
 
-**Última Atualização**: 2025-10-13  
-**Versão do Documento**: 1.0
+**Última Atualização**: 2026-04-10
+**Versão do Documento**: 2.0
