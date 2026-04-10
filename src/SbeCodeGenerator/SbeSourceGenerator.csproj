@@ -10,7 +10,7 @@
 		<NoWarn>$(NoWarn);CS1591</NoWarn>
 		<PackageId>SbeSourceGenerator</PackageId>
 		<Title>SBE Source Generator</Title>
-		<Version>0.7.0</Version>
+		<Version>0.8.0</Version>
 		<Authors>Pedro Sakuma</Authors>
 		<Company>Pedro Sakuma</Company>
 		<Product>SBE Source Generator</Product>
