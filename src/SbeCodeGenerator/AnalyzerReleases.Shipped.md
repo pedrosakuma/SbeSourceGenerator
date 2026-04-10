@@ -4,14 +4,9 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|------
+SBE007 | SbeSourceGenerator | Info | Big-endian schema with conditional byte swap (updated from Warning).
 SBE011 | SbeSourceGenerator | Warning | Set choice bit position exceeds encoding type width.
 SBE012 | SbeSourceGenerator | Warning | Invalid SbeAssumeHostEndianness MSBuild property value.
-
-### Changed Rules
-
-Rule ID | New Category | New Severity | Old Severity | Notes
---------|--------------|--------------|--------------|------
-SBE007 | SbeSourceGenerator | Info | Warning | Now informational — big-endian is fully supported with conditional byte swap.
 
 ## Release 0.3.0
 

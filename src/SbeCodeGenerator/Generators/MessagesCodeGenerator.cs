@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Schema;
-using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -13,30 +12,17 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     internal class MessagesCodeGenerator : ICodeGenerator
     {
-        private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
-        {
-            "bool",
-            "byte",
-            "sbyte",
-            "short",
-            "ushort",
-            "int",
-            "uint",
-            "long",
-            "ulong",
-            "float",
-            "double",
-            "char",
-            "string"
-        };
-
         public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
+            int schemaVersion = -1;
+            if (!string.IsNullOrEmpty(schema.Version))
+                int.TryParse(schema.Version, out schemaVersion);
+
             foreach (var messageDto in schema.Messages)
             {
-                var generatedMessageName = RegisterGeneratedTypeName(context, messageDto.Name);
+                var generatedMessageName = TypeResolverHelper.RegisterGeneratedTypeName(context, messageDto.Name, sourceContext);
 
-                var versions = GetMessageVersions(messageDto, sourceContext);
+                var versions = GetMessageVersions(messageDto, schemaVersion, sourceContext);
                 var baseNamespace = StripSchemaVersion(ns);
 
                 foreach (var version in versions)
@@ -76,7 +62,7 @@ namespace SbeSourceGenerator.Generators
         /// Determines all versions needed for a message based on sinceVersion attributes.
         /// Returns a list like [0, 1, 2] for a message with fields at versions 0, 1, and 2.
         /// </summary>
-        private static List<int> GetMessageVersions(SchemaMessageDto messageDto, SourceProductionContext sourceContext)
+        private static List<int> GetMessageVersions(SchemaMessageDto messageDto, int schemaVersion, SourceProductionContext sourceContext)
         {
             var versions = new HashSet<int> { 0 }; // Always generate version 0
 
@@ -86,6 +72,16 @@ namespace SbeSourceGenerator.Generators
                 {
                     if (int.TryParse(field.SinceVersion, out int sinceVersion))
                     {
+                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.SinceVersionExceedsSchemaVersion,
+                                Location.None,
+                                field.Name,
+                                sinceVersion.ToString(),
+                                schemaVersion.ToString()));
+                        }
+
                         for (int v = 0; v <= sinceVersion; v++)
                         {
                             versions.Add(v);
@@ -109,6 +105,16 @@ namespace SbeSourceGenerator.Generators
                 {
                     if (int.TryParse(data.SinceVersion, out int sinceVersion))
                     {
+                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CancellationToken != default)
+                        {
+                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                SbeDiagnostics.SinceVersionExceedsSchemaVersion,
+                                Location.None,
+                                data.Name,
+                                sinceVersion.ToString(),
+                                schemaVersion.ToString()));
+                        }
+
                         for (int v = 0; v <= sinceVersion; v++)
                             versions.Add(v);
                     }
@@ -204,7 +210,7 @@ namespace SbeSourceGenerator.Generators
 
                 bool isOptional = field.Presence == "optional" || context.OptionalTypes.ContainsKey(field.Type);
                 var translated = TypeTranslator.Translate(field.Type);
-                var resolvedType = ResolveTypeName(translated.PrimitiveType, context);
+                var resolvedType = TypeResolverHelper.ResolveTypeName(translated.PrimitiveType, context);
                 var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
 
                 if (isOptional)
@@ -228,7 +234,7 @@ namespace SbeSourceGenerator.Generators
                         effectivePrimitiveType,
                         field.Description,
                         ParseOffset(field.Offset, field.Name, sourceContext),
-                        GetTypeLength(field.Type, context),
+                        TypeResolverHelper.GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
                         field.NullValue == "" ? null : field.NullValue,
@@ -245,7 +251,7 @@ namespace SbeSourceGenerator.Generators
                         resolvedType,
                         field.Description,
                         ParseOffset(field.Offset, field.Name, sourceContext),
-                        GetTypeLength(field.Type, context),
+                        TypeResolverHelper.GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
                         context.EndianConversion,
@@ -264,9 +270,9 @@ namespace SbeSourceGenerator.Generators
                 result.Add(new ConstantMessageFieldDefinition(
                     TypeTranslator.NormalizeName(constant.Name),
                     constant.Id,
-                    ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
+                    TypeResolverHelper.ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
                     constant.Description != "" ? constant.Description : constant.Type,
-                    NormalizeValueRef(constant.ValueRef, context)
+                    TypeResolverHelper.NormalizeValueRef(constant.ValueRef, context)
                 ));
             }
             return result;
@@ -281,13 +287,13 @@ namespace SbeSourceGenerator.Generators
             var result = new List<IFileContentGenerator>(groups.Count);
             foreach (var group in groups)
             {
-                var groupName = RegisterGeneratedTypeName(context, group.Name);
+                var groupName = TypeResolverHelper.RegisterGeneratedTypeName(context, group.Name, sourceContext);
 
                 var groupFields = new List<IFileContentGenerator>(group.Fields.Count);
                 foreach (var field in group.Fields)
                 {
                     var translatedField = TypeTranslator.Translate(field.Type);
-                    var resolvedFieldType = ResolveTypeName(translatedField.PrimitiveType, context);
+                    var resolvedFieldType = TypeResolverHelper.ResolveTypeName(translatedField.PrimitiveType, context);
                     var generatedFieldName = TypeTranslator.NormalizeName(field.Name);
                     var underlyingFieldType = GetUnderlyingType(field.Type, context);
                     groupFields.Add(new MessageFieldDefinition(
@@ -296,7 +302,7 @@ namespace SbeSourceGenerator.Generators
                         resolvedFieldType,
                         field.Description,
                         ParseOffset(field.Offset, field.Name, sourceContext),
-                        GetTypeLength(field.Type, context),
+                        TypeResolverHelper.GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
                         context.EndianConversion,
@@ -305,13 +311,13 @@ namespace SbeSourceGenerator.Generators
                 }
 
                 var groupConstants = BuildConstants(group.Constants, context);
-                var numInGroupType = ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
+                var numInGroupType = TypeResolverHelper.ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
 
                 result.Add(new GroupDefinition(
                     versionNamespace,
                     groupName,
                     group.Id,
-                    ResolveTypeName(group.DimensionType, context),
+                    TypeResolverHelper.ResolveTypeName(group.DimensionType, context),
                     group.Description,
                     groupFields,
                     groupConstants,
@@ -347,7 +353,7 @@ namespace SbeSourceGenerator.Generators
                 result.Add(new DataFieldDefinition(
                     TypeTranslator.NormalizeName(data.Name),
                     data.Id,
-                    ResolveTypeName(data.Type, context),
+                    TypeResolverHelper.ResolveTypeName(data.Type, context),
                     data.Description,
                     lengthPrefixType
                 ));
@@ -368,26 +374,6 @@ namespace SbeSourceGenerator.Generators
             return null;
         }
 
-        private static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
-        {
-            int length;
-            var translated = TypeTranslator.Translate(type).PrimitiveType;
-            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(translated, out length)
-                && !context.CustomTypeLengths.TryGetValue(type, out length))
-            {
-                if (sourceContext.CancellationToken != default)
-                {
-                    sourceContext.ReportDiagnostic(Diagnostic.Create(
-                        SbeDiagnostics.UnresolvedTypeReference,
-                        Location.None,
-                        type,
-                        elementName));
-                }
-                return 0;
-            }
-            return length;
-        }
-
         private static string GetNumInGroupType(string dimensionType, SchemaContext context, SourceProductionContext sourceContext = default)
         {
             var key = $"{dimensionType}.numInGroup";
@@ -405,60 +391,6 @@ namespace SbeSourceGenerator.Generators
                     $"Composite type '{dimensionType}' not found. Falling back to ushort for numInGroup."));
             }
             return "ushort";
-        }
-
-        private static string RegisterGeneratedTypeName(SchemaContext context, string originalName)
-        {
-            if (string.IsNullOrEmpty(originalName))
-                return originalName;
-
-            var normalized = TypeTranslator.NormalizeName(originalName);
-            context.GeneratedTypeNames[originalName] = normalized;
-            return normalized;
-        }
-
-        private static string ResolveTypeName(string typeName, SchemaContext context)
-        {
-            if (string.IsNullOrEmpty(typeName))
-                return typeName;
-
-            if (IsDotNetPrimitive(typeName))
-                return typeName;
-
-            if (context.GeneratedTypeNames.TryGetValue(typeName, out var generated))
-                return generated;
-
-            return TypeTranslator.NormalizeName(typeName);
-        }
-
-        private static bool IsDotNetPrimitive(string typeName) => DotNetPrimitiveTypes.Contains(typeName);
-
-        private static string NormalizeValueRef(string valueRef, SchemaContext context)
-        {
-            if (string.IsNullOrWhiteSpace(valueRef))
-                return valueRef;
-
-            int separatorIndex = valueRef.IndexOf('.');
-            string separator = ".";
-
-            if (separatorIndex < 0)
-            {
-                separatorIndex = valueRef.IndexOf("::", StringComparison.Ordinal);
-                if (separatorIndex >= 0)
-                    separator = "::";
-            }
-
-            if (separatorIndex < 0)
-                return ResolveTypeName(valueRef, context);
-
-            var typePart = valueRef.Substring(0, separatorIndex);
-            var remainder = valueRef.Substring(separatorIndex + separator.Length);
-            var normalizedType = ResolveTypeName(typePart, context);
-
-            if (remainder.Length == 0)
-                return normalizedType;
-
-            return string.Concat(normalizedType, separator, remainder);
         }
 
         private static int? ParseOffset(string offset, string fieldName, SourceProductionContext sourceContext)

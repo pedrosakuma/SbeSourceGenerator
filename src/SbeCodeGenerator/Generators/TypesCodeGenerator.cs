@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,23 +13,6 @@ namespace SbeSourceGenerator.Generators
     /// </summary>
     internal class TypesCodeGenerator : ICodeGenerator
     {
-        private static readonly HashSet<string> DotNetPrimitiveTypes = new(StringComparer.Ordinal)
-        {
-            "bool",
-            "byte",
-            "sbyte",
-            "short",
-            "ushort",
-            "int",
-            "uint",
-            "long",
-            "ulong",
-            "float",
-            "double",
-            "char",
-            "string"
-        };
-
         public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
             foreach (var compositeDto in schema.Composites)
@@ -57,7 +39,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
             int maxBitPosition = TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType) * 8 - 1;
 
@@ -100,7 +82,7 @@ namespace SbeSourceGenerator.Generators
                 generatedName,
                 enumDto.Description,
                 encodingTranslated.PrimitiveType,
-                GetTypeLength(encodingTranslated.PrimitiveType, context),
+                TypeResolverHelper.GetTypeLength(encodingTranslated.PrimitiveType, context),
                 validChoices
             );
             if (generator is IBlittable blittableType)
@@ -116,7 +98,7 @@ namespace SbeSourceGenerator.Generators
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
             {
-                var generatedName = RegisterGeneratedTypeName(context, typeDto.Name);
+                var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, typeDto.Name, sourceContext);
                 int lengthValue = 0;
                 if (!string.IsNullOrEmpty(typeDto.Length))
                 {
@@ -141,7 +123,7 @@ namespace SbeSourceGenerator.Generators
                         ns,
                         generatedName,
                         typeDto.Description,
-                        ResolveTypeName(nativeType, context),
+                        TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
                         typeDto.Length,
                         typeDto.InnerText
@@ -157,18 +139,18 @@ namespace SbeSourceGenerator.Generators
                         ns,
                         generatedName,
                         typeDto.Description,
-                        ResolveTypeName(nativeType, context),
+                        TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
                         typeDto.NullValue,
-                        GetTypeLength(nativeType, context)
+                        TypeResolverHelper.GetTypeLength(nativeType, context)
                     ),
                     _ => new TypeDefinition(
                         ns,
                         generatedName,
                         typeDto.Description,
-                        ResolveTypeName(nativeType, context),
+                        TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
-                        GetTypeLength(nativeType, context)
+                        TypeResolverHelper.GetTypeLength(nativeType, context)
                     )
                 };
                 if (generator is ConstantTypeDefinition)
@@ -176,7 +158,7 @@ namespace SbeSourceGenerator.Generators
                 if (generator is OptionalTypeDefinition)
                 {
                     context.OptionalTypes[typeDto.Name] = nativeType;
-                    var resolvedType = ResolveTypeName(nativeType, context);
+                    var resolvedType = TypeResolverHelper.ResolveTypeName(nativeType, context);
                     if (string.IsNullOrEmpty(typeDto.NullValue) && !TypesCatalog.HasNullValue(resolvedType)
                         && sourceContext.CancellationToken != default)
                     {
@@ -197,7 +179,7 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var generatedName = RegisterGeneratedTypeName(context, enumDto.Name);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
             var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
 
             if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CancellationToken != default)
@@ -276,7 +258,7 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            var generatedName = RegisterGeneratedTypeName(context, compositeDto.Name);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, compositeDto.Name, sourceContext);
 
             // Separate ref fields from primitive fields
             var refFields = compositeDto.Fields
@@ -293,11 +275,11 @@ namespace SbeSourceGenerator.Generators
 
             foreach (var ft in fieldTranslations)
             {
-                context.CompositeFieldTypes[$"{compositeDto.Name}.{ft.Field.Name}"] = ResolveTypeName(ft.Translation.PrimitiveType, context);
+                context.CompositeFieldTypes[$"{compositeDto.Name}.{ft.Field.Name}"] = TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context);
 
                 if (ft.Field.Presence == "optional" && string.IsNullOrEmpty(ft.Field.NullValue))
                 {
-                    var resolvedType = ResolveTypeName(ft.Translation.PrimitiveType, context);
+                    var resolvedType = TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context);
                     if (!TypesCatalog.HasNullValue(resolvedType) && sourceContext.CancellationToken != default)
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
@@ -311,7 +293,7 @@ namespace SbeSourceGenerator.Generators
             // Register ref fields in CompositeFieldTypes
             foreach (var rf in refFields)
             {
-                var resolvedRefType = ResolveTypeName(rf.Type, context);
+                var resolvedRefType = TypeResolverHelper.ResolveTypeName(rf.Type, context);
                 context.CompositeFieldTypes[$"{compositeDto.Name}.{rf.Name}"] = resolvedRefType;
             }
 
@@ -327,15 +309,15 @@ namespace SbeSourceGenerator.Generators
                         ("constant", _) => new ConstantTypeFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
-                            ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
                             InsertQuotationsIfNeeded(ft.Field.InnerText, ft.Field.PrimitiveType, ft.Field.Length),
-                            NormalizeValueRef(ft.Field.ValueRef, context)
+                            TypeResolverHelper.NormalizeValueRef(ft.Field.ValueRef, context)
                         ),
                         ("optional", _) => new NullableValueFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
-                            ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            GetTypeLength(ft.Translation.PrimitiveType, context),
+                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
                             ft.Field.NullValue == "" ? null : ft.Field.NullValue,
                             context.EndianConversion
                         ),
@@ -347,15 +329,15 @@ namespace SbeSourceGenerator.Generators
                         _ => (IFileContentGenerator)new ValueFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
-                            ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            GetTypeLength(ft.Translation.PrimitiveType, context),
+                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
+                            TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
                             context.EndianConversion
                         )
                     });
                 }
                 else if (!string.IsNullOrEmpty(field.Type))
                 {
-                    var resolvedRefType = ResolveTypeName(field.Type, context);
+                    var resolvedRefType = TypeResolverHelper.ResolveTypeName(field.Type, context);
                     var refLength = context.CustomTypeLengths.TryGetValue(field.Type, out var len) ? len : 0;
                     fields.Add(new CompositeRefFieldDefinition(
                         TypeTranslator.NormalizeName(field.Name),
@@ -391,80 +373,5 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
-        private static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
-        {
-            int length;
-            if (!TypesCatalog.PrimitiveTypeLengths.TryGetValue(type, out length)
-                && !context.CustomTypeLengths.TryGetValue(type, out length)
-                && !TypesCatalog.PrimitiveTypeLengths.TryGetValue(TypeTranslator.Translate(type).PrimitiveType, out length))
-            {
-                if (sourceContext.CancellationToken != default)
-                {
-                    sourceContext.ReportDiagnostic(Diagnostic.Create(
-                        SbeDiagnostics.UnresolvedTypeReference,
-                        Location.None,
-                        type,
-                        elementName));
-                }
-                return 0;
-            }
-            return length;
-        }
-
-        private static string RegisterGeneratedTypeName(SchemaContext context, string originalName)
-        {
-            if (string.IsNullOrEmpty(originalName))
-                return originalName;
-
-            var normalized = TypeTranslator.NormalizeName(originalName);
-            context.GeneratedTypeNames[originalName] = normalized;
-            return normalized;
-        }
-
-        private static string ResolveTypeName(string typeName, SchemaContext context)
-        {
-            if (string.IsNullOrEmpty(typeName))
-                return typeName;
-
-            if (IsDotNetPrimitive(typeName))
-                return typeName;
-
-            if (context.GeneratedTypeNames.TryGetValue(typeName, out var generated))
-                return generated;
-
-            return TypeTranslator.NormalizeName(typeName);
-        }
-
-        private static bool IsDotNetPrimitive(string typeName) => DotNetPrimitiveTypes.Contains(typeName);
-
-        private static string NormalizeValueRef(string valueRef, SchemaContext context)
-        {
-            if (string.IsNullOrWhiteSpace(valueRef))
-                return valueRef;
-
-            int separatorIndex = valueRef.IndexOf('.');
-            string separator = ".";
-
-            if (separatorIndex < 0)
-            {
-                separatorIndex = valueRef.IndexOf("::", StringComparison.Ordinal);
-                if (separatorIndex >= 0)
-                {
-                    separator = "::";
-                }
-            }
-
-            if (separatorIndex < 0)
-                return ResolveTypeName(valueRef, context);
-
-            var typePart = valueRef.Substring(0, separatorIndex);
-            var remainder = valueRef.Substring(separatorIndex + separator.Length);
-            var normalizedType = ResolveTypeName(typePart, context);
-
-            if (remainder.Length == 0)
-                return normalizedType;
-
-            return string.Concat(normalizedType, separator, remainder);
-        }
     }
 }

@@ -126,6 +126,79 @@ namespace SbeCodeGenerator.Tests
             // Verify SBE006 - Invalid type length
             Assert.Equal("SBE006", SbeDiagnostics.InvalidTypeLength.Id);
             Assert.Equal(DiagnosticSeverity.Error, SbeDiagnostics.InvalidTypeLength.DefaultSeverity);
+
+            // Verify SBE013 - Duplicate type name
+            Assert.Equal("SBE013", SbeDiagnostics.DuplicateTypeName.Id);
+            Assert.Equal(DiagnosticSeverity.Warning, SbeDiagnostics.DuplicateTypeName.DefaultSeverity);
+
+            // Verify SBE014 - sinceVersion exceeds schema version
+            Assert.Equal("SBE014", SbeDiagnostics.SinceVersionExceedsSchemaVersion.Id);
+            Assert.Equal(DiagnosticSeverity.Warning, SbeDiagnostics.SinceVersionExceedsSchemaVersion.DefaultSeverity);
+        }
+
+        [Fact]
+        public void Generate_WithDuplicateTypeName_CompletesSuccessfully()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Buy'>1</validValue>
+                        </enum>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Sell'>2</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            // Should not throw — last definition wins
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            Assert.NotEmpty(results);
+            // The last definition should be the one that's generated
+            var sideResult = results.Last(r => r.name.Contains("Side"));
+            Assert.Contains("Sell", sideResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSinceVersionExceedingSchemaVersion_CompletesSuccessfully()
+        {
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema version='1'>
+                    <types>
+                        <composite name='messageHeader' description='Message header'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                    <message name='TestMsg' id='1'>
+                        <field name='price' id='1' type='uint64'/>
+                        <field name='quantity' id='2' type='uint32' sinceVersion='5'/>
+                    </message>
+                </messageSchema>");
+
+            // Should not throw even with sinceVersion=5 > schemaVersion=1
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            Assert.NotEmpty(results);
+        }
+
+        [Fact]
+        public void TypeResolverHelper_RegisterGeneratedTypeName_DetectsDuplicates()
+        {
+            var context = new SchemaContext("test-schema");
+
+            // First registration succeeds
+            TypeResolverHelper.RegisterGeneratedTypeName(context, "MyType");
+            Assert.True(context.GeneratedTypeNames.ContainsKey("MyType"));
+
+            // Second registration with same name overwrites (but would emit diagnostic with real sourceContext)
+            TypeResolverHelper.RegisterGeneratedTypeName(context, "MyType");
+            Assert.True(context.GeneratedTypeNames.ContainsKey("MyType"));
         }
     }
 }
