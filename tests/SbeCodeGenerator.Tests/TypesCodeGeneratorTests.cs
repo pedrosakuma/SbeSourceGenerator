@@ -966,7 +966,7 @@ namespace SbeCodeGenerator.Tests
             var decimalResult = results.First(r => r.name.Contains("Decimal"));
 
             // Assert
-            Assert.Contains("public override string ToString()", decimalResult.content);
+            Assert.Contains("public readonly override string ToString()", decimalResult.content);
             Assert.Contains("Decimal {{ Mantissa={Mantissa} }}", decimalResult.content);
         }
     }

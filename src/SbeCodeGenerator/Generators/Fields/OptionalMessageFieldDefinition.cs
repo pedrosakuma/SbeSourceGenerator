@@ -56,11 +56,11 @@ namespace SbeSourceGenerator
 
                 if (NullValue == null && TypesCatalog.IsFloatingPoint(PrimitiveType))
                 {
-                    sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => ").Append(PrimitiveType).Append(".IsNaN((").Append(PrimitiveType).Append(")").Append(getExpr).Append(") ? null : ").Append(getExpr).AppendLine(";");
+                    sb.AppendTabs(tabs).Append("public readonly ").Append(Type).Append("? ").Append(Name).Append(" => ").Append(PrimitiveType).Append(".IsNaN((").Append(PrimitiveType).Append(")").Append(getExpr).Append(") ? null : ").Append(getExpr).AppendLine(";");
                 }
                 else
                 {
-                    sb.AppendTabs(tabs).Append("public ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(getExpr).Append(" == ").Append(nullValue).Append(" ? null : ").Append(getExpr).AppendLine(";");
+                    sb.AppendTabs(tabs).Append("public readonly ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(getExpr).Append(" == ").Append(nullValue).Append(" ? null : ").Append(getExpr).AppendLine(";");
                 }
                 sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(fieldName).Append(" = value.HasValue ? (").Append(Type).Append(")").Append(EndianFieldHelper.SetterExpression(PrimitiveType, "value.Value", EndianConversion)).Append(" : ").Append(setNullExpr).AppendLine(";");
             }

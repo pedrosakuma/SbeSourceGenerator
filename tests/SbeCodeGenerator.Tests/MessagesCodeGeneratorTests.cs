@@ -594,7 +594,7 @@ namespace SbeCodeGenerator.Tests
             var msgResult = results.First(r => r.name.Contains("Order"));
 
             // Assert
-            Assert.Contains("public override string ToString()", msgResult.content);
+            Assert.Contains("public readonly override string ToString()", msgResult.content);
             Assert.Contains("OrderData {{ OrderId={OrderId}, Price={Price}, Quantity={Quantity} }}", msgResult.content);
         }
 

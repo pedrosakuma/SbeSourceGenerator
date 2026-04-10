@@ -41,5 +41,5 @@ public partial struct MessageHeader
 	/// </summary>
 	public ushort Version;
 	/// <summary>Returns a string representation of this struct for debugging.</summary>
-	public override string ToString() => $"MessageHeader {{ BlockLength={BlockLength}, TemplateId={TemplateId}, SchemaId={SchemaId}, Version={Version} }}";
+	public readonly override string ToString() => $"MessageHeader {{ BlockLength={BlockLength}, TemplateId={TemplateId}, SchemaId={SchemaId}, Version={Version} }}";
 }

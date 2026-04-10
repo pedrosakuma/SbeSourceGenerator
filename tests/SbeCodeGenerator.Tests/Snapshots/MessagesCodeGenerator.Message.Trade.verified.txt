@@ -118,7 +118,7 @@ public partial struct TradeData
 		return bytesWritten;
 	}
 	/// <summary>Returns a string representation of this struct for debugging.</summary>
-	public override string ToString() => $"TradeData {{ TradeId={TradeId}, Price={Price}, Quantity={Quantity}, Side={Side} }}";
+	public readonly override string ToString() => $"TradeData {{ TradeId={TradeId}, Price={Price}, Quantity={Quantity}, Side={Side} }}";
 	/// <summary>
 	/// Writes a pre-populated MessageHeader for this message type to the destination buffer.
 	/// Sets BlockLength=BLOCK_LENGTH, TemplateId=1, SchemaId=1, Version=0.

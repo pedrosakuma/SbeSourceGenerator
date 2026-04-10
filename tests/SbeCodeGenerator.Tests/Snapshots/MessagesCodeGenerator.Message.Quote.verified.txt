@@ -118,7 +118,7 @@ public partial struct QuoteData
 		return bytesWritten;
 	}
 	/// <summary>Returns a string representation of this struct for debugging.</summary>
-	public override string ToString() => $"QuoteData {{ BidPrice={BidPrice}, BidQuantity={BidQuantity}, AskPrice={AskPrice}, AskQuantity={AskQuantity} }}";
+	public readonly override string ToString() => $"QuoteData {{ BidPrice={BidPrice}, BidQuantity={BidQuantity}, AskPrice={AskPrice}, AskQuantity={AskQuantity} }}";
 	/// <summary>
 	/// Writes a pre-populated MessageHeader for this message type to the destination buffer.
 	/// Sets BlockLength=BLOCK_LENGTH, TemplateId=2, SchemaId=1, Version=0.
