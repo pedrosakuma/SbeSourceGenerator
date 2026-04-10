@@ -104,6 +104,26 @@ namespace SbeSourceGenerator
                         }
 
                         /// <summary>
+                        /// Attempts to read a group entry using the wire blockLength rather than sizeof(T).
+                        /// Advances by exactly blockLength bytes, handling zero-field groups (blockLength=0)
+                        /// and schema evolution (blockLength differs from sizeof(T)).
+                        /// </summary>
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                        public bool TryReadGroupEntry<T>(int blockLength, out T value) where T : struct
+                        {
+                            value = default;
+                            if (blockLength <= 0)
+                                return true;
+                            if (_buffer.Length < blockLength)
+                                return false;
+                            int size = Unsafe.SizeOf<T>();
+                            if (blockLength >= size)
+                                value = MemoryMarshal.Read<T>(_buffer);
+                            _buffer = _buffer.Slice(blockLength);
+                            return true;
+                        }
+
+                        /// <summary>
                         /// Attempts to read the specified number of bytes from the buffer and advances the reader position.
                         /// </summary>
                         /// <param name="count">Number of bytes to read.</param>

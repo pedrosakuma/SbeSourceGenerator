@@ -301,7 +301,8 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("for (int ").Append(loopVar).Append(" = 0; ").Append(loopVar).Append(" < group").Append(group.Name).Append(".NumInGroup; ").Append(loopVar).AppendLine("++)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(group.Name).Append("Data>(out var ").Append(dataVarName).AppendLine("))");
+            // Use TryReadGroupEntry with blockLength from header to handle zero-field groups and schema evolution
+            sb.AppendTabs(tabs).Append("if (!reader.TryReadGroupEntry<").Append(group.Name).Append("Data>(group").Append(group.Name).Append(".BlockLength, out var ").Append(dataVarName).AppendLine("))");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("break;", tabs);
             sb.AppendLine("}", --tabs);

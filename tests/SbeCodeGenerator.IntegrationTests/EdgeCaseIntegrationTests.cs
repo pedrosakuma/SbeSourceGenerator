@@ -232,7 +232,7 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(21, TextMessageData.MESSAGE_ID);
         }
 
-        [Fact(Skip = "Known issue: groups with 0 fixed fields have sizeof(T)=1 vs blockLength=0 mismatch")]
+        [Fact]
         public void TextMessage_ConsumeVariableLength_WithDataOnlyGroup()
         {
             var buffer = new byte[512];
