@@ -59,6 +59,7 @@ namespace SbeSourceGenerator
             AppendMessageDefinitionConstants(sb, tabs);
             AppendConstantsFileContent(sb, tabs);
             AppendFieldsFileContent(sb, tabs);
+            FileContentGeneratorExtensions.AppendToString(sb, tabs, Name + "Data", Fields);
 
             sb.AppendLine("}", --tabs);
         }

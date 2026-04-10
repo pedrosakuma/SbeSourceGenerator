@@ -77,6 +77,8 @@ namespace SbeSourceGenerator
 
                 if (valueField != null && arrayField != null)
                 {
+                    int lengthSize = TypesCatalog.GetPrimitiveLength(valueField.PrimitiveType);
+
                     sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs, nameof(CompositeDefinition));
                     sb.AppendTabs(tabs).Append("public ").Append(Name).Append("(").Append(valueField.PrimitiveType).Append(" ").Append(valueField.Name.FirstCharToLower()).Append(", ReadOnlySpan<").Append(arrayField.PrimitiveType).Append("> ").Append(arrayField.Name.FirstCharToLower()).AppendLine(")");
                     sb.AppendLine("{", tabs++);
@@ -85,12 +87,24 @@ namespace SbeSourceGenerator
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("", tabs);
 
-                    sb.AppendSummary("Create instance from buffer", tabs, nameof(CompositeDefinition));
-                    sb.AppendTabs(tabs).Append("public static ").Append(Name).Append(" Create(ReadOnlySpan<byte> buffer) => new ").Append(Name).AppendLine("(MemoryMarshal.AsRef<byte>(buffer), buffer.Slice(1));");
+                    sb.AppendSummary("Create instance from buffer, reading the length prefix and slicing the data.", tabs, nameof(CompositeDefinition));
+                    sb.AppendTabs(tabs).Append("public static ").Append(Name).Append(" Create(ReadOnlySpan<byte> buffer)");
+                    sb.AppendLine();
+                    sb.AppendLine("{", tabs++);
+                    sb.AppendTabs(tabs).Append("var length = MemoryMarshal.AsRef<").Append(valueField.PrimitiveType).AppendLine(">(buffer);");
+                    sb.AppendTabs(tabs).Append("return new ").Append(Name).Append("(length, buffer.Slice(").Append(lengthSize.ToString()).Append(", (int)length));").AppendLine();
+                    sb.AppendLine("}", --tabs);
+
+                    sb.AppendSummary("Total wire size of this variable-length segment (length prefix + data).", tabs, nameof(CompositeDefinition));
+                    sb.AppendTabs(tabs).Append("public int TotalLength => ").Append(lengthSize.ToString()).Append(" + (int)").Append(valueField.Name).AppendLine(";");
                 }
 
                 sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs, nameof(CompositeDefinition));
                 sb.AppendTabs(tabs).Append("public delegate void Callback(").Append(Name).AppendLine(" data);");
+            }
+            else
+            {
+                FileContentGeneratorExtensions.AppendToString(sb, tabs, Name, Fields);
             }
             sb.AppendLine("}", --tabs);
         }

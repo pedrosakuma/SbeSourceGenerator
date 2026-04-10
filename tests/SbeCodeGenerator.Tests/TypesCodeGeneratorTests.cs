@@ -593,7 +593,8 @@ namespace SbeCodeGenerator.Tests
             Assert.NotEqual(default, compositeResult);
             
             // Verify Create method uses constructor instead of object initializer
-            Assert.Contains("public static VarString8 Create(ReadOnlySpan<byte> buffer) => new VarString8(", compositeResult.content);
+            Assert.Contains("public static VarString8 Create(ReadOnlySpan<byte> buffer)", compositeResult.content);
+            Assert.Contains("new VarString8(length,", compositeResult.content);
             
             // Should NOT use object initializer syntax
             Assert.DoesNotContain("new VarString8 {", compositeResult.content);
@@ -859,6 +860,31 @@ namespace SbeCodeGenerator.Tests
             Assert.Equal(2, sideResults.Count);
             // Last definition includes Sell
             Assert.Contains("Sell", sideResults.Last().content);
+        }
+
+        [Fact]
+        public void Generate_WithBlittableComposite_ProducesToStringOverride()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='decimal' description='A decimal value'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-3</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var decimalResult = results.First(r => r.name.Contains("Decimal"));
+
+            // Assert
+            Assert.Contains("public override string ToString()", decimalResult.content);
+            Assert.Contains("Decimal {{ Mantissa={Mantissa} }}", decimalResult.content);
         }
     }
 }

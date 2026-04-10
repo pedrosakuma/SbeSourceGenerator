@@ -139,6 +139,21 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
+        public void WriteHeader_PopulatesHeaderCorrectly()
+        {
+            Span<byte> buffer = stackalloc byte[Integration.Test.V0.MessageHeader.MESSAGE_SIZE + Integration.Test.V0.NewOrderData.MESSAGE_SIZE];
+
+            var headerSize = Integration.Test.V0.NewOrderData.WriteHeader(buffer);
+            ref var header = ref MemoryMarshal.AsRef<Integration.Test.V0.MessageHeader>(buffer);
+
+            Assert.Equal(Integration.Test.V0.MessageHeader.MESSAGE_SIZE, headerSize);
+            Assert.Equal((ushort)Integration.Test.V0.NewOrderData.BLOCK_LENGTH, header.BlockLength);
+            Assert.Equal((ushort)Integration.Test.V0.NewOrderData.MESSAGE_ID, header.TemplateId);
+            Assert.Equal((ushort)2, header.SchemaId);
+            Assert.Equal((ushort)0, header.Version);
+        }
+
+        [Fact]
         public unsafe void GeneratedMessageWithGroups_CanBeAccessed()
         {
             // Verify messages with groups are generated (OrderBook has bids/asks groups)
@@ -711,11 +726,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((byte)4, symbolLength);
             Assert.Equal("AAPL", symbolStr);
             
-            // Verify data was read correctly
-            // Note: Data fields use reader.Remaining without advancing the reader,
-            // so the reader position stays the same. This allows the caller to manage
-            // the reader position after processing all variable-length data.
-            Assert.Equal(5, reader.RemainingBytes); // VarString8 header (1) + data (4)
+            // Verify the reader was advanced past the data segment
+            Assert.Equal(0, reader.RemainingBytes);
         }
     }
 }
