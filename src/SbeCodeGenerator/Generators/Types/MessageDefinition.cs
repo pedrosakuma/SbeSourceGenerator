@@ -260,8 +260,9 @@ namespace SbeSourceGenerator
         private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group, List<string>? ancestorVarNames = null)
         {
             var ancestors = ancestorVarNames ?? new List<string>();
-            var dataVarName = ancestors.Count == 0 ? "data" : "nestedData";
-            var loopVar = ancestors.Count == 0 ? "i" : $"j{ancestors.Count}";
+            var depth = ancestors.Count;
+            var dataVarName = depth == 0 ? "data" : $"nestedData{depth}";
+            var loopVar = depth == 0 ? "i" : $"j{depth}";
 
             sb.AppendTabs(tabs).Append("if (reader.TryRead<").Append(group.DimensionType).Append(">(out var group").Append(group.Name).AppendLine("))");
             sb.AppendLine("{", tabs++);
@@ -319,13 +320,19 @@ namespace SbeSourceGenerator
             foreach (var group in Groups)
             {
                 group.AppendFileContent(sb, tabs);
-                // Also generate nested group structs
                 var typedGroup = (GroupDefinition)group;
-                if (typedGroup.HasNestedGroups)
-                {
-                    foreach (var nested in typedGroup.NestedGroups!)
-                        nested.AppendFileContent(sb, tabs);
-                }
+                AppendNestedGroupStructs(sb, tabs, typedGroup);
+            }
+        }
+
+        private static void AppendNestedGroupStructs(StringBuilder sb, int tabs, GroupDefinition group)
+        {
+            if (!group.HasNestedGroups)
+                return;
+            foreach (var nested in group.NestedGroups!)
+            {
+                nested.AppendFileContent(sb, tabs);
+                AppendNestedGroupStructs(sb, tabs, (GroupDefinition)nested);
             }
         }
 

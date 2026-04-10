@@ -547,7 +547,7 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("public delegate void PerformanceFiguresHandler(in PerformanceFiguresData data)", msgResult.content);
             Assert.Contains("public delegate void AccelerationHandler(in PerformanceFiguresData performanceFiguresData, in AccelerationData data)", msgResult.content);
             // Nested callback invocation should pass parent data with in
-            Assert.Contains("callbackAcceleration(in data, in nestedData)", msgResult.content);
+            Assert.Contains("callbackAcceleration(in data, in nestedData1)", msgResult.content);
         }
 
         [Fact]
