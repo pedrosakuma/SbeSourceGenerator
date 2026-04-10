@@ -283,7 +283,7 @@ namespace SbeCodeGenerator.IntegrationTests
             string? modelName = null;
 
             parsedCar.ConsumeVariableLengthSegments(variableData,
-                callbackFuelFigures: (CarData.FuelFiguresData fuel) =>
+                callbackFuelFigures: (in CarData.FuelFiguresData fuel) =>
                 {
                     fuelCount++;
                     Assert.Equal((ushort)60, fuel.Speed);
@@ -293,12 +293,12 @@ namespace SbeCodeGenerator.IntegrationTests
                 {
                     Assert.Equal("City", Encoding.ASCII.GetString(usageDesc.VarData));
                 },
-                callbackPerformanceFigures: (CarData.PerformanceFiguresData perf) =>
+                callbackPerformanceFigures: (in CarData.PerformanceFiguresData perf) =>
                 {
                     perfCount++;
                     Assert.Equal((byte)95, perf.OctaneRating.Value);
                 },
-                callbackAcceleration: (CarData.PerformanceFiguresData perf, CarData.AccelerationData accel) =>
+                callbackAcceleration: (in CarData.PerformanceFiguresData perf, in CarData.AccelerationData accel) =>
                 {
                     accelCount++;
                 },

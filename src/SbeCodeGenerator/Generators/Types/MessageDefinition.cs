@@ -46,9 +46,9 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             if (EndianConversion != EndianConversion.None)
-                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Buffers.Binary");
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Runtime.InteropServices", "System.Buffers.Binary");
             else
-                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Runtime.InteropServices");
 
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 
@@ -87,58 +87,20 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out ").Append(Name).AppendLine("Data message, out ReadOnlySpan<byte> variableData)");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
-            sb.AppendLine("// Read the message data", tabs);
-            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(Name).AppendLine("Data>(out message))");
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("variableData = default;", tabs);
-            sb.AppendLine("return false;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("", tabs);
-            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
-            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
-            sb.AppendLine("if (additionalBytes > 0)", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("if (!reader.TrySkip(additionalBytes))", tabs);
+            sb.AppendTabs(tabs).Append("if (!reader.TryReadBlock<").Append(Name).AppendLine("Data>(blockLength, out message))");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("variableData = default;", tabs);
             sb.AppendLine("return false;", tabs);
             sb.AppendLine("}", --tabs);
             sb.AppendLine("variableData = reader.Remaining;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("else", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("// For backward compatibility: variable data starts at blockLength", tabs);
-            sb.AppendLine("if (blockLength > buffer.Length)", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("variableData = default;", tabs);
-            sb.AppendLine("return false;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("variableData = buffer.Slice(blockLength);", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("", tabs);
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
 
             // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
-            // This method is designed for advanced scenarios where users manage their own SpanReader
-            // Caller can access remaining data via reader.Remaining after successful parse
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
             sb.AppendTabs(tabs).Append("public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out ").Append(Name).AppendLine("Data message)");
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("// Read the message data", tabs);
-            sb.AppendTabs(tabs).Append("if (!reader.TryRead<").Append(Name).AppendLine("Data>(out message))");
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("return false;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("", tabs);
-            sb.AppendLine("// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE", tabs);
-            sb.AppendLine("var additionalBytes = blockLength - MESSAGE_SIZE;", tabs);
-            sb.AppendLine("if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))", tabs);
-            sb.AppendLine("{", tabs++);
-            sb.AppendLine("return false;", tabs);
-            sb.AppendLine("}", --tabs);
-            sb.AppendLine("", tabs);
-            sb.AppendLine("return true;", tabs);
+            sb.AppendTabs(tabs).Append("return reader.TryReadBlock<").Append(Name).AppendLine("Data>(blockLength, out message);");
             sb.AppendLine("}", --tabs);
         }
 
@@ -263,6 +225,10 @@ namespace SbeSourceGenerator
         {
             if (HasVariableData)
             {
+                // Generate delegate types for zero-copy group callbacks
+                foreach (var group in TypedGroups)
+                    AppendGroupDelegateTypes(sb, tabs, group);
+
                 // Build callback parameter lists once
                 var callbackParams = BuildCallbackParams();
                 var callbackArgs = BuildCallbackArgs();
@@ -301,19 +267,18 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("for (int ").Append(loopVar).Append(" = 0; ").Append(loopVar).Append(" < group").Append(group.Name).Append(".NumInGroup; ").Append(loopVar).AppendLine("++)");
             sb.AppendLine("{", tabs++);
-            // Use TryReadGroupEntry with blockLength from header to handle zero-field groups and schema evolution
-            sb.AppendTabs(tabs).Append("if (!reader.TryReadGroupEntry<").Append(group.Name).Append("Data>(group").Append(group.Name).Append(".BlockLength, out var ").Append(dataVarName).AppendLine("))");
+            sb.AppendTabs(tabs).Append("if (!reader.TryReadBlock<").Append(group.Name).Append("Data>(group").Append(group.Name).Append(".BlockLength, out var ").Append(dataVarName).AppendLine("))");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("break;", tabs);
             sb.AppendLine("}", --tabs);
 
-            // Invoke callback with ancestor context
+            // Invoke callback with ancestor context using 'in' for zero-copy pass
             sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append("(");
             foreach (var ancestorVar in ancestors)
             {
-                sb.Append(ancestorVar).Append(", ");
+                sb.Append("in ").Append(ancestorVar).Append(", ");
             }
-            sb.Append(dataVarName).AppendLine(");");
+            sb.Append("in ").Append(dataVarName).AppendLine(");");
 
             // Read group-level variable data after each entry
             foreach (var groupData in group.TypedDatas)
@@ -331,6 +296,22 @@ namespace SbeSourceGenerator
             }
             sb.AppendLine("}", --tabs);
             sb.AppendLine("}", --tabs);
+        }
+
+        private static void AppendGroupDelegateTypes(StringBuilder sb, int tabs, GroupDefinition group, List<string>? ancestorTypes = null)
+        {
+            var ancestors = ancestorTypes ?? new List<string>();
+            var paramParts = new List<string>();
+            foreach (var ancestor in ancestors)
+                paramParts.Add($"in {ancestor} {char.ToLowerInvariant(ancestor[0])}{ancestor.Substring(1)}");
+            paramParts.Add($"in {group.Name}Data data");
+            sb.AppendTabs(tabs).Append("public delegate void ").Append(group.Name).Append("Handler(")
+                .Append(string.Join(", ", paramParts)).AppendLine(");");
+
+            var ancestorsForChildren = new List<string>(ancestors);
+            ancestorsForChildren.Add($"{group.Name}Data");
+            foreach (var nestedGroup in group.TypedNestedGroups)
+                AppendGroupDelegateTypes(sb, tabs, nestedGroup, ancestorsForChildren);
         }
 
         private void AppendGroupsFileContent(StringBuilder sb, int tabs)
@@ -599,15 +580,7 @@ namespace SbeSourceGenerator
         private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group, List<string>? ancestorTypes = null)
         {
             var ancestors = ancestorTypes ?? new List<string>();
-            if (ancestors.Count == 0)
-            {
-                parts.Add($"Action<{group.Name}Data> callback{group.Name}");
-            }
-            else
-            {
-                var typeArgs = string.Join(", ", ancestors) + $", {group.Name}Data";
-                parts.Add($"Action<{typeArgs}> callback{group.Name}");
-            }
+            parts.Add($"{group.Name}Handler callback{group.Name}");
 
             foreach (var groupData in group.TypedDatas)
                 parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");

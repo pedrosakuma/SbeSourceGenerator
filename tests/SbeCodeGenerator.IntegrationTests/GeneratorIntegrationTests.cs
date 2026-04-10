@@ -420,8 +420,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var orderBook = new Integration.Test.V0.OrderBookData();
             orderBook.ConsumeVariableLengthSegments(
                 buffer.Slice(0, offset),
-                bid => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
-                ask => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
+                (in Integration.Test.V0.OrderBookData.BidsData bid) => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
+                (in Integration.Test.V0.OrderBookData.AsksData ask) => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
             );
             
             // Assert
@@ -590,20 +590,27 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public void TryParse_WithSpanReader_FailsWhenInsufficientBufferForMessage()
         {
-            // Test that TryParse fails when buffer is smaller than MESSAGE_SIZE
-            // This validates the TryRead check in SpanReader
+            // Test that TryParse fails when buffer is smaller than blockLength
+            // This validates the TryReadBlock check in SpanReader
             
-            // Arrange
-            int blockLength = 10; // Less than MESSAGE_SIZE
-            Span<byte> buffer = stackalloc byte[10]; // Same as blockLength, but less than MESSAGE_SIZE
+            // Arrange - blockLength larger than available buffer
+            int blockLength = 20;
+            Span<byte> buffer = stackalloc byte[10]; // Less than blockLength
             
             // Act
             var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
             
-            // Assert
+            // Assert - should fail because buffer is too small for blockLength
             Assert.False(success);
             Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
             Assert.True(variableData.IsEmpty);
+            
+            // Verify that blockLength < MESSAGE_SIZE succeeds (backward compat: partial read)
+            int smallBlockLength = 10;
+            Span<byte> adequateBuffer = stackalloc byte[10];
+            var partialSuccess = Integration.Test.V0.NewOrderData.TryParse(adequateBuffer, smallBlockLength, out var partialMessage, out var remaining);
+            Assert.True(partialSuccess);
+            Assert.True(remaining.IsEmpty); // All 10 bytes consumed by blockLength
         }
 
         [Fact]
@@ -659,8 +666,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var orderBook = new Integration.Test.V0.OrderBookData();
             orderBook.ConsumeVariableLengthSegments(
                 ref reader,
-                bid => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
-                ask => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
+                (in Integration.Test.V0.OrderBookData.BidsData bid) => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
+                (in Integration.Test.V0.OrderBookData.AsksData ask) => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
             );
             
             // Assert - Verify parsed data

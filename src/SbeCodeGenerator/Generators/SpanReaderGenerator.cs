@@ -104,12 +104,12 @@ namespace SbeSourceGenerator
                         }
 
                         /// <summary>
-                        /// Attempts to read a group entry using the wire blockLength rather than sizeof(T).
-                        /// Advances by exactly blockLength bytes, handling zero-field groups (blockLength=0)
+                        /// Attempts to read a block using the wire blockLength rather than sizeof(T).
+                        /// Advances by exactly blockLength bytes, handling zero-field structs (blockLength=0)
                         /// and schema evolution (blockLength differs from sizeof(T)).
                         /// </summary>
                         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                        public bool TryReadGroupEntry<T>(int blockLength, out T value) where T : struct
+                        public bool TryReadBlock<T>(int blockLength, out T value) where T : struct
                         {
                             value = default;
                             if (blockLength <= 0)
@@ -118,9 +118,33 @@ namespace SbeSourceGenerator
                                 return false;
                             int size = Unsafe.SizeOf<T>();
                             if (blockLength >= size)
+                            {
                                 value = MemoryMarshal.Read<T>(_buffer);
+                            }
+                            else
+                            {
+                                // Partial read: copy available bytes into a zeroed struct (backward compat)
+                                Span<byte> temp = stackalloc byte[size];
+                                _buffer.Slice(0, blockLength).CopyTo(temp);
+                                value = MemoryMarshal.Read<T>(temp);
+                            }
                             _buffer = _buffer.Slice(blockLength);
                             return true;
+                        }
+
+                        /// <summary>
+                        /// Returns a readonly reference directly into the buffer (zero-copy).
+                        /// Advances by exactly blockLength bytes.
+                        /// Returns Unsafe.NullRef when blockLength is 0 or buffer is exhausted.
+                        /// </summary>
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                        public ref readonly T ReadBlockRef<T>(int blockLength) where T : struct
+                        {
+                            if (blockLength <= 0 || _buffer.Length < blockLength)
+                                return ref Unsafe.NullRef<T>();
+                            ref byte start = ref MemoryMarshal.GetReference(_buffer);
+                            _buffer = _buffer.Slice(blockLength);
+                            return ref Unsafe.As<byte, T>(ref start);
                         }
 
                         /// <summary>

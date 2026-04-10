@@ -2,6 +2,7 @@
 using TestNamespace.V0.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 namespace TestNamespace.V0;
 /// <summary>
 /// Quote message (Version 0)
@@ -58,54 +59,18 @@ public partial struct QuoteData
 	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out QuoteData message, out ReadOnlySpan<byte> variableData)
 	{
 		var reader = new SpanReader(buffer);
-		// Read the message data
-		if (!reader.TryRead<QuoteData>(out message))
+		if (!reader.TryReadBlock<QuoteData>(blockLength, out message))
 		{
 			variableData = default;
 			return false;
 		}
-		
-		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
-		var additionalBytes = blockLength - MESSAGE_SIZE;
-		if (additionalBytes > 0)
-		{
-			if (!reader.TrySkip(additionalBytes))
-			{
-				variableData = default;
-				return false;
-			}
-			variableData = reader.Remaining;
-		}
-		else
-		{
-			// For backward compatibility: variable data starts at blockLength
-			if (blockLength > buffer.Length)
-			{
-				variableData = default;
-				return false;
-			}
-			variableData = buffer.Slice(blockLength);
-		}
-		
+		variableData = reader.Remaining;
 		return true;
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out QuoteData message)
 	{
-		// Read the message data
-		if (!reader.TryRead<QuoteData>(out message))
-		{
-			return false;
-		}
-		
-		// Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
-		var additionalBytes = blockLength - MESSAGE_SIZE;
-		if (additionalBytes > 0 && !reader.TrySkip(additionalBytes))
-		{
-			return false;
-		}
-		
-		return true;
+		return reader.TryReadBlock<QuoteData>(blockLength, out message);
 	}
 	/// <summary>
 	/// Encodes this Quote message to the provided buffer.

@@ -269,7 +269,7 @@ namespace SbeCodeGenerator.IntegrationTests
             var parsed = new TextMessageData();
             parsed.ConsumeVariableLengthSegments(
                 ref reader,
-                attachments => { },
+                (in TextMessageData.AttachmentsData attachments) => { },
                 attachmentContent => { capturedContent = Encoding.UTF8.GetString(attachmentContent.VarData); },
                 body => { capturedBody = Encoding.UTF8.GetString(body.VarData); }
             );
