@@ -1,15 +1,15 @@
-name: CD - Manual NuGet Publish
+name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to publish (e.g., 1.0.0). Prefer using git tag push instead — see release.yml.'
-        required: true
-        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,11 +21,18 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
+    - name: Extract version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "📌 Version: $VERSION"
+
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --no-restore --configuration Release src/SbeCodeGenerator/SbeSourceGenerator.csproj /p:Version=${{ github.event.inputs.version }}
+      run: dotnet build --no-restore --configuration Release src/SbeCodeGenerator/SbeSourceGenerator.csproj /p:Version=${{ steps.version.outputs.version }}
 
     - name: Build Tests
       run: |
@@ -36,7 +43,7 @@ jobs:
       run: dotnet test --no-build --configuration Release --verbosity normal
 
     - name: Pack NuGet package
-      run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts /p:PackageVersion=${{ github.event.inputs.version }}
+      run: dotnet pack src/SbeCodeGenerator/SbeSourceGenerator.csproj --no-build --configuration Release --output ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
 
     - name: Validate NuGet package
       run: |
@@ -44,6 +51,14 @@ jobs:
         echo "📦 Validating package: $NUPKG"
         unzip -l "$NUPKG" | grep -q "analyzers/dotnet/cs/" || (echo "❌ Analyzer DLL not found in package" && exit 1)
         echo "✅ Package validation passed"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        generate_release_notes: true
+        files: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg
 
     - name: Push to NuGet
       run: |
@@ -53,7 +68,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nuget-package-${{ github.event.inputs.version }}
+        name: nuget-package-${{ steps.version.outputs.version }}
         path: |
           ./artifacts/*.nupkg
           ./artifacts/*.snupkg
