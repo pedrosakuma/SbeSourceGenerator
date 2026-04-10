@@ -120,7 +120,7 @@ namespace SbeSourceGenerator
             string setExpr = SetterExpression(type, "value", conversion);
 
             sb.AppendTabs(tabs).Append("public ").Append(type).Append(" ").Append(name)
-                .Append(" { get => ").Append(getExpr)
+                .Append(" { readonly get => ").Append(getExpr)
                 .Append("; set => ").Append(fieldName).Append(" = ").Append(setExpr)
                 .AppendLine("; }");
         }

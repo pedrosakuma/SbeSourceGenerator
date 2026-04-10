@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-04-10
+
+### Fixed
+- **NuGet packaging**: Removed DLL from `lib/netstandard2.0/` (was duplicated in both `lib/` and `analyzers/`). Consumers no longer get an incorrect runtime reference to the generator assembly.
+- **Zero external dependencies**: Replaced `System.Text.Json` (608KB, used only for `JsonNamingPolicy.SnakeCaseUpper`) with inline `ToScreamingSnakeCase()` implementation. Package size reduced from ~240KB to 76KB.
+- **Transitive reference support**: Added `buildTransitive/SbeSourceGenerator.props` so the generator loads correctly for transitive package references.
+- **CS0105 warning**: Removed duplicate `using System.Runtime.InteropServices` in generated message code.
+- **CS8656 warning**: Added `readonly` to composite big-endian property getters.
+- **CS0618 warning**: Generated `ToString()` and optional property accessors now suppress obsolete-member warnings when accessing deprecated fields.
+
+### Changed
+- Renamed internal `ToKebabCase()` to `ToScreamingSnakeCase()` with improved algorithm handling acronyms, digits, and underscores correctly.
+- Removed unused `deprecated-test-schema.xml` from integration tests (unit tests already cover deprecated attribute generation).
+
 ## [0.9.0] - 2026-04-10
 
 ### Added

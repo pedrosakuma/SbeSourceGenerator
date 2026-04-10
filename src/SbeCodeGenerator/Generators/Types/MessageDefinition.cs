@@ -46,9 +46,9 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             if (EndianConversion != EndianConversion.None)
-                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Runtime.InteropServices", "System.Buffers.Binary");
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Buffers.Binary");
             else
-                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Runtime.InteropServices");
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
 
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 

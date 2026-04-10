@@ -34,8 +34,9 @@ namespace SbeSourceGenerator
         }
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
+            bool isDeprecated = !string.IsNullOrEmpty(Deprecated);
             AppendSummaryWithVersion(sb, Description, SinceVersion, tabs);
-            if (!string.IsNullOrEmpty(Deprecated))
+            if (isDeprecated)
             {
                 var deprecatedSince = string.IsNullOrEmpty(SinceVersion)
                     ? "This field is deprecated"
@@ -48,6 +49,9 @@ namespace SbeSourceGenerator
                 var nullValue = NullValue ?? TypesCatalog.GetNullValue(PrimitiveType);
                 string fieldName = Name.FirstCharToLower();
                 sb.AppendTabs(tabs).Append("private ").Append(Type).Append(" ").Append(fieldName).AppendLine(";");
+
+                if (isDeprecated)
+                    sb.AppendLine("#pragma warning disable CS0618", tabs);
 
                 // Getter: convert from wire to host, then check null sentinel
                 string getExpr = EndianFieldHelper.GetterExpression(PrimitiveType, fieldName, EndianConversion);
@@ -63,6 +67,9 @@ namespace SbeSourceGenerator
                     sb.AppendTabs(tabs).Append("public readonly ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(getExpr).Append(" == ").Append(nullValue).Append(" ? null : ").Append(getExpr).AppendLine(";");
                 }
                 sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(fieldName).Append(" = value.HasValue ? (").Append(Type).Append(")").Append(EndianFieldHelper.SetterExpression(PrimitiveType, "value.Value", EndianConversion)).Append(" : ").Append(setNullExpr).AppendLine(";");
+
+                if (isDeprecated)
+                    sb.AppendLine("#pragma warning restore CS0618", tabs);
             }
             else
             {
