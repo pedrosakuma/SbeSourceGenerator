@@ -17,7 +17,7 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
 - Automatic and explicit field offset calculation
-- Byte order handling (little-endian native, big-endian with helpers)
+- Byte order handling (little-endian native, big-endian with property-based conversion)
 - Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data)
 - Custom `headerType` support
 - `characterEncoding` attribute (UTF-8, Latin1)
@@ -239,7 +239,6 @@ SBESourceGenerator (Orchestrator)
     │   └── Messages with Groups & parsing helpers
     │
     └── UtilitiesCodeGenerator
-        ├── EndianHelpers
         ├── SpanReader
         └── SpanWriter
 ```
@@ -258,11 +257,12 @@ The generator provides comprehensive diagnostics:
 | SBE004 | Error | Malformed schema |
 | SBE005 | Warning | Unsupported construct |
 | SBE006 | Error | Invalid type length |
-| SBE007 | Warning | Non-native byte order |
+| SBE007 | Info | Big-endian schema with conditional byte swap |
 | SBE008 | Error | Unresolved type reference |
 | SBE009 | Warning | Invalid numeric constraint |
 | SBE010 | Warning | Unknown primitive type fallback |
 | SBE011 | Error | Set choice bit position exceeds encoding width |
+| SBE012 | Warning | Invalid SbeAssumeHostEndianness value |
 
 See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 

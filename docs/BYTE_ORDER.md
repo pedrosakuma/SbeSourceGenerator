@@ -2,164 +2,113 @@
 
 ## Overview
 
-The SBE Code Generator now fully supports byte order (endianness) configuration through the `byteOrder` attribute in SBE schemas. This ensures compatibility with both little-endian and big-endian systems and protocols.
+The SBE Code Generator supports both `littleEndian` and `bigEndian` byte order via the `byteOrder` attribute in SBE schemas. For big-endian schemas, multi-byte fields are generated with private backing fields and public properties that perform byte reversal on access — zero overhead for little-endian schemas.
 
 ## Schema Configuration
 
-Specify the byte order in your schema's `messageSchema` element:
-
 ```xml
-<!-- Little-endian (default) -->
+<!-- Little-endian (default) — no conversion overhead -->
 <sbe:messageSchema byteOrder="littleEndian" ...>
-    ...
 </sbe:messageSchema>
 
-<!-- Big-endian (for network protocols) -->
+<!-- Big-endian (network protocols) — properties handle conversion -->
 <sbe:messageSchema byteOrder="bigEndian" ...>
-    ...
 </sbe:messageSchema>
 ```
 
-If the `byteOrder` attribute is not specified, the generator defaults to `littleEndian`.
+If `byteOrder` is omitted, the generator defaults to `littleEndian`.
 
 ## Generated Code
 
-The generator creates an `EndianHelpers` class with methods for reading and writing values with proper byte order:
+### Little-endian schema (default)
 
-### Reading Methods
-
-```csharp
-// Little-endian reading
-short value = EndianHelpers.ReadInt16LittleEndian(buffer);
-int value = EndianHelpers.ReadInt32LittleEndian(buffer);
-long value = EndianHelpers.ReadInt64LittleEndian(buffer);
-
-// Big-endian reading
-short value = EndianHelpers.ReadInt16BigEndian(buffer);
-int value = EndianHelpers.ReadInt32BigEndian(buffer);
-long value = EndianHelpers.ReadInt64BigEndian(buffer);
-```
-
-### Writing Methods
+Fields are generated as direct public fields — identical to the existing behavior:
 
 ```csharp
-// Little-endian writing
-EndianHelpers.WriteInt16LittleEndian(buffer, value);
-EndianHelpers.WriteInt32LittleEndian(buffer, value);
-EndianHelpers.WriteInt64LittleEndian(buffer, value);
-
-// Big-endian writing
-EndianHelpers.WriteInt16BigEndian(buffer, value);
-EndianHelpers.WriteInt32BigEndian(buffer, value);
-EndianHelpers.WriteInt64BigEndian(buffer, value);
+[FieldOffset(0)]
+public uint Price;
+[FieldOffset(4)]
+public ulong Quantity;
 ```
 
-### Byte Swapping
+### Big-endian schema
 
-For converting between byte orders:
+Multi-byte fields use private backing fields with public properties:
 
 ```csharp
-short swapped = EndianHelpers.ReverseBytes(originalValue);
-int swapped = EndianHelpers.ReverseBytes(originalValue);
-long swapped = EndianHelpers.ReverseBytes(originalValue);
+[FieldOffset(0)]
+private uint price;
+public uint Price { get => BinaryPrimitives.ReverseEndianness(price); set => price = BinaryPrimitives.ReverseEndianness(value); }
+
+[FieldOffset(4)]
+private ulong quantity;
+public ulong Quantity { get => BinaryPrimitives.ReverseEndianness(quantity); set => quantity = BinaryPrimitives.ReverseEndianness(value); }
 ```
 
-### Platform Detection
+Single-byte types (`byte`, `sbyte`, `char`) are always direct public fields — no conversion needed.
 
-Check the current platform's endianness:
+### Enum fields with multi-byte underlying types
+
+Enum fields use a cast+reverse+cast pattern:
 
 ```csharp
-bool isLittle = EndianHelpers.IsLittleEndian;
+[FieldOffset(0)]
+private Side side;
+public Side Side { get => (Side)BinaryPrimitives.ReverseEndianness((ushort)side); set => side = (Side)BinaryPrimitives.ReverseEndianness((ushort)value); }
 ```
 
-## Implementation Details
+### Float/double fields
 
-### SchemaContext
-
-The `SchemaContext` class stores the byte order configuration:
+Float and double fields use `BitConverter` for the intermediate int conversion:
 
 ```csharp
-public class SchemaContext
-{
-    public string ByteOrder { get; set; } = "littleEndian";
-}
+get => BitConverter.Int32BitsToSingle(BinaryPrimitives.ReverseEndianness(BitConverter.SingleToInt32Bits(price)))
 ```
 
-### Parsing
+## SbeAssumeHostEndianness Hint
 
-The `SBESourceGenerator` parses the `byteOrder` attribute during schema loading:
+By default, big-endian schemas generate a runtime `BitConverter.IsLittleEndian` check. You can eliminate this branch by specifying the target host endianness:
 
-```csharp
-var messageSchemaNode = d.DocumentElement;
-if (messageSchemaNode != null)
-{
-    var byteOrderAttr = messageSchemaNode.GetAttribute("byteOrder");
-    if (!string.IsNullOrEmpty(byteOrderAttr))
-    {
-        context.ByteOrder = byteOrderAttr;
-    }
-}
+```xml
+<PropertyGroup>
+  <SbeAssumeHostEndianness>LittleEndian</SbeAssumeHostEndianness>
+</PropertyGroup>
 ```
+
+### Conversion modes
+
+| Schema | Hint | Mode | Generated Code |
+|--------|------|------|----------------|
+| `littleEndian` | (none) | None | `public uint Price;` |
+| `littleEndian` | `LittleEndian` | None | `public uint Price;` |
+| `littleEndian` | `BigEndian` | AlwaysReverse | Direct `ReverseEndianness()` |
+| `bigEndian` | (none) | Conditional | `BitConverter.IsLittleEndian ? Reverse() : field` |
+| `bigEndian` | `LittleEndian` | AlwaysReverse | Direct `ReverseEndianness()` |
+| `bigEndian` | `BigEndian` | None | `public uint Price;` |
 
 ## Performance
 
-All endianness conversion methods use `BinaryPrimitives` from `System.Buffers.Binary` and are marked with `[MethodImpl(MethodImplOptions.AggressiveInlining)]` for optimal performance.
+Benchmark results (Intel, .NET 9):
 
-On platforms where the schema byte order matches the platform byte order, the overhead is minimal (a simple read/write). When byte swapping is needed, the `BinaryPrimitives` methods provide highly optimized implementations.
+| Approach | Decode overhead | Code Size |
+|----------|----------------|-----------|
+| Direct field (LE schema) | 0% baseline | 87B |
+| Property passthrough (hint match) | 0% | 87B |
+| AlwaysReverse (hint mismatch) | ~30% (~0.3ns/field) | 118B |
+| Conditional (no hint, BE schema) | ~33% (~0.3ns/field) | 118B |
 
-## Testing
+> **Recommendation**: For big-endian schemas on known little-endian hosts, set `<SbeAssumeHostEndianness>LittleEndian</SbeAssumeHostEndianness>` to eliminate the runtime branch.
 
-The implementation includes comprehensive tests:
+## Diagnostics
 
-### Unit Tests
-- `EndianTests.cs`: Validates parsing of `byteOrder` attribute
-- Tests for default values, explicit settings, and missing attributes
+| ID | Severity | Description |
+|----|----------|-------------|
+| SBE007 | Info | Big-endian schema without hint — conditional check is used. Set `SbeAssumeHostEndianness` to optimize. |
+| SBE012 | Warning | Invalid `SbeAssumeHostEndianness` value. Expected `LittleEndian` or `BigEndian`. |
 
-### Integration Tests
-- `EndianIntegrationTests.cs`: Validates encoding/decoding operations
-- Tests for all data types (int16, int32, int64, uint16, uint32, uint64)
-- Tests for both little-endian and big-endian operations
-- Round-trip tests to ensure data integrity
+## Architecture
 
-## Example Usage
+The struct memory layout always matches wire format (via `MemoryMarshal.AsRef<T>()`). Properties convert on access — no change to `TryParse`/`TryEncode` mechanics. This means:
 
-### Little-Endian Schema
-
-```xml
-<sbe:messageSchema byteOrder="littleEndian" ...>
-    <sbe:message name="Order" id="1">
-        <field name="orderId" id="1" type="uint64"/>
-        <field name="price" id="2" type="int64"/>
-    </sbe:message>
-</sbe:messageSchema>
-```
-
-### Big-Endian Schema (Network Protocol)
-
-```xml
-<sbe:messageSchema byteOrder="bigEndian" ...>
-    <sbe:message name="Order" id="1">
-        <field name="orderId" id="1" type="uint64"/>
-        <field name="price" id="2" type="int64"/>
-    </sbe:message>
-</sbe:messageSchema>
-```
-
-## Best Practices
-
-1. **Explicitly specify byte order**: Even if using little-endian, specify `byteOrder="littleEndian"` for clarity
-2. **Use big-endian for network protocols**: Network protocols traditionally use big-endian (network byte order)
-3. **Use little-endian for file formats**: Most modern platforms are little-endian, making this more efficient
-4. **Test both byte orders**: If your application supports multiple platforms, test with both configurations
-
-## Compatibility
-
-- **Platforms**: Works on all platforms (.NET Standard 2.0+)
-- **SBE Specification**: Fully compliant with SBE byte order specification
-- **Performance**: Zero overhead when schema byte order matches platform byte order
-
-## References
-
-- [SBE Specification - Byte Order](https://github.com/FIXTradingCommunity/fix-simple-binary-encoding)
-- [BinaryPrimitives Documentation](https://learn.microsoft.com/en-us/dotnet/api/system.buffers.binary.binaryprimitives)
-- [BitConverter.IsLittleEndian](https://learn.microsoft.com/en-us/dotnet/api/system.bitconverter.islittleendian)
+- Encoding: assign host-order value to property → setter converts to wire order → struct bytes are wire-ready
+- Decoding: `MemoryMarshal.AsRef<T>()` overlays wire bytes → getter converts to host order on read

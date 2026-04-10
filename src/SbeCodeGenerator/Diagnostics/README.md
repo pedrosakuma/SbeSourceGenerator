@@ -10,9 +10,10 @@ Provides compile-time diagnostics for:
 - Missing required attributes
 - Unsupported constructs
 - Unresolved type references
-- Non-native byte order
+- Big-endian byte order configuration
 - Invalid numeric constraints
 - Unknown primitive type fallbacks
+- Invalid MSBuild property values
 
 ## Diagnostic Codes
 
@@ -52,11 +53,11 @@ Provides compile-time diagnostics for:
 **Example**: `<type name="MyType" primitiveType="char" length="abc"/>`  
 **Resolution**: Provide a valid integer for the length attribute
 
-### SBE007: Non-Native Byte Order
-**Severity**: Warning  
-**Triggered when**: The schema specifies a `byteOrder` that differs from the platform's native endianness (little-endian)  
+### SBE007: Big-Endian Schema with Conditional Byte Swap
+**Severity**: Info  
+**Triggered when**: The schema specifies `byteOrder="bigEndian"` and no `SbeAssumeHostEndianness` MSBuild property is set  
 **Example**: `<messageSchema byteOrder="bigEndian" .../>`  
-**Resolution**: The generator does not emit byte-swap logic. Multi-byte fields may be read/written incorrectly on this platform. Consider using little-endian byte order or handling endianness manually.
+**Resolution**: Generated multi-byte field properties include a `BitConverter.IsLittleEndian` runtime check. Set `<SbeAssumeHostEndianness>LittleEndian</SbeAssumeHostEndianness>` in your project file to eliminate the branch.
 
 ### SBE008: Unresolved Type Reference
 **Severity**: Error  
@@ -81,6 +82,12 @@ Provides compile-time diagnostics for:
 **Triggered when**: A `<choice>` element in a `<set>` has a bit position that exceeds the maximum for the encoding type  
 **Example**: `<choice name="Flag">64</choice>` on a `uint64`-encoded set (max bit 63)  
 **Resolution**: Ensure choice bit positions are within range `0` to `(encodingWidth * 8 - 1)`.
+
+### SBE012: Invalid SbeAssumeHostEndianness Value
+**Severity**: Warning  
+**Triggered when**: The `SbeAssumeHostEndianness` MSBuild property has a value other than `LittleEndian` or `BigEndian`  
+**Example**: `<SbeAssumeHostEndianness>Invalid</SbeAssumeHostEndianness>`  
+**Resolution**: Set the value to `LittleEndian` or `BigEndian`, or remove the property entirely for automatic detection.
 
 ## Usage
 
