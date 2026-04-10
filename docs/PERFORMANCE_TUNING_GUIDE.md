@@ -266,23 +266,21 @@ long totalVolume = allBids.Sum(b => b.Quantity) + allAsks.Sum(a => a.Quantity);
 
 ### Early Exit
 
-Exit group processing early when possible:
+Note: The current `ConsumeVariableLengthSegments` callbacks use `void`-returning `in` delegates, so early exit must use external state:
 
 ```csharp
-// ✅ Good: Early exit
+// ✅ Good: Early exit via external flag
 bool found = false;
 data.ConsumeVariableLengthSegments(
     variableData,
-    bid => 
+    (in BidData bid) =>
     {
-        if (bid.Price == targetPrice)
+        if (!found && bid.Price == targetPrice)
         {
             found = true;
-            return false; // Stop processing
         }
-        return true;
     },
-    ask => true
+    (in AskData ask) => { }
 );
 
 // ❌ Bad: Process all groups

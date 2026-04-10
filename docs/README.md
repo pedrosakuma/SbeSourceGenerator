@@ -18,9 +18,6 @@ This folder contains documentation for the SBE Code Generator project.
 - **[SPAN_READER_EXTENSIBILITY.md](./SPAN_READER_EXTENSIBILITY.md)** — Advanced features and custom parsing patterns
 - **[SPAN_READER_INTEGRATION.md](./SPAN_READER_INTEGRATION.md)** — How SpanReader integrates into parsing flows
 
-### Encoding (SpanWriter)
-- **[FLUENT_ENCODER_API.md](./FLUENT_ENCODER_API.md)** — Fluent encoding API
-
 ### Validation
 - **[VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)** — Validation API reference and patterns
 - **[VALIDATION_EXAMPLE.md](./VALIDATION_EXAMPLE.md)** — Quick start example

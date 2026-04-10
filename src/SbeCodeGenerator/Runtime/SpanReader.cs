@@ -20,7 +20,7 @@ namespace SbeSourceGenerator.Runtime
     /// - Memory alignment control (custom padding and alignment logic)
     /// - Variable-length data handling
     /// 
-    /// For design rationale and pattern examples, see docs/SPAN_READER_DESIGN_RATIONALE.md
+    /// For design rationale and pattern examples, see docs/SPAN_READER_EXTENSIBILITY.md
     /// </remarks>
     public delegate bool SpanParser<T>(ReadOnlySpan<byte> buffer, out T value, out int bytesConsumed);
 
@@ -45,7 +45,6 @@ namespace SbeSourceGenerator.Runtime
     /// 
     /// For comprehensive design rationale and usage patterns, see:
     /// - docs/SPAN_READER_EXTENSIBILITY.md - Usage examples and patterns
-    /// - docs/SPAN_READER_DESIGN_RATIONALE.md - Design decisions and tradeoffs
     /// </remarks>
     public ref struct SpanReader
     {

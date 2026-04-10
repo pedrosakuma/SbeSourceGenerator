@@ -24,25 +24,28 @@ A Roslyn incremental source generator that converts [FIX Simple Binary Encoding]
 ## Quick Example
 
 ```csharp
-// Decode
-if (TradeData.TryParse(buffer, out var trade, out var variableData))
+// Decode (with groups and varData)
+if (OrderData.TryParse(buffer, out var order, out var variableData))
 {
-    Console.WriteLine($"Trade {trade.TradeId} @ {trade.Price}");
+    Console.WriteLine($"Order {order.OrderId} @ {order.Price}");
 }
 
-// Encode (fluent API)
-var bytes = trade.CreateEncoder(buffer)
-    .WithLegs(legs)
-    .BytesWritten;
+// Encode (simple message — no groups)
+OrderData order = default;
+order.OrderId = 42;
+order.Price = 100_00;
+order.TryEncode(buffer, out int bytesWritten);
+
+// Encode (with groups)
+OrderBookData.TryEncode(orderBook, buffer, bids, asks, out int bytesWritten);
 ```
 
 ## Features
 
 - **Zero-copy blittable structs** — `[StructLayout(Explicit)]` with `[FieldOffset]`, directly overlay on buffers
-- **`TryParse` / `TryEncode`** — safe decode/encode without unsafe casts
+- **`TryParse` / `TryEncode`** — safe decode/encode with group and varData support
 - **Zero-copy decode** — `TryReadBlock<T>` and `ReadBlockRef<T>` read directly from spans
 - **`in` delegate callbacks** — group iteration passes structs by readonly reference (no copies)
-- **Fluent encoder API** — type-safe `CreateEncoder().WithGroups().WithVarData()` chaining
 - **Schema evolution** — `TryReadBlock` handles `blockLength` mismatches (forward/backward compat)
 - **Big-endian support** — automatic byte swapping for big-endian schemas
 - **Enums, sets, composites** — full SBE type system with optional field support
@@ -50,7 +53,7 @@ var bytes = trade.CreateEncoder(buffer)
 - **SpanReader / SpanWriter** — embedded sequential binary reader/writer (no manual offset tracking)
 - **Cross-schema coexistence** — multiple schemas generate isolated namespaces, no conflicts
 - **AOT / trimming compatible** — no reflection, no dynamic code generation
-- **Roslyn diagnostics** — `SBE001`–`SBE006` for schema validation at build time
+- **Roslyn diagnostics** — `SBE001`–`SBE014` for schema validation at build time
 
 ## Requirements
 
@@ -71,7 +74,6 @@ Full documentation at [github.com/pedrosakuma/SbeSourceGenerator](https://github
 
 - [Schema Versioning Guide](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/SCHEMA_VERSIONING.md)
 - [SpanReader API](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/SPAN_READER_README.md)
-- [Fluent Encoder API](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/FLUENT_ENCODER_API.md)
 - [Performance Tuning](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/PERFORMANCE_TUNING_GUIDE.md)
 
 ## Contributing
