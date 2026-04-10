@@ -58,7 +58,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="1.0.1" />
+  <PackageReference Include="SbeSourceGenerator" Version="1.0.2" />
 </ItemGroup>
 ```
 
@@ -403,4 +403,4 @@ For questions, issues, or feature requests:
 
 ---
 
-**Version**: 1.0.1 (see [Changelog](./CHANGELOG.md))
+**Version**: 1.0.2 (see [Changelog](./CHANGELOG.md))

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-04-10
+
+### Fixed
+- **CS8656 defensive copy elimination**: Added `readonly` modifier to nullable composite property getters (e.g., `Mantissa`, `Time`, `Year`, `Month`, `Day`, `Week`). Eliminates 11 CS8656 warnings across 8 composites (`RatioQty`, `Percentage`, `PriceOptional`, `UTCTimestampNanos`, `PriceOffset8Optional`, `UTCTimestampSeconds`, `Fixed8`, `MaturityMonthYear`) where the `readonly ToString()` called non-readonly property getters, causing silent defensive copies.
+
 ## [1.0.1] - 2026-04-10
 
 ### Fixed

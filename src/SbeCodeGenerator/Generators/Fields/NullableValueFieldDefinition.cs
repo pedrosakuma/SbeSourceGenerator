@@ -15,7 +15,7 @@ namespace SbeSourceGenerator
             sb.AppendSummary(Description, tabs, nameof(NullableValueFieldDefinition));
             sb.AppendLine("#pragma warning disable CS0649", tabs);
             sb.AppendTabs(tabs).Append("private ").Append(PrimitiveType).Append(" ").Append(fieldName).AppendLine(";");
-            sb.AppendTabs(tabs).Append("public ").Append(PrimitiveType).Append("? ").Append(Name);
+            sb.AppendTabs(tabs).Append("public readonly ").Append(PrimitiveType).Append("? ").Append(Name);
             AppendNullCheck(sb, PrimitiveType, getExpr, nullValue);
             sb.AppendLine("#pragma warning restore CS0649", tabs);
         }
