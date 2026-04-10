@@ -27,6 +27,23 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Validation constraints (min/max ranges)
 - Comprehensive build-time diagnostics (SBE001–SBE014)
 
+## What's New in v1.0.0
+
+**Zero-copy `MessageDataReader`** — `TryParse` now returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`) and process groups via `reader.ReadGroups(...)`.
+
+```csharp
+if (CarData.TryParse(buffer, out var car))
+{
+    Console.WriteLine(car.Data.SerialNumber);  // zero-copy field access
+    car.ReadGroups(
+        (in FuelFiguresData fuel) => { /* ... */ },
+        (in PerformanceFiguresData perf, AccelerationData.AccelerationHandler onAccel) => { /* ... */ });
+    Console.WriteLine($"Total bytes: {car.BytesConsumed}");
+}
+```
+
+> **Migrating from v0.9.x?** See the [migration guide in CHANGELOG.md](./CHANGELOG.md#100---2026-04-10).
+
 ## Quick Start
 
 ### 1. Install
@@ -41,7 +58,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="0.9.1" />
+  <PackageReference Include="SbeSourceGenerator" Version="1.0.0" />
 </ItemGroup>
 ```
 
@@ -336,8 +353,9 @@ The repository includes several example projects in the `examples/` folder:
 
 The generated code is designed for high performance:
 
-- Zero-copy deserialization with `ReadBlockRef<T>` (ref readonly into buffer)
-- `in` delegate callbacks for group consume (no struct copies)
+- Zero-copy deserialization via `MessageDataReader` ref struct (`reader.Data` is `ref readonly` into buffer)
+- Zero-copy `ReadBlockRef<T>` for advanced SpanReader usage
+- `ReadGroups` with `in` delegate callbacks (no struct copies)
 - `readonly` property getters to prevent defensive copies
 - Struct-based value types (no heap allocations)
 - Explicit memory layout for cache efficiency
@@ -385,4 +403,4 @@ For questions, issues, or feature requests:
 
 ---
 
-**Version**: 0.9.1 (see [Changelog](./CHANGELOG.md))
+**Version**: 1.0.0 (see [Changelog](./CHANGELOG.md))

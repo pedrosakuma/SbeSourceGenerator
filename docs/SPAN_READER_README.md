@@ -348,7 +348,37 @@ if (reader.TryPeek<MessageHeader>(out var header))
 }
 ```
 
-### Callback Pattern (v0.9.0+)
+### TryParseWithReader (v1.0.0+)
+
+For sequential message reading with `SpanReader`, use `TryParseWithReader` to get a `MessageDataReader` without advancing the reader:
+
+```csharp
+var reader = new SpanReader(buffer);
+
+// Read message header
+if (reader.TryRead<MessageHeader>(out var header))
+{
+    // Parse message body — reader is NOT advanced
+    if (OrderBookData.TryParseWithReader(ref reader, header.BlockLength, out var orderBook))
+    {
+        // Access fields zero-copy
+        Console.WriteLine($"Instrument: {orderBook.Data.InstrumentId}");
+        
+        // Process groups
+        orderBook.ReadGroups(
+            (in BidsData bid) => ProcessBid(in bid),
+            (in AsksData ask) => ProcessAsk(in ask)
+        );
+        
+        // Advance reader past the entire message
+        reader.TrySkip(orderBook.BytesConsumed);
+    }
+}
+```
+
+This pattern is ideal for reading multiple messages from a single buffer, where each message's total size (block + groups + varData) is tracked by `BytesConsumed`.
+
+### Callback Pattern (v1.0.0+)
 
 Generated code uses custom delegates with `in` parameters to avoid struct copies:
 
