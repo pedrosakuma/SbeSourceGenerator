@@ -30,6 +30,10 @@ namespace SbeSourceGenerator.Generators
                     var versionNamespace = GetVersionNamespace(baseNamespace, ns, version);
                     var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
 
+                    string headerTypeName = "MessageHeader";
+                    if (context.GeneratedTypeNames.TryGetValue(context.HeaderType, out var resolvedHeaderName))
+                        headerTypeName = resolvedHeaderName;
+
                     var generator = new MessageDefinition(
                         versionNamespace,
                         ns,
@@ -43,7 +47,10 @@ namespace SbeSourceGenerator.Generators
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
                         GetDataForVersion(messageDto.Data, version, context),
                         messageDto.BlockLength,
-                        context.EndianConversion
+                        context.EndianConversion,
+                        schema.Id,
+                        version.ToString(),
+                        headerTypeName
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
                         + messageDto.Groups.Count * 1024 + messageDto.Data.Count * 512;

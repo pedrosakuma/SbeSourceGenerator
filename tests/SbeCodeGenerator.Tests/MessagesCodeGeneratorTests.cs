@@ -270,17 +270,17 @@ namespace SbeCodeGenerator.Tests
             var generator = new MessagesCodeGenerator();
             var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
 
-            // V0 should have symbol but NOT memo
+            // V0 should have symbol but NOT memo data field
             var v0Result = results.FirstOrDefault(r => r.name.Contains("Order") && !r.name.Contains("V1"));
             Assert.NotEqual(default, v0Result);
             Assert.Contains("Symbol", v0Result.content);
-            Assert.DoesNotContain("Memo", v0Result.content);
+            Assert.DoesNotContain("callbackMemo", v0Result.content);
 
             // V1 should have both symbol and memo
             var v1Result = results.FirstOrDefault(r => r.name.Contains("V1") && r.name.Contains("Order"));
             Assert.NotEqual(default, v1Result);
             Assert.Contains("Symbol", v1Result.content);
-            Assert.Contains("Memo", v1Result.content);
+            Assert.Contains("callbackMemo", v1Result.content);
         }
 
         [Fact]
@@ -569,6 +569,68 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("== 0", msgResult.content);
             // Should use custom nullValue=-1 instead of default -2147483648
             Assert.Contains("== -1", msgResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMessage_ProducesToStringOverride()
+        {
+            // Arrange
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <sbe:message name='Order' id='1' description='An order'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <field name='price' id='2' type='int32'/>
+                        <field name='quantity' id='3' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var msgResult = results.First(r => r.name.Contains("Order"));
+
+            // Assert
+            Assert.Contains("public override string ToString()", msgResult.content);
+            Assert.Contains("OrderData {{ OrderId={OrderId}, Price={Price}, Quantity={Quantity} }}", msgResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMessage_ProducesWriteHeaderMethod()
+        {
+            // Arrange
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                    package='Test' id='42' version='3'>
+                    <types>
+                        <composite name='messageHeader'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                    <sbe:message name='Order' id='5' description='An order'>
+                        <field name='orderId' id='1' type='uint64'/>
+                        <field name='price' id='2' type='int32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("Test.V3", schema, context, default(SourceProductionContext)).ToList();
+
+            // Act
+            var results = generator.Generate("Test.V3", schema, context, default(SourceProductionContext));
+            var msgResult = results.First(r => r.name.Contains("Order"));
+
+            // Assert
+            Assert.Contains("public static int WriteHeader(Span<byte> buffer)", msgResult.content);
+            Assert.Contains("header.TemplateId = 5;", msgResult.content);
+            Assert.Contains("header.SchemaId = 42;", msgResult.content);
+            Assert.Contains("header.Version = 0;", msgResult.content);
+            Assert.Contains("return MessageHeader.MESSAGE_SIZE;", msgResult.content);
         }
 
     }

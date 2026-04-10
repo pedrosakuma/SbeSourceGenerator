@@ -7,7 +7,8 @@ namespace SbeSourceGenerator
     public record MessageDefinition(string Namespace, string RuntimeNamespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
         List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas, string SchemaBlockLength = "",
-        EndianConversion EndianConversion = EndianConversion.None) : IFileContentGenerator
+        EndianConversion EndianConversion = EndianConversion.None, string SchemaId = "", string SchemaVersion = "0",
+        string HeaderTypeName = "MessageHeader") : IFileContentGenerator
     {
         private List<GroupDefinition>? _typedGroups;
         private List<DataFieldDefinition>? _typedDatas;
@@ -65,6 +66,9 @@ namespace SbeSourceGenerator
             {
                 AppendComprehensiveTryEncode(sb, tabs);
             }
+
+            FileContentGeneratorExtensions.AppendToString(sb, tabs, Name + "Data", Fields);
+            AppendWriteHeader(sb, tabs);
             
             sb.AppendLine("}", --tabs);
         }
@@ -628,6 +632,28 @@ namespace SbeSourceGenerator
                 parts.Add($"callback{group.Name}{groupData.Name}");
             foreach (var nestedGroup in group.TypedNestedGroups)
                 AppendGroupCallbackArgs(parts, nestedGroup);
+        }
+
+        private void AppendWriteHeader(StringBuilder sb, int tabs)
+        {
+            var schemaIdValue = string.IsNullOrEmpty(SchemaId) ? "0" : SchemaId;
+
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendTabs(tabs).Append("/// Writes a pre-populated ").Append(HeaderTypeName).Append(" for this message type to the destination buffer.");
+            sb.AppendLine();
+            sb.AppendTabs(tabs).Append("/// Sets BlockLength=").Append("BLOCK_LENGTH").Append(", TemplateId=").Append(Id).Append(", SchemaId=").Append(schemaIdValue).Append(", Version=").Append(SchemaVersion).AppendLine(".");
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("/// <param name=\"buffer\">The destination buffer (must be at least MessageHeader.MESSAGE_SIZE bytes).</param>", tabs);
+            sb.AppendTabs(tabs).Append("/// <returns>The number of header bytes written (").Append(HeaderTypeName).AppendLine(".MESSAGE_SIZE).</returns>");
+            sb.AppendTabs(tabs).Append("public static int WriteHeader(Span<byte> buffer)").AppendLine();
+            sb.AppendLine("{", tabs++);
+            sb.AppendTabs(tabs).Append("ref var header = ref MemoryMarshal.AsRef<").Append(HeaderTypeName).AppendLine(">(buffer);");
+            sb.AppendLine("header.BlockLength = (ushort)BLOCK_LENGTH;", tabs);
+            sb.AppendTabs(tabs).Append("header.TemplateId = ").Append(Id).AppendLine(";");
+            sb.AppendTabs(tabs).Append("header.SchemaId = ").Append(schemaIdValue).AppendLine(";");
+            sb.AppendTabs(tabs).Append("header.Version = ").Append(SchemaVersion).AppendLine(";");
+            sb.AppendTabs(tabs).Append("return ").Append(HeaderTypeName).AppendLine(".MESSAGE_SIZE;");
+            sb.AppendLine("}", --tabs);
         }
     }
 }

@@ -860,5 +860,30 @@ namespace SbeCodeGenerator.Tests
             // Last definition includes Sell
             Assert.Contains("Sell", sideResults.Last().content);
         }
+
+        [Fact]
+        public void Generate_WithBlittableComposite_ProducesToStringOverride()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='decimal' description='A decimal value'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-3</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var decimalResult = results.First(r => r.name.Contains("Decimal"));
+
+            // Assert
+            Assert.Contains("public override string ToString()", decimalResult.content);
+            Assert.Contains("Decimal {{ Mantissa={Mantissa} }}", decimalResult.content);
+        }
     }
 }

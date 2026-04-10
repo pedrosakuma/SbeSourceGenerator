@@ -92,6 +92,10 @@ namespace SbeSourceGenerator
                 sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs, nameof(CompositeDefinition));
                 sb.AppendTabs(tabs).Append("public delegate void Callback(").Append(Name).AppendLine(" data);");
             }
+            else
+            {
+                FileContentGeneratorExtensions.AppendToString(sb, tabs, Name, Fields);
+            }
             sb.AppendLine("}", --tabs);
         }
     }
