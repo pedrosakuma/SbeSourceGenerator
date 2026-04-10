@@ -71,7 +71,7 @@ Integration test schemas are located in `SbeCodeGenerator.IntegrationTests/TestS
 ### Running Integration Tests
 
 ```bash
-cd /path/to/PcapSbePocConsole
+cd SbeSourceGenerator
 dotnet test SbeCodeGenerator.IntegrationTests
 ```
 
@@ -80,7 +80,7 @@ dotnet test SbeCodeGenerator.IntegrationTests
 To run both snapshot and integration tests:
 
 ```bash
-cd /path/to/PcapSbePocConsole
+cd SbeSourceGenerator
 dotnet test
 ```
 

@@ -5,7 +5,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    SBESourceGenerator                       │
-│                     (~535 lines)                            │
+│                     (~332 lines)                            │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  • Initialize(IncrementalGeneratorInitializationContext)    │
@@ -43,7 +43,7 @@
                     ┌─────────────────────────┐
                     │  SBESourceGenerator     │
                     │  (Orchestrator)         │
-                    │  (~97 lines)            │
+                    │  (~332 lines)           │
                     └───────────┬─────────────┘
                                 │
                   ┌─────────────┼─────────────┐
@@ -69,7 +69,7 @@
 ┌─────────────────────────────────────────┐
 │          ICodeGenerator                 │
 ├─────────────────────────────────────────┤
-│ + Generate(ns, xmlDoc, context)        │
+│ + Generate(ns, schema, context)        │
 │   : IEnumerable<(string, string)>      │
 └─────────────────────────────────────────┘
                     △
@@ -188,32 +188,27 @@ XML Schema File
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │    TypesCodeGeneratorTests (4 tests)           │    │
-│  │  • Generate_WithSimpleEnum_ProducesEnumCode    │    │
-│  │  • Generate_WithSimpleType_ProducesTypeCode    │    │
-│  │  • Generate_WithComposite_ProducesCompositeCode│    │
-│  │  • Generate_WithSet_ProducesSetCode            │    │
+│  │    TypesCodeGeneratorTests (37 tests)          │    │
+│  │  • Enums, sets, composites, types              │    │
+│  │  • Optional fields, deprecated, char arrays    │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  MessagesCodeGeneratorTests (3 tests)          │    │
-│  │  • Generate_WithSimpleMessage_ProducesCode     │    │
-│  │  • Generate_WithConstants_ProducesConstants    │    │
-│  │  • Generate_WithMultiple_ProducesMultiple      │    │
+│  │  MessagesCodeGeneratorTests (19 tests)         │    │
+│  │  • Messages, fields, groups, varData           │    │
+│  │  • Nested groups, constants, deprecated        │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  UtilitiesCodeGeneratorTests (1 test)           │    │
-│  │  • Generate_UsesProvidedNamespace              │    │
+│  │  UtilitiesCodeGeneratorTests (4 tests)          │    │
+│  │  • SpanReader, SpanWriter, EndianHelpers       │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  MessageParsingHelpersTests (2 tests)          │    │
-│  │  • MessagesIncludeTryParseHelper               │    │
-│  │  • CompositesIncludeTryParseHelper             │    │
+│  │  + SnapshotTests, ValidationTests, etc.        │    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
-│                     Total: 11 tests ✅                   │
+│                Total: 172 unit tests ✅                  │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -221,20 +216,21 @@ XML Schema File
 
 ```
 Before:
-┌────────────────────────────────┐
-│  SBESourceGenerator: 535 lines │
-└────────────────────────────────┘
+┌────────────────────────────────────────┐
+│  SBESourceGenerator: 535 lines (v0.1)  │
+└────────────────────────────────────────┘
 
-After:
-┌────────────────────────────────┐
-│  SBESourceGenerator:  97 lines │ ← 82% reduction
-│  TypesCodeGenerator: 364 lines │
-│  MessagesCodeGen:    175 lines │
-│  UtilitiesCodeGen:    17 lines │
-│  ICodeGenerator:      20 lines │
-├────────────────────────────────┤
-│  Total:              673 lines │ (better organized)
-└────────────────────────────────┘
+After (current):
+┌────────────────────────────────────────┐
+│  SBESourceGenerator:  332 lines        │ ← orchestrator
+│  TypesCodeGenerator:  411 lines        │
+│  MessagesCodeGen:     426 lines        │
+│  UtilitiesCodeGen:     32 lines        │
+│  ValidationGenerator: 259 lines        │
+│  ICodeGenerator:       23 lines        │
+├────────────────────────────────────────┤
+│  Total:             1,483 lines        │ (modular, testable)
+└────────────────────────────────────────┘
 ```
 
 ## Benefits Visualization
@@ -269,7 +265,7 @@ After:
 │  └──────┘  └────────┘  └─────────┘                    │
 │                                                         │
 │  ✅ Easy to maintain                                   │
-│  ✅ Fully tested (11 tests)                           │
+│  ✅ Fully tested (291 tests)                          │
 │  ✅ Clear responsibilities                            │
 │  ✅ Modular design                                    │
 │  ✅ High cohesion                                     │

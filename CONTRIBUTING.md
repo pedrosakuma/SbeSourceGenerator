@@ -27,8 +27,6 @@ This project follows a simple code of conduct:
 1. **Read the Documentation**
    - [README.md](./README.md) - Project overview
    - [CI/CD Pipeline](./docs/CICD_PIPELINE.md) - CI/CD configuration and publishing
-   - [SBE_FEATURE_COMPLETENESS.md](./docs/SBE_FEATURE_COMPLETENESS.md) - Current feature status
-   - [SBE_IMPLEMENTATION_ROADMAP.md](./docs/SBE_IMPLEMENTATION_ROADMAP.md) - Future plans
    - [ARCHITECTURE_DIAGRAMS.md](./docs/ARCHITECTURE_DIAGRAMS.md) - System design
    - [sbe-generator.md](./docs/sbe-generator.md) - Generator architecture and extension guide ⭐ **Start here for development**
 
@@ -41,7 +39,6 @@ This project follows a simple code of conduct:
 3. **Find an Issue**
    - Check [open issues](https://github.com/pedrosakuma/SbeSourceGenerator/issues)
    - Look for issues labeled `good first issue` or `help wanted`
-   - Review the [Implementation Roadmap](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for larger features
 
 ## How to Contribute
 
@@ -196,14 +193,14 @@ Test your changes against real-world schemas:
 
 ```bash
 # Clean and rebuild an example project
-dotnet clean examples/PcapSbePocConsole/
-dotnet build examples/PcapSbePocConsole/
+dotnet clean examples/HighPerformanceMarketData/
+dotnet build examples/HighPerformanceMarketData/
 
 # Inspect generated files
-ls -la examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/
+ls -la examples/HighPerformanceMarketData/obj/Debug/net9.0/generated/SbeSourceGenerator/
 
 # Run the example
-dotnet run --project examples/PcapSbePocConsole/
+dotnet run --project examples/HighPerformanceMarketData/
 ```
 
 #### 5. Validate Generated Code
@@ -222,10 +219,10 @@ Then check generated files:
 
 ```bash
 # After building with EmitCompilerGeneratedFiles=true
-find examples/PcapSbePocConsole/Generated -name "*.cs" | head -10
+find examples/HighPerformanceMarketData/Generated -name "*.cs" | head -10
 
 # View a generated file
-cat examples/PcapSbePocConsole/Generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/B3.Market.Data.Messages/Enums/SomeEnum.cs
+cat examples/HighPerformanceMarketData/Generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/*.cs | head -50
 ```
 
 #### 6. Snapshot Testing Workflow
@@ -275,7 +272,7 @@ Before submitting a PR, ensure:
 
 - [ ] **Unit tests pass**: `dotnet test tests/SbeCodeGenerator.Tests/`
 - [ ] **Integration tests pass**: `dotnet test tests/SbeCodeGenerator.IntegrationTests/`
-- [ ] **Example projects build**: `dotnet build examples/PcapSbePocConsole/`
+- [ ] **Example projects build**: `dotnet build examples/HighPerformanceMarketData/`
 - [ ] **No new warnings**: `dotnet build --no-incremental 2>&1 | grep "warning"`
 - [ ] **Snapshot tests updated**: If generation changed, snapshots are updated
 - [ ] **Generated code compiles**: Integration tests verify this
@@ -302,7 +299,7 @@ Attach debugger when generator runs:
 Then build a project that uses the generator:
 
 ```bash
-dotnet build examples/PcapSbePocConsole/
+dotnet build examples/HighPerformanceMarketData/
 # Debugger will prompt to attach
 ```
 
@@ -310,13 +307,13 @@ dotnet build examples/PcapSbePocConsole/
 
 ```bash
 # Build with generated file output
-dotnet build examples/PcapSbePocConsole/
+dotnet build examples/HighPerformanceMarketData/
 
 # Check generated files location
-ls -la examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/
+ls -la examples/HighPerformanceMarketData/obj/Debug/net9.0/generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/
 
 # View generated content
-cat examples/PcapSbePocConsole/obj/Debug/net9.0/generated/SbeSourceGenerator/SbeSourceGenerator.SBESourceGenerator/B3.Market.Data.Messages/Enums/*.cs
+find examples/HighPerformanceMarketData/obj/Debug/net9.0/generated/ -name "*.cs" | head -10
 ```
 
 #### Method 3: Unit Test the Generators
@@ -335,7 +332,7 @@ public void Debug_MyGeneratorChange()
     var generator = new TypesCodeGenerator();
     
     // Act - Set breakpoint here
-    var results = generator.Generate("Test.Namespace", doc, context, default);
+    var results = generator.Generate("Test.Namespace", schema, context, default);
     
     // Assert
     var resultList = results.ToList();
@@ -384,7 +381,7 @@ EOF
 
 ```bash
 # Time the build with generator
-time dotnet build examples/PcapSbePocConsole/
+time dotnet build examples/HighPerformanceMarketData/
 
 # Compare before and after changes
 # Significant slowdowns may indicate performance regression
@@ -665,46 +662,29 @@ Want to make a big impact? Focus on these areas:
    - Better error messages
    - More helpful warnings
 
-4. **Deprecated Field Marking**
-   - Add [Obsolete] attributes
-   - Update generators
-   - Add tests
-
 ### 🚀 High Priority, Moderate to Hard
 
-1. **Variable-Length Data Support**
-   - Implement `<data>` element parsing
-   - Generate varData accessors
-   - Add comprehensive tests
+1. **Fluent Encoder API**
+   - Type-safe builder pattern for encoding messages with groups
+   - Enforce correct field ordering at compile time
+   - Improve discoverability over static `TryEncode`
 
-2. **Schema Versioning**
-   - Implement `sinceVersion` handling
-   - Support schema evolution
-   - Add version validation
-
-3. **Validation Constraints**
-   - Parse min/max values
-   - Generate validation code
-   - Add runtime checks
-
-### 💡 Nice to Have
-
-1. **Performance Optimizations**
+2. **Performance Optimizations**
    - Benchmark generated code
    - Optimize hot paths
    - Reduce allocations
 
-2. **Tooling**
+### 💡 Nice to Have
+
+1. **Tooling**
    - Visual Studio extension
    - Schema validator
    - Code snippets
 
-3. **Examples**
+2. **Examples**
    - More sample schemas
    - Real-world applications
    - Best practices guide
-
-See [SBE_IMPLEMENTATION_ROADMAP.md](./docs/SBE_IMPLEMENTATION_ROADMAP.md) for the complete roadmap.
 
 ## Questions?
 

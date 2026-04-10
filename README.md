@@ -25,7 +25,7 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - `characterEncoding` attribute (UTF-8, Latin1)
 - Explicit `blockLength` on messages
 - Validation constraints (min/max ranges)
-- Comprehensive build-time diagnostics (SBE001–SBE011)
+- Comprehensive build-time diagnostics (SBE001–SBE014)
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="0.9.0" />
+  <PackageReference Include="SbeSourceGenerator" Version="0.9.1" />
 </ItemGroup>
 ```
 
@@ -265,6 +265,8 @@ The generator provides comprehensive diagnostics:
 | SBE010 | Warning | Unknown primitive type fallback |
 | SBE011 | Error | Set choice bit position exceeds encoding width |
 | SBE012 | Warning | Invalid SbeAssumeHostEndianness value |
+| SBE013 | Warning | Duplicate type name |
+| SBE014 | Warning | sinceVersion exceeds schema version |
 
 See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 
@@ -379,4 +381,4 @@ For questions, issues, or feature requests:
 
 ---
 
-**Version**: 0.9.0 (see [Changelog](./CHANGELOG.md))
+**Version**: 0.9.1 (see [Changelog](./CHANGELOG.md))

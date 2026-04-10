@@ -219,7 +219,7 @@ static bool ParseMessage(ReadOnlySpan<byte> buffer, out Message msg, out int con
 - `ParseMixedContent_UsingMultipleExtensibilityFeatures_Works` - Combined features
 - `RealWorldScenario_MarketDataFeed_ParsesEfficiently` - Market data parsing
 
-**Total Test Coverage**: 111 tests (61 unit + 50 integration), all passing
+**Total Test Coverage**: 291 tests (172 unit + 119 integration), all passing
 
 ## Performance Characteristics
 

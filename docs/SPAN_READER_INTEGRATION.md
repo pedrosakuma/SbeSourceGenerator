@@ -114,13 +114,13 @@ Variable-length data fields work correctly:
 ### Unit Tests
 - Updated `UtilitiesCodeGeneratorTests` to expect 3 generated files (EndianHelpers, SpanReader, SpanWriter)
 - Added specific test for SpanReader generation
-- All 62 unit tests passing ✅
+- All 172 unit tests passing ✅
 
 ### Integration Tests
 Added comprehensive integration tests:
 1. **Group Parsing Test**: Verifies `ConsumeVariableLengthSegments` correctly parses bids and asks groups using SpanReader
 2. **Data Fields Test**: Validates VarString8 data field parsing with SpanReader
-3. All 51 integration tests passing ✅
+3. All 119 integration tests passing ✅
 
 ## Benefits
 

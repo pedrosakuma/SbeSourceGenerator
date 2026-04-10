@@ -104,17 +104,16 @@ private static IncrementalValuesProvider<AdditionalText> CollectXmlSchemaFiles(
 
 ```csharp
 string path = text.Path;
-string ns = GetNamespaceFromPath(path);  // Extract namespace from filename
-var d = new XmlDocument();
-d.Load(path);
+var schema = SchemaReader.Parse(xmlContent, sourceContext);  // Parse XML into DTOs
+string ns = GetNamespaceFromSchema(schema, path);  // Extract namespace from schema
 
-var context = new SchemaContext();  // Per-schema state container
+var context = new SchemaContext(schemaKey, emittedRuntimeNamespaces);  // Per-schema state container
 ```
 
-- **Input**: XML file path
-- **Output**: Loaded XmlDocument and initialized SchemaContext
-- **Purpose**: Prepare schema for processing
-- **Namespace Derivation**: Filename `market-data-messages.xml` → `Market.Data.Messages`
+- **Input**: XML file content
+- **Output**: Parsed `ParsedSchema` record and initialized `SchemaContext`
+- **Purpose**: Parse schema XML into strongly-typed DTOs
+- **Namespace Derivation**: Schema `package` attribute → PascalCase namespace (e.g., `market.data` → `Market.Data`)
 
 #### Stage 3: Code Generation
 
@@ -122,16 +121,14 @@ var context = new SchemaContext();  // Per-schema state container
 var typesGenerator = new TypesCodeGenerator();
 var messagesGenerator = new MessagesCodeGenerator();
 var utilitiesGenerator = new UtilitiesCodeGenerator();
+var validationGenerator = new ValidationGenerator();
 
-foreach (var item in typesGenerator.Generate(ns, d, context, sourceContext))
-    sourceContext.AddSource(item.name, item.content);
-foreach (var item in messagesGenerator.Generate(ns, d, context, sourceContext))
-    sourceContext.AddSource(item.name, item.content);
-foreach (var item in utilitiesGenerator.Generate(ns, d, context, sourceContext))
-    sourceContext.AddSource(item.name, item.content);
+foreach (var (phase, gen) in new[] { ("types", typesGenerator), ... })
+    foreach (var item in gen.Generate(ns, schema, context, sourceContext))
+        sourceContext.AddSource(item.name, item.content);
 ```
 
-- **Input**: Namespace, XmlDocument, SchemaContext
+- **Input**: Namespace, ParsedSchema, SchemaContext
 - **Output**: Collection of (name, content) tuples representing generated files
 - **Purpose**: Transform XML schema elements into C# code
 
@@ -261,19 +258,19 @@ public record SchemaGroupDto(
 The core abstraction for all code generators:
 
 ```csharp
-public interface ICodeGenerator
+internal interface ICodeGenerator
 {
     /// <summary>
-    /// Generates source code from an XML document and schema context.
+    /// Generates source code from a parsed schema and schema context.
     /// </summary>
     /// <param name="ns">The namespace for the generated code</param>
-    /// <param name="xmlDocument">The XML schema document to process</param>
+    /// <param name="schema">The pre-parsed schema DTOs</param>
     /// <param name="context">The schema context for tracking types and metadata</param>
     /// <param name="sourceContext">The source production context for reporting diagnostics</param>
     /// <returns>An enumerable of tuples containing the file name and content</returns>
     IEnumerable<(string name, string content)> Generate(
         string ns,
-        XmlDocument xmlDocument,
+        ParsedSchema schema,
         SchemaContext context,
         SourceProductionContext sourceContext
     );
@@ -303,24 +300,18 @@ public interface ICodeGenerator
 ```csharp
 public IEnumerable<(string name, string content)> Generate(
     string ns, 
-    XmlDocument xmlDocument, 
+    ParsedSchema schema, 
     SchemaContext context, 
     SourceProductionContext sourceContext)
 {
-    var typeNodes = xmlDocument.SelectNodes("//types/*");
-    foreach (XmlElement typeNode in typeNodes)
-    {
-        var generatedType = typeNode.Name switch
-        {
-            "composite" => GenerateComposite(ns, typeNode, context, sourceContext),
-            "enum" => GenerateEnum(ns, typeNode, context, sourceContext),
-            "type" => GenerateType(ns, typeNode, context, sourceContext),
-            "set" => GenerateSet(ns, typeNode, context, sourceContext),
-            _ => Enumerable.Empty<(string name, string content)>()
-        };
-        foreach (var item in generatedType)
+    foreach (var enumDto in schema.Enums)
+        yield return GenerateEnum(ns, enumDto, context, sourceContext);
+    foreach (var setDto in schema.Sets)
+        yield return GenerateSet(ns, setDto, context, sourceContext);
+    foreach (var compositeDto in schema.Composites)
+        foreach (var item in GenerateComposite(ns, compositeDto, context, sourceContext))
             yield return item;
-    }
+    // ...
 }
 ```
 
