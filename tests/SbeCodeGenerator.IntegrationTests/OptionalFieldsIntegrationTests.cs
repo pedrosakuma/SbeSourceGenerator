@@ -30,13 +30,13 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(SimpleOptionalData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and values match
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
-            Assert.Equal(456, decoded.OptionalValue);
-            Assert.NotNull(decoded.OptionalValue);
+            Assert.Equal(original.Id, decoded.Data.Id);
+            Assert.Equal(456, decoded.Data.OptionalValue);
+            Assert.NotNull(decoded.Data.OptionalValue);
         }
 
         [Fact]
@@ -59,12 +59,12 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(SimpleOptionalData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and value is null
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
-            Assert.Null(decoded.OptionalValue);
+            Assert.Equal(original.Id, decoded.Data.Id);
+            Assert.Null(decoded.Data.OptionalValue);
         }
 
         [Fact]
@@ -86,11 +86,11 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(encodeResult);
 
             // Act - Decode
-            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and value is null (or could be treated as uninitialized)
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
+            Assert.Equal(original.Id, decoded.Data.Id);
             // The behavior when not set depends on whether the struct is zero-initialized
             // In practice, this should either be null or the default value
         }
@@ -114,9 +114,9 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(SimpleOptionalData.MESSAGE_SIZE, bytesWritten);
 
             // Verify round-trip
-            SimpleOptionalData.TryParse(buffer, out var decoded, out _);
-            Assert.Equal(message.Id, decoded.Id);
-            Assert.Equal(222, decoded.OptionalValue);
+            SimpleOptionalData.TryParse(buffer, out var decoded);
+            Assert.Equal(message.Id, decoded.Data.Id);
+            Assert.Equal(222, decoded.Data.OptionalValue);
         }
 
         [Fact]
@@ -140,9 +140,9 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(SimpleOptionalData.MESSAGE_SIZE, writer.BytesWritten);
 
             // Verify round-trip
-            SimpleOptionalData.TryParse(buffer, out var decoded, out _);
-            Assert.Equal(message.Id, decoded.Id);
-            Assert.Null(decoded.OptionalValue);
+            SimpleOptionalData.TryParse(buffer, out var decoded);
+            Assert.Equal(message.Id, decoded.Data.Id);
+            Assert.Null(decoded.Data.OptionalValue);
         }
 
         [Fact]
@@ -177,12 +177,12 @@ namespace SbeCodeGenerator.IntegrationTests
                 Assert.True(encodeResult, $"Failed to encode test case with Id={testCase.Id}");
 
                 // Act - Decode
-                bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded, out _);
+                bool decodeResult = SimpleOptionalData.TryParse(buffer, out var decoded);
 
                 // Assert decoding and value preservation
                 Assert.True(decodeResult, $"Failed to decode test case with Id={testCase.Id}");
-                Assert.Equal(testCase.Id, decoded.Id);
-                Assert.Equal(testCase.OptionalValue, decoded.OptionalValue);
+                Assert.Equal(testCase.Id, decoded.Data.Id);
+                Assert.Equal(testCase.OptionalValue, decoded.Data.OptionalValue);
             }
         }
 
@@ -237,22 +237,22 @@ namespace SbeCodeGenerator.IntegrationTests
             message.SetOptionalValue(100);
             var buffer1 = new byte[SimpleOptionalData.MESSAGE_SIZE];
             message.TryEncode(buffer1, out _);
-            SimpleOptionalData.TryParse(buffer1, out var decoded1, out _);
-            Assert.Equal(100, decoded1.OptionalValue);
+            SimpleOptionalData.TryParse(buffer1, out var decoded1);
+            Assert.Equal(100, decoded1.Data.OptionalValue);
 
             // Act & Assert - Set to null
             message.SetOptionalValue(null);
             var buffer2 = new byte[SimpleOptionalData.MESSAGE_SIZE];
             message.TryEncode(buffer2, out _);
-            SimpleOptionalData.TryParse(buffer2, out var decoded2, out _);
-            Assert.Null(decoded2.OptionalValue);
+            SimpleOptionalData.TryParse(buffer2, out var decoded2);
+            Assert.Null(decoded2.Data.OptionalValue);
 
             // Act & Assert - Set to different value
             message.SetOptionalValue(200);
             var buffer3 = new byte[SimpleOptionalData.MESSAGE_SIZE];
             message.TryEncode(buffer3, out _);
-            SimpleOptionalData.TryParse(buffer3, out var decoded3, out _);
-            Assert.Equal(200, decoded3.OptionalValue);
+            SimpleOptionalData.TryParse(buffer3, out var decoded3);
+            Assert.Equal(200, decoded3.Data.OptionalValue);
         }
 
         [Fact]
@@ -279,19 +279,19 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(AllOptionalTypesData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and all values match
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
-            Assert.Equal(sbyte.MaxValue, decoded.OptInt8);
-            Assert.Equal(short.MaxValue, decoded.OptInt16);
-            Assert.Equal(int.MaxValue, decoded.OptInt32);
-            Assert.Equal(long.MaxValue, decoded.OptInt64);
-            Assert.Equal((byte)(byte.MaxValue - 1), decoded.OptUInt8);
-            Assert.Equal((ushort)(ushort.MaxValue - 1), decoded.OptUInt16);
-            Assert.Equal(uint.MaxValue - 1, decoded.OptUInt32);
-            Assert.Equal(ulong.MaxValue - 1, decoded.OptUInt64);
+            Assert.Equal(original.Id, decoded.Data.Id);
+            Assert.Equal(sbyte.MaxValue, decoded.Data.OptInt8);
+            Assert.Equal(short.MaxValue, decoded.Data.OptInt16);
+            Assert.Equal(int.MaxValue, decoded.Data.OptInt32);
+            Assert.Equal(long.MaxValue, decoded.Data.OptInt64);
+            Assert.Equal((byte)(byte.MaxValue - 1), decoded.Data.OptUInt8);
+            Assert.Equal((ushort)(ushort.MaxValue - 1), decoded.Data.OptUInt16);
+            Assert.Equal(uint.MaxValue - 1, decoded.Data.OptUInt32);
+            Assert.Equal(ulong.MaxValue - 1, decoded.Data.OptUInt64);
         }
 
         [Fact]
@@ -318,19 +318,19 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(AllOptionalTypesData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and all values are null
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
-            Assert.Null(decoded.OptInt8);
-            Assert.Null(decoded.OptInt16);
-            Assert.Null(decoded.OptInt32);
-            Assert.Null(decoded.OptInt64);
-            Assert.Null(decoded.OptUInt8);
-            Assert.Null(decoded.OptUInt16);
-            Assert.Null(decoded.OptUInt32);
-            Assert.Null(decoded.OptUInt64);
+            Assert.Equal(original.Id, decoded.Data.Id);
+            Assert.Null(decoded.Data.OptInt8);
+            Assert.Null(decoded.Data.OptInt16);
+            Assert.Null(decoded.Data.OptInt32);
+            Assert.Null(decoded.Data.OptInt64);
+            Assert.Null(decoded.Data.OptUInt8);
+            Assert.Null(decoded.Data.OptUInt16);
+            Assert.Null(decoded.Data.OptUInt32);
+            Assert.Null(decoded.Data.OptUInt64);
         }
 
         [Fact]
@@ -356,19 +356,19 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(encodeResult);
 
             // Act - Decode
-            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = AllOptionalTypesData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and values match
             Assert.True(decodeResult);
-            Assert.Equal(original.Id, decoded.Id);
-            Assert.Equal((sbyte)10, decoded.OptInt8);
-            Assert.Null(decoded.OptInt16);
-            Assert.Equal(1000, decoded.OptInt32);
-            Assert.Null(decoded.OptInt64);
-            Assert.Null(decoded.OptUInt8);
-            Assert.Equal((ushort)200, decoded.OptUInt16);
-            Assert.Null(decoded.OptUInt32);
-            Assert.Equal((ulong)3000, decoded.OptUInt64);
+            Assert.Equal(original.Id, decoded.Data.Id);
+            Assert.Equal((sbyte)10, decoded.Data.OptInt8);
+            Assert.Null(decoded.Data.OptInt16);
+            Assert.Equal(1000, decoded.Data.OptInt32);
+            Assert.Null(decoded.Data.OptInt64);
+            Assert.Null(decoded.Data.OptUInt8);
+            Assert.Equal((ushort)200, decoded.Data.OptUInt16);
+            Assert.Null(decoded.Data.OptUInt32);
+            Assert.Equal((ulong)3000, decoded.Data.OptUInt64);
         }
 
         [Fact]
@@ -389,17 +389,17 @@ namespace SbeCodeGenerator.IntegrationTests
 
             // Act - Encode and decode
             original.TryEncode(buffer, out _);
-            AllOptionalTypesData.TryParse(buffer, out var decoded, out _);
+            AllOptionalTypesData.TryParse(buffer, out var decoded);
 
             // Assert all values are preserved (not null)
-            Assert.Equal((sbyte)-127, decoded.OptInt8);
-            Assert.Equal((short)-32767, decoded.OptInt16);
-            Assert.Equal(-2147483647, decoded.OptInt32);
-            Assert.Equal(-9223372036854775807L, decoded.OptInt64);
-            Assert.Equal((byte)254, decoded.OptUInt8);
-            Assert.Equal((ushort)65534, decoded.OptUInt16);
-            Assert.Equal((uint)4294967294, decoded.OptUInt32);
-            Assert.Equal((ulong)18446744073709551614, decoded.OptUInt64);
+            Assert.Equal((sbyte)-127, decoded.Data.OptInt8);
+            Assert.Equal((short)-32767, decoded.Data.OptInt16);
+            Assert.Equal(-2147483647, decoded.Data.OptInt32);
+            Assert.Equal(-9223372036854775807L, decoded.Data.OptInt64);
+            Assert.Equal((byte)254, decoded.Data.OptUInt8);
+            Assert.Equal((ushort)65534, decoded.Data.OptUInt16);
+            Assert.Equal((uint)4294967294, decoded.Data.OptUInt32);
+            Assert.Equal((ulong)18446744073709551614, decoded.Data.OptUInt64);
         }
     }
 }

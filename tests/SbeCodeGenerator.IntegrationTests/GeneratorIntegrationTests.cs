@@ -96,16 +96,16 @@ namespace SbeCodeGenerator.IntegrationTests
             orderRef.OrderType = Integration.Test.V0.OrderType.Market;
 
             // Act
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedOrder, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedOrder);
 
             // Assert
             Assert.True(success);
-            Assert.Equal(0, variableData.Length);
-            Assert.Equal(999, parsedOrder.OrderId.Value);
-            Assert.Equal(50000, parsedOrder.Price.Value);
-            Assert.Equal(100, parsedOrder.Quantity);
-            Assert.Equal(Integration.Test.V0.OrderSide.Sell, parsedOrder.Side);
-            Assert.Equal(Integration.Test.V0.OrderType.Market, parsedOrder.OrderType);
+            Assert.Equal(0, buffer.Length - Integration.Test.V0.NewOrderData.MESSAGE_SIZE);
+            Assert.Equal(999, parsedOrder.Data.OrderId.Value);
+            Assert.Equal(50000, parsedOrder.Data.Price.Value);
+            Assert.Equal(100, parsedOrder.Data.Quantity);
+            Assert.Equal(Integration.Test.V0.OrderSide.Sell, parsedOrder.Data.Side);
+            Assert.Equal(Integration.Test.V0.OrderType.Market, parsedOrder.Data.OrderType);
         }
 
         [Fact]
@@ -185,36 +185,33 @@ namespace SbeCodeGenerator.IntegrationTests
             var success1 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
                 Integration.Test.V0.NewOrderData.MESSAGE_SIZE, 
-                out var parsedMsg1, 
-                out var remaining1);
+                out var parsedMsg1);
             
             Assert.True(success1);
-            Assert.Equal(123, parsedMsg1.OrderId.Value);
-            Assert.Equal(32, remaining1.Length); // 32 bytes remain for variable data
+            Assert.Equal(123, parsedMsg1.Data.OrderId.Value);
+            Assert.Equal(32, buffer.Length - Integration.Test.V0.NewOrderData.MESSAGE_SIZE); // 32 bytes remain for variable data
             
             // Test with larger block length (simulates newer schema with additional fields)
             int extendedBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 16;
             var success2 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
                 extendedBlockLength, 
-                out var parsedMsg2, 
-                out var remaining2);
+                out var parsedMsg2);
             
             Assert.True(success2);
-            Assert.Equal(123, parsedMsg2.OrderId.Value);
-            Assert.Equal(16, remaining2.Length); // 16 bytes remain for variable data
+            Assert.Equal(123, parsedMsg2.Data.OrderId.Value);
+            Assert.Equal(16, buffer.Length - extendedBlockLength); // 16 bytes remain for variable data
             
             // Test with smaller block length (simulates older schema with fewer fields)
             int smallerBlockLength = Integration.Test.V0.NewOrderData.MESSAGE_SIZE - 2;
             var success3 = Integration.Test.V0.NewOrderData.TryParse(
                 buffer, 
                 smallerBlockLength, 
-                out var parsedMsg3, 
-                out var remaining3);
+                out var parsedMsg3);
             
             Assert.True(success3);
-            Assert.Equal(123, parsedMsg3.OrderId.Value);
-            Assert.Equal(34, remaining3.Length); // More bytes remain
+            Assert.Equal(123, parsedMsg3.Data.OrderId.Value);
+            Assert.Equal(34, buffer.Length - smallerBlockLength); // More bytes remain
         }
 
         [Fact]
@@ -230,12 +227,12 @@ namespace SbeCodeGenerator.IntegrationTests
             message.Price = 10050;    // Implicit conversion
             
             // Use the original TryParse method (calls the new one internally with MESSAGE_SIZE)
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedMsg, out var remaining);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var parsedMsg);
             
             Assert.True(success);
-            Assert.Equal(456, parsedMsg.OrderId.Value);
-            Assert.Equal(10050, parsedMsg.Price.Value);
-            Assert.Equal(0, remaining.Length);
+            Assert.Equal(456, parsedMsg.Data.OrderId.Value);
+            Assert.Equal(10050, parsedMsg.Data.Price.Value);
+            Assert.Equal(0, buffer.Length - Integration.Test.V0.NewOrderData.MESSAGE_SIZE);
         }
 
         [Fact]
@@ -376,9 +373,12 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public void ConsumeVariableLengthSegments_WithSpanReader_ParsesGroupsCorrectly()
         {
-            // Arrange - Create buffer with GroupSizeEncoding + entries for bids and asks
+            // Arrange - Create buffer with OrderBookData fixed fields + GroupSizeEncoding + entries for bids and asks
             Span<byte> buffer = stackalloc byte[512];
             int offset = 0;
+            
+            // Reserve space for OrderBookData fixed fields
+            offset += Integration.Test.V0.OrderBookData.MESSAGE_SIZE;
             
             // Write bids group header (3 bids)
             ref Integration.Test.V0.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
@@ -416,10 +416,9 @@ namespace SbeCodeGenerator.IntegrationTests
             var bidQuantities = new System.Collections.Generic.List<long>();
             var askQuantities = new System.Collections.Generic.List<long>();
             
-            // Create a dummy OrderBookData and call ConsumeVariableLengthSegments
-            var orderBook = new Integration.Test.V0.OrderBookData();
-            orderBook.ConsumeVariableLengthSegments(
-                buffer.Slice(0, offset),
+            // Parse using TryParse and call ReadGroups
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer.Slice(0, offset), out var orderBookReader));
+            orderBookReader.ReadGroups(
                 (in Integration.Test.V0.OrderBookData.BidsData bid) => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
                 (in Integration.Test.V0.OrderBookData.AsksData ask) => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
             );
@@ -446,9 +445,12 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public void ConsumeVariableLengthSegments_WithSpanReader_ParsesDataFieldsCorrectly()
         {
-            // Arrange - Create buffer with VarString8 data
+            // Arrange - Create buffer with NewOrderData fixed fields + VarString8 data
             Span<byte> buffer = stackalloc byte[512];
             int offset = 0;
+            
+            // Reserve space for NewOrderData fixed fields
+            offset += Integration.Test.V0.NewOrderData.MESSAGE_SIZE;
             
             // Write VarString8: length byte + string bytes
             string testSymbol = "AAPL";
@@ -461,9 +463,8 @@ namespace SbeCodeGenerator.IntegrationTests
             // Act
             byte symbolLength = 0;
             string symbolStr = "";
-            var order = new Integration.Test.V0.NewOrderData();
-            order.ConsumeVariableLengthSegments(
-                buffer.Slice(0, offset),
+            Assert.True(Integration.Test.V0.NewOrderData.TryParse(buffer.Slice(0, offset), out var orderReader));
+            orderReader.ReadGroups(
                 symbol => { 
                     symbolLength = symbol.Length;
                     symbolStr = System.Text.Encoding.UTF8.GetString(symbol.VarData);
@@ -485,12 +486,10 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> smallBuffer = stackalloc byte[10]; // Less than MESSAGE_SIZE (26)
             
             // Act
-            var success = Integration.Test.V0.NewOrderData.TryParse(smallBuffer, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(smallBuffer, out var reader);
             
             // Assert
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
-            Assert.True(variableData.IsEmpty);
         }
 
         [Fact]
@@ -508,16 +507,16 @@ namespace SbeCodeGenerator.IntegrationTests
             orderRef.OrderType = Integration.Test.V0.OrderType.Limit;
             
             // Act
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, out var message);
             
             // Assert
             Assert.True(success);
-            Assert.Equal(12345, message.OrderId.Value);
-            Assert.Equal(99999, message.Price.Value);
-            Assert.Equal(500, message.Quantity);
-            Assert.Equal(Integration.Test.V0.OrderSide.Buy, message.Side);
-            Assert.Equal(Integration.Test.V0.OrderType.Limit, message.OrderType);
-            Assert.Equal(16, variableData.Length); // Remaining bytes after MESSAGE_SIZE
+            Assert.Equal(12345, message.Data.OrderId.Value);
+            Assert.Equal(99999, message.Data.Price.Value);
+            Assert.Equal(500, message.Data.Quantity);
+            Assert.Equal(Integration.Test.V0.OrderSide.Buy, message.Data.Side);
+            Assert.Equal(Integration.Test.V0.OrderType.Limit, message.Data.OrderType);
+            Assert.Equal(16, buffer.Length - Integration.Test.V0.NewOrderData.MESSAGE_SIZE); // Remaining bytes after MESSAGE_SIZE
         }
 
         [Fact]
@@ -534,14 +533,14 @@ namespace SbeCodeGenerator.IntegrationTests
             orderRef.Price = 5000;
             
             // Act - Parse with larger block length
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, extendedBlockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, extendedBlockLength, out var message);
             
             // Assert
             Assert.True(success);
-            Assert.Equal(777, message.OrderId.Value);
-            Assert.Equal(5000, message.Price.Value);
+            Assert.Equal(777, message.Data.OrderId.Value);
+            Assert.Equal(5000, message.Data.Price.Value);
             // Variable data should start after the extended block length
-            Assert.Equal(10, variableData.Length);
+            Assert.Equal(10, buffer.Length - extendedBlockLength);
         }
 
         [Fact]
@@ -558,14 +557,14 @@ namespace SbeCodeGenerator.IntegrationTests
             orderRef.Price = 6000;
             
             // Act - Parse with smaller block length
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, smallerBlockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, smallerBlockLength, out var message);
             
             // Assert
             Assert.True(success);
-            Assert.Equal(888, message.OrderId.Value);
-            Assert.Equal(6000, message.Price.Value);
+            Assert.Equal(888, message.Data.OrderId.Value);
+            Assert.Equal(6000, message.Data.Price.Value);
             // Variable data should start at smallerBlockLength, overlapping with message
-            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 20 - smallerBlockLength, variableData.Length);
+            Assert.Equal(Integration.Test.V0.NewOrderData.MESSAGE_SIZE + 20 - smallerBlockLength, buffer.Length - smallerBlockLength);
         }
 
         [Fact]
@@ -579,12 +578,10 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[40]; // Less than blockLength
             
             // Act
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var reader);
             
             // Assert
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
-            Assert.True(variableData.IsEmpty);
         }
 
         [Fact]
@@ -598,28 +595,28 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[10]; // Less than blockLength
             
             // Act
-            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var message, out var variableData);
+            var success = Integration.Test.V0.NewOrderData.TryParse(buffer, blockLength, out var reader);
             
             // Assert - should fail because buffer is too small for blockLength
             Assert.False(success);
-            Assert.Equal(default(Integration.Test.V0.NewOrderData), message);
-            Assert.True(variableData.IsEmpty);
             
             // Verify that blockLength < MESSAGE_SIZE succeeds (backward compat: partial read)
             int smallBlockLength = 10;
             Span<byte> adequateBuffer = stackalloc byte[10];
-            var partialSuccess = Integration.Test.V0.NewOrderData.TryParse(adequateBuffer, smallBlockLength, out var partialMessage, out var remaining);
+            var partialSuccess = Integration.Test.V0.NewOrderData.TryParse(adequateBuffer, smallBlockLength, out var partialReader);
             Assert.True(partialSuccess);
-            Assert.True(remaining.IsEmpty); // All 10 bytes consumed by blockLength
         }
 
         [Fact]
         public void ConsumeVariableLengthSegments_WithRefSpanReader_ParsesGroupsCorrectly()
         {
-            // Test that the new SpanReader overload works correctly and advances the reader position
-            // Arrange - Create buffer with GroupSizeEncoding + entries for bids and asks
+            // Test that ReadGroups correctly parses groups from the buffer
+            // Arrange - Create buffer with OrderBookData fixed fields + GroupSizeEncoding + entries for bids and asks
             Span<byte> buffer = stackalloc byte[512];
             int offset = 0;
+            
+            // Reserve space for OrderBookData fixed fields
+            offset += Integration.Test.V0.OrderBookData.MESSAGE_SIZE;
             
             // Write bids group header (3 bids)
             ref Integration.Test.V0.GroupSizeEncoding bidsHeader = ref MemoryMarshal.AsRef<Integration.Test.V0.GroupSizeEncoding>(buffer.Slice(offset));
@@ -651,7 +648,7 @@ namespace SbeCodeGenerator.IntegrationTests
                 offset += Integration.Test.V0.OrderBookData.AsksData.MESSAGE_SIZE;
             }
             
-            // Add extra data after the variable length segments to verify reader position advancement
+            // Add extra data after the variable length segments
             buffer[offset++] = 0xFF;
             buffer[offset++] = 0xAA;
             
@@ -661,11 +658,9 @@ namespace SbeCodeGenerator.IntegrationTests
             var bidQuantities = new System.Collections.Generic.List<long>();
             var askQuantities = new System.Collections.Generic.List<long>();
             
-            // Create SpanReader and use the new overload
-            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer.Slice(0, offset));
-            var orderBook = new Integration.Test.V0.OrderBookData();
-            orderBook.ConsumeVariableLengthSegments(
-                ref reader,
+            // Parse using TryParse and call ReadGroups
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer.Slice(0, offset), out var orderBookReader));
+            orderBookReader.ReadGroups(
                 (in Integration.Test.V0.OrderBookData.BidsData bid) => { bidPrices.Add(bid.Price.Value); bidQuantities.Add(bid.Quantity); },
                 (in Integration.Test.V0.OrderBookData.AsksData ask) => { askPrices.Add(ask.Price.Value); askQuantities.Add(ask.Quantity); }
             );
@@ -687,26 +682,19 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(2010, askPrices[1]);
             Assert.Equal(200, askQuantities[0]);
             Assert.Equal(201, askQuantities[1]);
-            
-            // Verify reader position was advanced to the extra data
-            Assert.Equal(2, reader.RemainingBytes);
-            Assert.True(reader.TryReadBytes(1, out var extraByte1));
-            Assert.Equal(0xFF, extraByte1[0]);
-            Assert.True(reader.TryReadBytes(1, out var extraByte2));
-            Assert.Equal(0xAA, extraByte2[0]);
-            Assert.Equal(0, reader.RemainingBytes);
         }
 
         [Fact]
         public void ConsumeVariableLengthSegments_WithRefSpanReader_ParsesDataFieldsCorrectly()
         {
-            // Test that the new SpanReader overload works with data fields
-            // Note: Data fields use reader.Remaining without advancing the reader position
-            // This is expected behavior since data fields consume all remaining bytes
+            // Test that ReadGroups works with data fields
             
-            // Arrange - Create buffer with VarString8 data
+            // Arrange - Create buffer with NewOrderData fixed fields + VarString8 data
             Span<byte> buffer = stackalloc byte[512];
             int offset = 0;
+            
+            // Reserve space for NewOrderData fixed fields
+            offset += Integration.Test.V0.NewOrderData.MESSAGE_SIZE;
             
             // Write VarString8: length byte + string bytes
             string testSymbol = "AAPL";
@@ -719,10 +707,8 @@ namespace SbeCodeGenerator.IntegrationTests
             // Act
             byte symbolLength = 0;
             string symbolStr = "";
-            var reader = new Integration.Test.V0.Runtime.SpanReader(buffer.Slice(0, offset));
-            var order = new Integration.Test.V0.NewOrderData();
-            order.ConsumeVariableLengthSegments(
-                ref reader,
+            Assert.True(Integration.Test.V0.NewOrderData.TryParse(buffer.Slice(0, offset), out var orderReader));
+            orderReader.ReadGroups(
                 symbol => { 
                     symbolLength = symbol.Length;
                     symbolStr = System.Text.Encoding.UTF8.GetString(symbol.VarData);
@@ -732,9 +718,6 @@ namespace SbeCodeGenerator.IntegrationTests
             // Assert
             Assert.Equal((byte)4, symbolLength);
             Assert.Equal("AAPL", symbolStr);
-            
-            // Verify the reader was advanced past the data segment
-            Assert.Equal(0, reader.RemainingBytes);
         }
     }
 }

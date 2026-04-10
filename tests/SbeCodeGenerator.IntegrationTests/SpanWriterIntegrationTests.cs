@@ -34,15 +34,15 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(NewOrderData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = NewOrderData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = NewOrderData.TryParse(buffer, out var decoded);
 
             // Assert decoding succeeded and values match
             Assert.True(decodeResult);
-            Assert.Equal(original.OrderId, decoded.OrderId);
-            Assert.Equal(original.Price, decoded.Price);
-            Assert.Equal(original.Quantity, decoded.Quantity);
-            Assert.Equal(original.Side, decoded.Side);
-            Assert.Equal(original.OrderType, decoded.OrderType);
+            Assert.Equal(original.OrderId, decoded.Data.OrderId);
+            Assert.Equal(original.Price, decoded.Data.Price);
+            Assert.Equal(original.Quantity, decoded.Data.Quantity);
+            Assert.Equal(original.Side, decoded.Data.Side);
+            Assert.Equal(original.OrderType, decoded.Data.OrderType);
         }
 
         [Fact]
@@ -90,8 +90,8 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(NewOrderData.MESSAGE_SIZE, bytesWritten);
 
             // Verify round-trip
-            NewOrderData.TryParse(buffer, out var decoded, out _);
-            Assert.Equal(message.OrderId, decoded.OrderId);
+            NewOrderData.TryParse(buffer, out var decoded);
+            Assert.Equal(message.OrderId, decoded.Data.OrderId);
         }
 
         [Fact]
@@ -141,10 +141,10 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(NewOrderData.MESSAGE_SIZE, writer.BytesWritten);
 
             // Verify round-trip
-            NewOrderData.TryParse(buffer, out var decoded, out _);
-            Assert.Equal(message.OrderId, decoded.OrderId);
-            Assert.Equal(message.Price, decoded.Price);
-            Assert.Equal(message.Quantity, decoded.Quantity);
+            NewOrderData.TryParse(buffer, out var decoded);
+            Assert.Equal(message.OrderId, decoded.Data.OrderId);
+            Assert.Equal(message.Price, decoded.Data.Price);
+            Assert.Equal(message.Quantity, decoded.Data.Quantity);
         }
 
         [Fact]
@@ -170,15 +170,15 @@ namespace SbeCodeGenerator.IntegrationTests
                 Assert.True(encodeResult);
 
                 // Act - Decode
-                bool decodeResult = NewOrderData.TryParse(buffer, out var decoded, out _);
+                bool decodeResult = NewOrderData.TryParse(buffer, out var decoded);
 
                 // Assert decoding and value preservation
                 Assert.True(decodeResult);
-                Assert.Equal(original.OrderId, decoded.OrderId);
-                Assert.Equal(original.Price, decoded.Price);
-                Assert.Equal(original.Quantity, decoded.Quantity);
-                Assert.Equal(original.Side, decoded.Side);
-                Assert.Equal(original.OrderType, decoded.OrderType);
+                Assert.Equal(original.OrderId, decoded.Data.OrderId);
+                Assert.Equal(original.Price, decoded.Data.Price);
+                Assert.Equal(original.Quantity, decoded.Data.Quantity);
+                Assert.Equal(original.Side, decoded.Data.Side);
+                Assert.Equal(original.OrderType, decoded.Data.OrderType);
             }
         }
 
@@ -235,11 +235,11 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(OrderBookData.MESSAGE_SIZE, bytesWritten);
 
             // Act - Decode
-            bool decodeResult = OrderBookData.TryParse(buffer, out var decoded, out _);
+            bool decodeResult = OrderBookData.TryParse(buffer, out var decoded);
 
             // Assert decoding
             Assert.True(decodeResult);
-            Assert.Equal(original.InstrumentId, decoded.InstrumentId);
+            Assert.Equal(original.InstrumentId, decoded.Data.InstrumentId);
         }
 
         [Fact]

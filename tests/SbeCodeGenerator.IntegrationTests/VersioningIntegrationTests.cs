@@ -134,10 +134,10 @@ namespace SbeCodeGenerator.IntegrationTests
             v0Setup.OrderId = 123;
             v0Setup.Price = 9900;
             
-            var v0Success = V0.EvolvingOrderData.TryParse(v0Buffer, out var v0Parsed, out _);
+            var v0Success = V0.EvolvingOrderData.TryParse(v0Buffer, out var v0Parsed);
             Assert.True(v0Success);
-            Assert.Equal(123, v0Parsed.OrderId.Value);
-            Assert.Equal(9900, v0Parsed.Price.Value);
+            Assert.Equal(123, v0Parsed.Data.OrderId.Value);
+            Assert.Equal(9900, v0Parsed.Data.Price.Value);
             
             // Test that TryParse works for V1
             Span<byte> v1Buffer = stackalloc byte[V1.EvolvingOrderData.MESSAGE_SIZE];
@@ -146,10 +146,10 @@ namespace SbeCodeGenerator.IntegrationTests
             v1Setup.Price = 10000;
             v1Setup.Quantity = 200;
             
-            var v1Success = V1.EvolvingOrderData.TryParse(v1Buffer, out var v1Parsed, out _);
+            var v1Success = V1.EvolvingOrderData.TryParse(v1Buffer, out var v1Parsed);
             Assert.True(v1Success);
-            Assert.Equal(456, v1Parsed.OrderId.Value);
-            Assert.Equal(200, v1Parsed.Quantity);
+            Assert.Equal(456, v1Parsed.Data.OrderId.Value);
+            Assert.Equal(200, v1Parsed.Data.Quantity);
             
             // Test that TryParse works for V2
             Span<byte> v2Buffer = stackalloc byte[V2.EvolvingOrderData.MESSAGE_SIZE];
@@ -159,11 +159,11 @@ namespace SbeCodeGenerator.IntegrationTests
             v2Setup.Quantity = 300;
             v2Setup.Side = 1;
             
-            var v2Success = V2.EvolvingOrderData.TryParse(v2Buffer, out var v2Parsed, out _);
+            var v2Success = V2.EvolvingOrderData.TryParse(v2Buffer, out var v2Parsed);
             Assert.True(v2Success);
-            Assert.Equal(789, v2Parsed.OrderId.Value);
-            Assert.Equal(300, v2Parsed.Quantity);
-            Assert.Equal(1, v2Parsed.Side);
+            Assert.Equal(789, v2Parsed.Data.OrderId.Value);
+            Assert.Equal(300, v2Parsed.Data.Quantity);
+            Assert.Equal(1, v2Parsed.Data.Side);
         }
 
         [Fact]
