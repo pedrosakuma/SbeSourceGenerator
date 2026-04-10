@@ -263,11 +263,13 @@ namespace SbeSourceGenerator
             sb.Append("in ").Append(dataVarName).AppendLine(");");
 
             // Read group-level variable data after each entry
+            // Prefix with group name to avoid variable shadowing with message-level varData
             foreach (var groupData in group.TypedDatas)
             {
-                sb.AppendTabs(tabs).Append("var datas").Append(groupData.Name).Append(" = ").Append(groupData.Type).AppendLine(".Create(reader.Remaining);");
-                sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append(groupData.Name).Append("(datas").Append(groupData.Name).AppendLine(");");
-                sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(groupData.Name).AppendLine(".TotalLength);");
+                var varName = $"datas{group.Name}{groupData.Name}";
+                sb.AppendTabs(tabs).Append("var ").Append(varName).Append(" = ").Append(groupData.Type).AppendLine(".Create(reader.Remaining);");
+                sb.AppendTabs(tabs).Append("callback").Append(group.Name).Append(groupData.Name).Append("(").Append(varName).AppendLine(");");
+                sb.AppendTabs(tabs).Append("reader.TrySkip(").Append(varName).AppendLine(".TotalLength);");
             }
             // Read nested groups recursively
             var ancestorsForChildren = new List<string>(ancestors);

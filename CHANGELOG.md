@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-04-10
+
+### Fixed
+- **B3 UMDF schema compatibility**: Full support for the B3 binary market data SBE schema (v2.2.0). The following issues are now resolved:
+  - **DTD declarations**: Schemas with `<!DOCTYPE>` declarations (like B3 UMDF) no longer fail with SBE004. `DtdProcessing` changed from `Prohibit` to `Ignore`.
+  - **Constant type fields**: Message fields referencing constant types (e.g., `SeqNum1` → `uint32` with value `1`) now resolve to the correct primitive type and value instead of generating empty/invalid code.
+  - **Named optional types in messages**: Fields using named optional types (e.g., `RptSeq`, `FirmOptional`, `QuantityOptional`) now use the underlying primitive type directly, avoiding invalid struct-to-primitive casts.
+  - **Composite optional fields**: Composite types (e.g., `PriceOptional`, `Fixed8`, `Percentage`) used as optional message fields now generate regular fields instead of attempting invalid `== default` comparisons on structs.
+  - **Named type optional resolution**: Regular named types (e.g., `SettlType` → `uint16`) are now correctly resolved when used as optional message fields.
+- **Group-level varData variable shadowing**: When a group and its parent message both have varData fields with the same name (e.g., `Symbol`), the generated code now uses unique variable names to avoid CS0136 errors.
+- **Binance example**: Migrated `ConsoleApp.cs` from deprecated `ConsumeVariableLengthSegments` API to the v1.0.0 `TryParseWithReader`/`ReadGroups` API.
+
 ## [1.0.0] - 2026-04-10
 
 ### Breaking Changes

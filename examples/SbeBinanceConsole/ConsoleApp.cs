@@ -833,22 +833,24 @@ internal sealed class ConsoleApp : IAsyncDisposable
         snapshot = default;
         eventTime = default;
 
-        if (!reader.TryRead<TradesStreamEventData>(out var trades))
+        if (!TradesStreamEventData.TryParseWithReader(ref reader, TradesStreamEventData.BLOCK_LENGTH, out var tradesReader))
         {
             return false;
         }
 
+        ref readonly var trades = ref tradesReader.Data;
         var symbol = instrument;
         var hasTrade = false;
         TradesStreamEventData.TradesData lastTrade = default;
 
-        trades.ConsumeVariableLengthSegments(ref reader,
-            data =>
+        tradesReader.ReadGroups(
+            (in TradesStreamEventData.TradesData data) =>
             {
                 hasTrade = true;
                 lastTrade = data;
             },
             s => symbol = Encoding.UTF8.GetString(s.VarData[..s.Length]));
+        reader.TrySkip(tradesReader.BytesConsumed);
 
         if (!hasTrade)
         {
@@ -877,15 +879,17 @@ internal sealed class ConsoleApp : IAsyncDisposable
         snapshot = default;
         eventTime = default;
 
-        if (!reader.TryRead<BestBidAskStreamEventData>(out var bestBid))
+        if (!BestBidAskStreamEventData.TryParseWithReader(ref reader, BestBidAskStreamEventData.BLOCK_LENGTH, out var bestBidReader))
         {
             return false;
         }
 
+        ref readonly var bestBid = ref bestBidReader.Data;
         var symbol = instrument;
 
-        bestBid.ConsumeVariableLengthSegments(ref reader,
+        bestBidReader.ReadGroups(
             s => symbol = Encoding.UTF8.GetString(s.VarData[..s.Length]));
+        reader.TrySkip(bestBidReader.BytesConsumed);
 
         var qtyMultiplier = Pow10(bestBid.QtyExponent.Value);
         var priceMultiplier = Pow10(bestBid.PriceExponent.Value);
