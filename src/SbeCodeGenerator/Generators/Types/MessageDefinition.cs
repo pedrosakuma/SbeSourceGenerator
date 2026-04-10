@@ -59,7 +59,7 @@ namespace SbeSourceGenerator
             AppendParseHelpers(sb, tabs);
             AppendEncodeHelpers(sb, tabs);
             AppendGroupsFileContent(sb, tabs);
-            AppendConsumeVariable(sb, tabs);
+            AppendDelegateTypes(sb, tabs);
             
             // Generate comprehensive TryEncode method if message has groups or varData
             if (HasVariableData)
@@ -71,36 +71,44 @@ namespace SbeSourceGenerator
             AppendWriteHeader(sb, tabs);
             
             sb.AppendLine("}", --tabs);
+
+            AppendReaderStruct(sb, tabs);
         }
 
         private void AppendParseHelpers(StringBuilder sb, int tabs)
         {
-            // Original TryParse without blockLength parameter for backward compatibility
+            // TryParse without blockLength parameter
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
-            sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, out ").Append(Name).AppendLine("Data message, out ReadOnlySpan<byte> variableData)");
+            sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, out ").Append(Name).AppendLine("DataReader reader)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).AppendLine("return TryParse(buffer, BLOCK_LENGTH, out message, out variableData);");
+            sb.AppendTabs(tabs).AppendLine("return TryParse(buffer, BLOCK_LENGTH, out reader);");
             sb.AppendLine("}", --tabs);
 
             // TryParse with blockLength parameter for schema evolution support
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
-            sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out ").Append(Name).AppendLine("Data message, out ReadOnlySpan<byte> variableData)");
+            sb.AppendTabs(tabs).Append("public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out ").Append(Name).AppendLine("DataReader reader)");
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
-            sb.AppendTabs(tabs).Append("if (!reader.TryReadBlock<").Append(Name).AppendLine("Data>(blockLength, out message))");
+            sb.AppendTabs(tabs).AppendLine("if (buffer.Length < blockLength)");
             sb.AppendLine("{", tabs++);
-            sb.AppendLine("variableData = default;", tabs);
+            sb.AppendLine("reader = default;", tabs);
             sb.AppendLine("return false;", tabs);
             sb.AppendLine("}", --tabs);
-            sb.AppendLine("variableData = reader.Remaining;", tabs);
+            sb.AppendTabs(tabs).Append("reader = new ").Append(Name).AppendLine("DataReader(buffer, blockLength);");
             sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
 
-            // Public method that uses SpanReader for parsing - reader is passed by ref to update offset in caller
+            // TryParseWithReader for sequential reading from a SpanReader
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
-            sb.AppendTabs(tabs).Append("public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out ").Append(Name).AppendLine("Data message)");
+            sb.AppendTabs(tabs).Append("public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out ").Append(Name).AppendLine("DataReader messageReader)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).Append("return reader.TryReadBlock<").Append(Name).AppendLine("Data>(blockLength, out message);");
+            sb.AppendTabs(tabs).AppendLine("var remaining = reader.Remaining;");
+            sb.AppendTabs(tabs).AppendLine("if (remaining.Length < blockLength)");
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("messageReader = default;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendTabs(tabs).Append("messageReader = new ").Append(Name).AppendLine("DataReader(remaining, blockLength);");
+            sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }
 
@@ -221,43 +229,16 @@ namespace SbeSourceGenerator
             }
         }
 
-        private void AppendConsumeVariable(StringBuilder sb, int tabs)
+        private void AppendDelegateTypes(StringBuilder sb, int tabs)
         {
             if (HasVariableData)
             {
-                // Generate delegate types for zero-copy group callbacks
                 foreach (var group in TypedGroups)
                     AppendGroupDelegateTypes(sb, tabs, group);
-
-                // Build callback parameter lists once
-                var callbackParams = BuildCallbackParams();
-                var callbackArgs = BuildCallbackArgs();
-
-                // Original overload that creates its own SpanReader
-                sb.AppendTabs(tabs).Append("public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ").Append(callbackParams).AppendLine(")");
-                sb.AppendLine("{", tabs++);
-                sb.AppendLine("var reader = new SpanReader(buffer);", tabs);
-                sb.AppendTabs(tabs).Append("ConsumeVariableLengthSegments(ref reader, ").Append(callbackArgs).AppendLine(");");
-                sb.AppendLine("}", --tabs);
-
-                // New overload that accepts SpanReader by reference
-                sb.AppendTabs(tabs).Append("public void ConsumeVariableLengthSegments(ref SpanReader reader, ").Append(callbackParams).AppendLine(")");
-                sb.AppendLine("{", tabs++);
-                foreach (var group in TypedGroups)
-                {
-                    AppendGroupConsume(sb, tabs, group);
-                }
-                foreach (var data in TypedDatas)
-                {
-                    sb.AppendTabs(tabs).Append("var datas").Append(data.Name).Append(" = ").Append(data.Type).AppendLine(".Create(reader.Remaining);");
-                    sb.AppendTabs(tabs).Append("callback").Append(data.Name).Append("(datas").Append(data.Name).AppendLine(");");
-                    sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(data.Name).AppendLine(".TotalLength);");
-                }
-                sb.AppendLine("}", --tabs);
             }
         }
 
-        private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group, List<string>? ancestorVarNames = null)
+        private static void AppendGroupConsume(StringBuilder sb, int tabs, GroupDefinition group, List<string>? ancestorVarNames = null, string dataTypePrefix = "")
         {
             var ancestors = ancestorVarNames ?? new List<string>();
             var depth = ancestors.Count;
@@ -268,7 +249,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("for (int ").Append(loopVar).Append(" = 0; ").Append(loopVar).Append(" < group").Append(group.Name).Append(".NumInGroup; ").Append(loopVar).AppendLine("++)");
             sb.AppendLine("{", tabs++);
-            sb.AppendTabs(tabs).Append("if (!reader.TryReadBlock<").Append(group.Name).Append("Data>(group").Append(group.Name).Append(".BlockLength, out var ").Append(dataVarName).AppendLine("))");
+            sb.AppendTabs(tabs).Append("if (!reader.TryReadBlock<").Append(dataTypePrefix).Append(group.Name).Append("Data>(group").Append(group.Name).Append(".BlockLength, out var ").Append(dataVarName).AppendLine("))");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("break;", tabs);
             sb.AppendLine("}", --tabs);
@@ -293,7 +274,7 @@ namespace SbeSourceGenerator
             ancestorsForChildren.Add(dataVarName);
             foreach (var nestedGroup in group.TypedNestedGroups)
             {
-                AppendGroupConsume(sb, tabs, nestedGroup, ancestorsForChildren);
+                AppendGroupConsume(sb, tabs, nestedGroup, ancestorsForChildren, dataTypePrefix);
             }
             sb.AppendLine("}", --tabs);
             sb.AppendLine("}", --tabs);
@@ -574,20 +555,20 @@ namespace SbeSourceGenerator
             }
         }
 
-        private string BuildCallbackParams()
+        private string BuildCallbackParams(string delegateTypePrefix = "")
         {
             var parts = new List<string>(TypedGroups.Count + TypedDatas.Count);
             foreach (var group in TypedGroups)
-                AppendGroupCallbackParams(parts, group);
+                AppendGroupCallbackParams(parts, group, delegateTypePrefix: delegateTypePrefix);
             foreach (var data in TypedDatas)
                 parts.Add($"{data.Type}.Callback callback{data.Name}");
             return string.Join(", ", parts);
         }
 
-        private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group, List<string>? ancestorTypes = null)
+        private static void AppendGroupCallbackParams(List<string> parts, GroupDefinition group, List<string>? ancestorTypes = null, string delegateTypePrefix = "")
         {
             var ancestors = ancestorTypes ?? new List<string>();
-            parts.Add($"{group.Name}Handler callback{group.Name}");
+            parts.Add($"{delegateTypePrefix}{group.Name}Handler callback{group.Name}");
 
             foreach (var groupData in group.TypedDatas)
                 parts.Add($"{groupData.Type}.Callback callback{group.Name}{groupData.Name}");
@@ -595,7 +576,7 @@ namespace SbeSourceGenerator
             var ancestorsForChildren = new List<string>(ancestors);
             ancestorsForChildren.Add($"{group.Name}Data");
             foreach (var nestedGroup in group.TypedNestedGroups)
-                AppendGroupCallbackParams(parts, nestedGroup, ancestorsForChildren);
+                AppendGroupCallbackParams(parts, nestedGroup, ancestorsForChildren, delegateTypePrefix);
         }
 
         private string BuildCallbackArgs()
@@ -615,6 +596,79 @@ namespace SbeSourceGenerator
                 parts.Add($"callback{group.Name}{groupData.Name}");
             foreach (var nestedGroup in group.TypedNestedGroups)
                 AppendGroupCallbackArgs(parts, nestedGroup);
+        }
+
+        private void AppendReaderStruct(StringBuilder sb, int tabs)
+        {
+            sb.AppendLine("", tabs);
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendTabs(tabs).Append("/// Zero-copy reader for ").Append(Name).AppendLine("Data messages.");
+            sb.AppendLine("/// Provides direct access to the message data in the underlying buffer without copying.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendTabs(tabs).Append("public ref struct ").Append(Name).AppendLine("DataReader");
+            sb.AppendLine("{", tabs++);
+
+            sb.AppendLine("private readonly ReadOnlySpan<byte> _buffer;", tabs);
+            sb.AppendLine("private readonly int _blockLength;", tabs);
+            sb.AppendLine("", tabs);
+
+            // BytesConsumed property
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// Total bytes consumed from the buffer (block + variable-length data).", tabs);
+            sb.AppendLine("/// Updated after ReadGroups is called for messages with groups or varData.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("public int BytesConsumed { get; private set; }", tabs);
+            sb.AppendLine("", tabs);
+
+            // Constructor
+            sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+            sb.AppendTabs(tabs).Append("internal ").Append(Name).AppendLine("DataReader(ReadOnlySpan<byte> buffer, int blockLength)");
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("_buffer = buffer;", tabs);
+            sb.AppendLine("_blockLength = blockLength;", tabs);
+            sb.AppendLine("BytesConsumed = blockLength;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendLine("", tabs);
+
+            // Data property — zero-copy ref into buffer
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendTabs(tabs).Append("/// Gets a readonly reference to the ").Append(Name).AppendLine("Data directly in the buffer (zero-copy).");
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendTabs(tabs).Append("public ref readonly ").Append(Name).Append("Data Data => ref Unsafe.As<byte, ").Append(Name).AppendLine("Data>(ref MemoryMarshal.GetReference(_buffer));");
+
+            // ReadGroups — only for messages with variable data
+            if (HasVariableData)
+            {
+                AppendReadGroups(sb, tabs);
+            }
+
+            sb.AppendLine("}", --tabs);
+        }
+
+        private void AppendReadGroups(StringBuilder sb, int tabs)
+        {
+            var callbackParams = BuildCallbackParams($"{Name}Data.");
+            sb.AppendLine("", tabs);
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// Reads groups and variable-length data from the message buffer using callbacks.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendTabs(tabs).Append("public void ReadGroups(").Append(callbackParams).AppendLine(")");
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("var reader = new SpanReader(_buffer.Slice(_blockLength));", tabs);
+
+            foreach (var group in TypedGroups)
+            {
+                AppendGroupConsume(sb, tabs, group, dataTypePrefix: $"{Name}Data.");
+            }
+            foreach (var data in TypedDatas)
+            {
+                sb.AppendTabs(tabs).Append("var datas").Append(data.Name).Append(" = ").Append(data.Type).AppendLine(".Create(reader.Remaining);");
+                sb.AppendTabs(tabs).Append("callback").Append(data.Name).Append("(datas").Append(data.Name).AppendLine(");");
+                sb.AppendTabs(tabs).Append("reader.TrySkip(datas").Append(data.Name).AppendLine(".TotalLength);");
+            }
+
+            sb.AppendLine("BytesConsumed = _buffer.Length - reader.Remaining.Length;", tabs);
+            sb.AppendLine("}", --tabs);
         }
 
         private void AppendWriteHeader(StringBuilder sb, int tabs)

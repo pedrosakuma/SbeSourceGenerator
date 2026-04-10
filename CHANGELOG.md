@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-04-10
+
+### Breaking Changes
+- **Zero-copy `MessageDataReader` API**: `TryParse` now returns a `{Message}DataReader` ref struct instead of `(out T message, out ReadOnlySpan<byte> variableData)`. Access fields via `reader.Data` (zero-copy `ref readonly` into the buffer). This is a breaking change for all decode call sites.
+- **`ConsumeVariableLengthSegments` → `ReadGroups`**: Group/varData processing moved from instance method on the data struct to a method on the reader. No separate `variableData` span parameter — the reader manages the buffer internally.
+- **`TryParseWithReader`**: Now returns a `{Message}DataReader` instead of `(out T, out ReadOnlySpan<byte>)`. Caller uses `spanReader.TrySkip(messageReader.BytesConsumed)` to advance past the message.
+
+### Added
+- **`{Message}DataReader` ref struct**: Generated per message. Holds `ReadOnlySpan<byte>` buffer, exposes `ref readonly {Message}Data Data` via `Unsafe.As<byte, T>` for zero-copy field access.
+- **`BytesConsumed` property**: Tracks total bytes consumed by the message (block + groups + varData). Available after `ReadGroups` for messages with variable-length segments.
+- **`ReadGroups` method**: Replaces `ConsumeVariableLengthSegments`. Only generated for messages with groups or varData. Same `in` delegate callback pattern.
+
+### Migration Guide
+
+```csharp
+// Before (v0.9.x):
+if (CarData.TryParse(buffer, out var car, out var variableData))
+{
+    Console.WriteLine(car.SerialNumber);
+    car.ConsumeVariableLengthSegments(variableData,
+        (in FuelFiguresData fuel) => { },
+        (in PerformanceFiguresData perf) => { });
+}
+
+// After (v1.0.0):
+if (CarData.TryParse(buffer, out var car))
+{
+    Console.WriteLine(car.Data.SerialNumber);  // .Data for zero-copy access
+    car.ReadGroups(
+        (in FuelFiguresData fuel) => { },
+        (in PerformanceFiguresData perf) => { });
+}
+
+// Simple messages (no groups):
+// Before: TradeData.TryParse(buffer, out var trade, out _);  trade.Price
+// After:  TradeData.TryParse(buffer, out var trade);         trade.Data.Price
+```
+
 ## [0.9.1] - 2026-04-10
 
 ### Fixed
@@ -155,7 +193,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for primitive types, composites, enums, sets, messages, and groups
 - Comprehensive test suite with snapshot and integration tests
 
-[Unreleased]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.9.1...v1.0.0
+[0.9.1]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pedrosakuma/SbeSourceGenerator/compare/v0.2.0...v0.3.0

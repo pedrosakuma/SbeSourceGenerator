@@ -47,15 +47,14 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(bytesWritten > 0);
 
             // Decode and verify
-            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded, out var variableData));
-            Assert.Equal(42, decoded.InstrumentId);
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded));
+            Assert.Equal(42, decoded.Data.InstrumentId);
 
             // Verify groups
             var decodedBids = new List<Integration.Test.V0.OrderBookData.BidsData>();
             var decodedAsks = new List<Integration.Test.V0.OrderBookData.AsksData>();
 
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
+            decoded.ReadGroups(
                 (in Integration.Test.V0.OrderBookData.BidsData bid) => decodedBids.Add(bid),
                 (in Integration.Test.V0.OrderBookData.AsksData ask) => decodedAsks.Add(ask)
             );
@@ -97,13 +96,12 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(bytesWritten > 0);
 
             // Decode and verify
-            Assert.True(Integration.Test.V0.NewOrderData.TryParse(buffer, out var decoded, out var variableData));
-            Assert.Equal(123, decoded.OrderId.Value);
+            Assert.True(Integration.Test.V0.NewOrderData.TryParse(buffer, out var decoded));
+            Assert.Equal(123, decoded.Data.OrderId.Value);
 
             // Verify varData
             string decodedSymbol = "";
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
+            decoded.ReadGroups(
                 symbolData => {
                     decodedSymbol = Encoding.UTF8.GetString(symbolData.VarData.Slice(0, symbolData.Length));
                 }
@@ -186,13 +184,12 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(bytesWritten > Integration.Test.V0.OrderBookData.MESSAGE_SIZE);
 
             // Verify by decoding
-            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded, out var variableData));
-            Assert.Equal(99, decoded.InstrumentId);
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded));
+            Assert.Equal(99, decoded.Data.InstrumentId);
 
             var bidCount = 0;
             var askCount = 0;
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
+            decoded.ReadGroups(
                 (in Integration.Test.V0.OrderBookData.BidsData bid) => bidCount++,
                 (in Integration.Test.V0.OrderBookData.AsksData ask) => askCount++
             );
@@ -244,14 +241,13 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.True(bytesWritten > 0);
 
             // Decode and verify
-            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded, out var variableData));
-            Assert.Equal(123, decoded.InstrumentId);
+            Assert.True(Integration.Test.V0.OrderBookData.TryParse(buffer, out var decoded));
+            Assert.Equal(123, decoded.Data.InstrumentId);
 
             var decodedBids = new List<Integration.Test.V0.OrderBookData.BidsData>();
             var decodedAsks = new List<Integration.Test.V0.OrderBookData.AsksData>();
 
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
+            decoded.ReadGroups(
                 (in Integration.Test.V0.OrderBookData.BidsData bid) => decodedBids.Add(bid),
                 (in Integration.Test.V0.OrderBookData.AsksData ask) => decodedAsks.Add(ask)
             );

@@ -87,11 +87,13 @@ finally
 
 ```csharp
 // Process groups without materializing collections
-snapshot.ConsumeVariableLengthSegments(
-    variableData,
-    bid => ProcessBid(bid),  // Process each bid immediately
-    ask => ProcessAsk(ask)   // Process each ask immediately
-);
+if (DepthSnapshotData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidsData bid) => ProcessBid(in bid),  // Process each bid immediately
+        (in AsksData ask) => ProcessAsk(in ask)   // Process each ask immediately
+    );
+}
 ```
 
 ### Batch Processing

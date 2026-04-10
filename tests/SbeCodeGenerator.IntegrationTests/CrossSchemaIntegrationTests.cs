@@ -51,11 +51,10 @@ public class CrossSchemaIntegrationTests
         var success = Cross.Schema.Common.V0.HeartbeatData.TryParse(
             buffer,
             Cross.Schema.Common.V0.HeartbeatData.MESSAGE_SIZE,
-            out var parsed,
-            out _);
+            out var parsed);
 
         Assert.True(success);
-        Assert.Equal(1234567890123456789UL, parsed.Timestamp);
+        Assert.Equal(1234567890123456789UL, parsed.Data.Timestamp);
     }
 
     [Fact]
@@ -121,16 +120,16 @@ public class CrossSchemaIntegrationTests
         var s1 = Cross.Schema.Common.V0.HeartbeatData.TryParse(
             heartbeatBuffer,
             Cross.Schema.Common.V0.HeartbeatData.MESSAGE_SIZE,
-            out var parsedHb, out _);
+            out var parsedHb);
 
         var s2 = Cross.Schema.Orders.V0.NewOrderData.TryParse(
             orderBuffer,
             Cross.Schema.Orders.V0.NewOrderData.MESSAGE_SIZE,
-            out var parsedOrder, out _);
+            out var parsedOrder);
 
         Assert.True(s1);
         Assert.True(s2);
-        Assert.Equal(100UL, parsedHb.Timestamp);
-        Assert.Equal(200UL, parsedOrder.OrderId);
+        Assert.Equal(100UL, parsedHb.Data.Timestamp);
+        Assert.Equal(200UL, parsedOrder.Data.OrderId);
     }
 }

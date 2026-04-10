@@ -8,10 +8,10 @@ This document describes the integration of the `SpanReader` abstraction into the
 
 ## Background
 
-Prior to this integration, the generated `ConsumeVariableLengthSegments` method used manual offset tracking:
+Prior to this integration, the generated `ReadGroups` method (formerly `ConsumeVariableLengthSegments`) used manual offset tracking:
 
 ```csharp
-public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ...)
+public void ReadGroups(...)
 {
     int offset = 0;  // Manual offset management
     
@@ -41,7 +41,7 @@ This approach was error-prone due to:
 The integration involved updating the `MessageDefinition` class in the source generator to emit `SpanReader`-based parsing code:
 
 ```csharp
-public void ConsumeVariableLengthSegments(ReadOnlySpan<byte> buffer, ...)
+public void ReadGroups(...)
 {
     var reader = new SpanReader(buffer);
     
@@ -118,7 +118,7 @@ Variable-length data fields work correctly:
 
 ### Integration Tests
 Added comprehensive integration tests:
-1. **Group Parsing Test**: Verifies `ConsumeVariableLengthSegments` correctly parses bids and asks groups using SpanReader
+1. **Group Parsing Test**: Verifies `ReadGroups` correctly parses bids and asks groups using SpanReader
 2. **Data Fields Test**: Validates VarString8 data field parsing with SpanReader
 3. All 119 integration tests passing ✅
 
@@ -148,12 +148,16 @@ Added comprehensive integration tests:
 - Nested groups use depth-indexed variable names (`nestedData1`, `nestedData2`)
 
 ### For Library Users
-- **Breaking Change (v0.9.0)**: Group callbacks changed from `Action<GroupData>` to `{GroupName}Handler(in GroupData data)`. Add `in` keyword to lambda parameters:
+- **Breaking Change (v1.0.0)**: `TryParse` now returns a zero-copy `MessageDataReader` ref struct. Access fields via `reader.Data.Field`. Group processing moved to `reader.ReadGroups(...)`:
   ```csharp
-  // Before:
-  decoded.ConsumeVariableLengthSegments(buffer, bid => ProcessBid(bid));
-  // After:
-  decoded.ConsumeVariableLengthSegments(buffer, (in BidsData bid) => ProcessBid(bid));
+  // Before (v0.9.x):
+  OrderBookData.TryParse(buffer, out var decoded, out var variableData);
+  decoded.ConsumeVariableLengthSegments(variableData, (in BidsData bid) => ProcessBid(bid));
+  // After (v1.0.0):
+  if (OrderBookData.TryParse(buffer, out var reader))
+  {
+      reader.ReadGroups((in BidsData bid) => ProcessBid(in bid));
+  }
   ```
 - `TryParse` now uses `TryReadBlock<T>` internally for correct schema evolution handling
 - Generated `readonly` property getters prevent defensive copies when accessed through `in` refs

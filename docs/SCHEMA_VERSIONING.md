@@ -61,24 +61,24 @@ public long Quantity;
 
 ### TryParse Methods
 
-The generated `TryParse` method uses `TryReadBlock<T>` for version-aware parsing:
+The generated `TryParse` method returns a zero-copy `MessageDataReader` ref struct:
 
 ```csharp
 public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, 
-                           out OrderData message, out ReadOnlySpan<byte> variableData)
+                           out OrderDataReader reader)
 {
-    var reader = new SpanReader(buffer);
+    var spanReader = new SpanReader(buffer);
     
     // TryReadBlock advances by blockLength, not sizeof(T)
     // - blockLength < sizeof: partial read, trailing fields zeroed (backward compat)
     // - blockLength > sizeof: full read, skips extra bytes (forward compat)
-    if (!reader.TryReadBlock<OrderData>(blockLength, out message))
+    if (!spanReader.TryReadBlock<OrderData>(blockLength, out _))
     {
-        variableData = default;
+        reader = default;
         return false;
     }
     
-    variableData = reader.Remaining;
+    reader = new OrderDataReader(buffer, blockLength);
     return true;
 }
 ```
@@ -95,15 +95,15 @@ Span<byte> v1Message = /* ... from wire or storage ... */;
 int v1BlockLength = 16;
 
 // V3 decoder can read V1 messages
-var success = OrderData.TryParse(v1Message, v1BlockLength, out var order, out var varData);
+var success = OrderData.TryParse(v1Message, v1BlockLength, out var order);
 
 // Fields present in V1
-Console.WriteLine($"OrderId: {order.OrderId}");  // ✓ Present
-Console.WriteLine($"Price: {order.Price}");      // ✓ Present
+Console.WriteLine($"OrderId: {order.Data.OrderId}");  // ✓ Present
+Console.WriteLine($"Price: {order.Data.Price}");      // ✓ Present
 
 // Fields added in later versions have default values
-Console.WriteLine($"Quantity: {order.Quantity}"); // 0 (not in V1)
-Console.WriteLine($"Side: {order.Side}");         // 0 (not in V2)
+Console.WriteLine($"Quantity: {order.Data.Quantity}"); // 0 (not in V1)
+Console.WriteLine($"Side: {order.Data.Side}");         // 0 (not in V2)
 ```
 
 ### Example 2: Writing Messages with the Latest Schema
@@ -132,15 +132,15 @@ Span<byte> v3Message = /* ... 25 bytes ... */;
 
 // V1 decoder only knows about blockLength=16
 int v1BlockLength = 16;
-var success = OrderData.TryParse(v3Message, v1BlockLength, out var order, out var remaining);
+var success = OrderData.TryParse(v3Message, v1BlockLength, out var order);
 
 // V1 decoder reads its known fields
-Console.WriteLine($"OrderId: {order.OrderId}");  // ✓ Read correctly
-Console.WriteLine($"Price: {order.Price}");      // ✓ Read correctly
+Console.WriteLine($"OrderId: {order.Data.OrderId}");  // ✓ Read correctly
+Console.WriteLine($"Price: {order.Data.Price}");      // ✓ Read correctly
 
 // Unknown fields (quantity, side) are skipped
 // They're still in the struct but V1 code shouldn't access them
-// remaining.Length will be 9 bytes (the unread portion)
+// reader.BytesConsumed will be 25 bytes (the blockLength)
 ```
 
 ## Schema Evolution Best Practices

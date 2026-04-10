@@ -50,26 +50,32 @@ public partial struct TradeData
 	[FieldOffset(24)]
 	public Side Side;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool TryParse(ReadOnlySpan<byte> buffer, out TradeData message, out ReadOnlySpan<byte> variableData)
+	public static bool TryParse(ReadOnlySpan<byte> buffer, out TradeDataReader reader)
 	{
-		return TryParse(buffer, BLOCK_LENGTH, out message, out variableData);
+		return TryParse(buffer, BLOCK_LENGTH, out reader);
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeData message, out ReadOnlySpan<byte> variableData)
+	public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, out TradeDataReader reader)
 	{
-		var reader = new SpanReader(buffer);
-		if (!reader.TryReadBlock<TradeData>(blockLength, out message))
+		if (buffer.Length < blockLength)
 		{
-			variableData = default;
+			reader = default;
 			return false;
 		}
-		variableData = reader.Remaining;
+		reader = new TradeDataReader(buffer, blockLength);
 		return true;
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out TradeData message)
+	public static bool TryParseWithReader(ref SpanReader reader, int blockLength, out TradeDataReader messageReader)
 	{
-		return reader.TryReadBlock<TradeData>(blockLength, out message);
+		var remaining = reader.Remaining;
+		if (remaining.Length < blockLength)
+		{
+			messageReader = default;
+			return false;
+		}
+		messageReader = new TradeDataReader(remaining, blockLength);
+		return true;
 	}
 	/// <summary>
 	/// Encodes this Trade message to the provided buffer.
@@ -133,4 +139,33 @@ public partial struct TradeData
 		header.Version = 0;
 		return MessageHeader.MESSAGE_SIZE;
 	}
+}
+
+/// <summary>
+/// Zero-copy reader for TradeData messages.
+/// Provides direct access to the message data in the underlying buffer without copying.
+/// </summary>
+public ref struct TradeDataReader
+{
+	private readonly ReadOnlySpan<byte> _buffer;
+	private readonly int _blockLength;
+	
+	/// <summary>
+	/// Total bytes consumed from the buffer (block + variable-length data).
+	/// Updated after ReadGroups is called for messages with groups or varData.
+	/// </summary>
+	public int BytesConsumed { get; private set; }
+	
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal TradeDataReader(ReadOnlySpan<byte> buffer, int blockLength)
+	{
+		_buffer = buffer;
+		_blockLength = blockLength;
+		BytesConsumed = blockLength;
+	}
+	
+	/// <summary>
+	/// Gets a readonly reference to the TradeData directly in the buffer (zero-copy).
+	/// </summary>
+	public ref readonly TradeData Data => ref Unsafe.As<byte, TradeData>(ref MemoryMarshal.GetReference(_buffer));
 }

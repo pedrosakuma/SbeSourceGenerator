@@ -152,14 +152,14 @@ namespace SbeCodeGenerator.IntegrationTests
             trade.Flags = TradingFlags.Regular | TradingFlags.DarkPool;
             trade.Venue = Venue.Nasdaq;
 
-            Assert.True(TradeData.TryParse(buffer, out var parsed, out _));
-            Assert.Equal(999L, parsed.TradeId);
-            Assert.Equal(42L, parsed.Instrument.InstrumentId);
-            Assert.Equal(15000000L, parsed.Price.Mantissa);
-            Assert.Equal(100L, parsed.Quantity);
-            Assert.Equal(StatusCode.Filled, parsed.Status);
-            Assert.True((parsed.Flags & TradingFlags.DarkPool) != 0);
-            Assert.Equal(Venue.Nasdaq, parsed.Venue);
+            Assert.True(TradeData.TryParse(buffer, out var parsed));
+            Assert.Equal(999L, parsed.Data.TradeId);
+            Assert.Equal(42L, parsed.Data.Instrument.InstrumentId);
+            Assert.Equal(15000000L, parsed.Data.Price.Mantissa);
+            Assert.Equal(100L, parsed.Data.Quantity);
+            Assert.Equal(StatusCode.Filled, parsed.Data.Status);
+            Assert.True((parsed.Data.Flags & TradingFlags.DarkPool) != 0);
+            Assert.Equal(Venue.Nasdaq, parsed.Data.Venue);
         }
 
         [Fact]
@@ -212,13 +212,13 @@ namespace SbeCodeGenerator.IntegrationTests
             md.Status = StatusCode.PartiallyFilled;
             md.Venue = Venue.Bats;
 
-            Assert.True(MarketDataData.TryParse(buffer, out var parsed, out _));
-            Assert.Equal(12345, parsed.SymbolId);
-            Assert.True((parsed.Flags & TradingFlags.PreMarket) != 0);
-            Assert.True((parsed.Flags & TradingFlags.OffExchange) != 0);
-            Assert.True((parsed.Flags & TradingFlags.Regular) == 0);
-            Assert.Equal(StatusCode.PartiallyFilled, parsed.Status);
-            Assert.Equal(Venue.Bats, parsed.Venue);
+            Assert.True(MarketDataData.TryParse(buffer, out var parsed));
+            Assert.Equal(12345, parsed.Data.SymbolId);
+            Assert.True((parsed.Data.Flags & TradingFlags.PreMarket) != 0);
+            Assert.True((parsed.Data.Flags & TradingFlags.OffExchange) != 0);
+            Assert.True((parsed.Data.Flags & TradingFlags.Regular) == 0);
+            Assert.Equal(StatusCode.PartiallyFilled, parsed.Data.Status);
+            Assert.Equal(Venue.Bats, parsed.Data.Venue);
         }
 
         // --- TextMessage (group with only data, no fixed fields) ---
@@ -265,10 +265,9 @@ namespace SbeCodeGenerator.IntegrationTests
             // Parse
             string capturedContent = "";
             string capturedBody = "";
-            var reader = new Edge.Cases.Test.V0.Runtime.SpanReader(span.Slice(TextMessageData.MESSAGE_SIZE, offset - TextMessageData.MESSAGE_SIZE));
-            var parsed = new TextMessageData();
-            parsed.ConsumeVariableLengthSegments(
-                ref reader,
+            Assert.True(TextMessageData.TryParse(span.Slice(0, offset), out var parsedReader));
+            Assert.Equal(42L, parsedReader.Data.MessageId);
+            parsedReader.ReadGroups(
                 (in TextMessageData.AttachmentsData attachments) => { },
                 attachmentContent => { capturedContent = Encoding.UTF8.GetString(attachmentContent.VarData); },
                 body => { capturedBody = Encoding.UTF8.GetString(body.VarData); }

@@ -58,12 +58,12 @@ class Program
             Console.WriteLine($"✓ Encoded quote: {written} bytes");
             
             // Decode
-            if (QuoteData.TryParse(buffer, out var decoded, out _))
+            if (QuoteData.TryParse(buffer, out var decoded))
             {
-                Console.WriteLine($"  Instrument: {decoded.InstrumentId}");
-                Console.WriteLine($"  Bid: {(long)decoded.BidPrice / 10000.0:F4} x {decoded.BidQuantity}");
-                Console.WriteLine($"  Ask: {(long)decoded.AskPrice / 10000.0:F4} x {decoded.AskQuantity}");
-                Console.WriteLine($"  Spread: {((long)decoded.AskPrice - (long)decoded.BidPrice) / 10000.0:F4}");
+                Console.WriteLine($"  Instrument: {decoded.Data.InstrumentId}");
+                Console.WriteLine($"  Bid: {(long)decoded.Data.BidPrice / 10000.0:F4} x {decoded.Data.BidQuantity}");
+                Console.WriteLine($"  Ask: {(long)decoded.Data.AskPrice / 10000.0:F4} x {decoded.Data.AskQuantity}");
+                Console.WriteLine($"  Spread: {((long)decoded.Data.AskPrice - (long)decoded.Data.BidPrice) / 10000.0:F4}");
             }
         }
         
@@ -94,12 +94,12 @@ class Program
         {
             Console.WriteLine($"✓ Encoded trade: {written} bytes");
             
-            if (TradeData.TryParse(buffer, out var decoded, out _))
+            if (TradeData.TryParse(buffer, out var decoded))
             {
-                Console.WriteLine($"  Trade ID: {decoded.TradeId}");
-                Console.WriteLine($"  Price: {(long)decoded.Price / 10000.0:F4}");
-                Console.WriteLine($"  Quantity: {decoded.Quantity}");
-                Console.WriteLine($"  Side: {decoded.Side}");
+                Console.WriteLine($"  Trade ID: {decoded.Data.TradeId}");
+                Console.WriteLine($"  Price: {(long)decoded.Data.Price / 10000.0:F4}");
+                Console.WriteLine($"  Quantity: {decoded.Data.Quantity}");
+                Console.WriteLine($"  Side: {decoded.Data.Side}");
             }
         }
         
@@ -149,11 +149,11 @@ class Program
             
             for (int i = 0; i < batchSize; i++)
             {
-                if (QuoteData.TryParse(buffer.AsSpan(offset), out var quote, out _))
+                if (QuoteData.TryParse(buffer.AsSpan(offset), out var quote))
                 {
                     offset += QuoteData.MESSAGE_SIZE;
                     decodedCount++;
-                    totalSpread += ((long)quote.AskPrice - (long)quote.BidPrice);
+                    totalSpread += ((long)quote.Data.AskPrice - (long)quote.Data.BidPrice);
                 }
             }
             
@@ -195,7 +195,7 @@ class Program
             for (int i = 0; i < 1000; i++)
             {
                 quote.TryEncode(buffer, out _);
-                QuoteData.TryParse(buffer, out _, out _);
+                QuoteData.TryParse(buffer, out _);
             }
             
             // Measure encoding
@@ -216,7 +216,7 @@ class Program
             sw.Restart();
             for (int i = 0; i < iterations; i++)
             {
-                QuoteData.TryParse(buffer, out _, out _);
+                QuoteData.TryParse(buffer, out _);
             }
             sw.Stop();
             
@@ -230,7 +230,7 @@ class Program
             for (int i = 0; i < iterations; i++)
             {
                 quote.TryEncode(buffer, out _);
-                QuoteData.TryParse(buffer, out _, out _);
+                QuoteData.TryParse(buffer, out _);
             }
             sw.Stop();
             

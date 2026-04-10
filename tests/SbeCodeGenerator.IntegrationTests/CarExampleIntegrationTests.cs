@@ -85,11 +85,11 @@ namespace SbeCodeGenerator.IntegrationTests
             car.SerialNumber = 42;
             car.Engine.Capacity = 1600;
 
-            var success = CarData.TryParse(buffer, out var parsed, out var remaining);
+            var success = CarData.TryParse(buffer, out var parsed);
 
             Assert.True(success);
-            Assert.Equal(42UL, parsed.SerialNumber);
-            Assert.Equal((ushort)1600, parsed.Engine.Capacity);
+            Assert.Equal(42UL, parsed.Data.SerialNumber);
+            Assert.Equal((ushort)1600, parsed.Data.Engine.Capacity);
         }
 
         [Fact]
@@ -270,11 +270,9 @@ namespace SbeCodeGenerator.IntegrationTests
             codeBytes.CopyTo(span.Slice(offset + 4));
             offset += 4 + codeBytes.Length;
 
-            // Parse: directly slice past the fixed fields since the struct size
-            // includes padding from embedded composites
-            var parsedCar = MemoryMarshal.AsRef<CarData>(span);
-            var variableData = span.Slice(CarData.MESSAGE_SIZE);
-            Assert.Equal(42UL, parsedCar.SerialNumber);
+            // Parse: use TryParse on the full buffer to get a reader
+            Assert.True(CarData.TryParse(span.Slice(0, offset), out var parsedCar));
+            Assert.Equal(42UL, parsedCar.Data.SerialNumber);
 
             int fuelCount = 0;
             int perfCount = 0;
@@ -282,7 +280,7 @@ namespace SbeCodeGenerator.IntegrationTests
             string? manufacturer = null;
             string? modelName = null;
 
-            parsedCar.ConsumeVariableLengthSegments(variableData,
+            parsedCar.ReadGroups(
                 callbackFuelFigures: (in CarData.FuelFiguresData fuel) =>
                 {
                     fuelCount++;
