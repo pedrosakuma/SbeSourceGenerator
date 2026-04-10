@@ -89,6 +89,89 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
+        public void Generate_WithCompositeCharArray_ProducesInlineArrayAndCorrectSize()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='engine' description='Engine composite'>
+                            <type name='capacity' primitiveType='uint16'/>
+                            <type name='numCylinders' primitiveType='uint8'/>
+                            <type name='manufacturerCode' primitiveType='char' length='3'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var resultList = results.ToList();
+
+            // Assert - InlineArray type generated for manufacturerCode
+            var charArrayType = resultList.FirstOrDefault(r => r.name.Contains("ManufacturerCode"));
+            Assert.NotEqual(default, charArrayType);
+            Assert.Contains("InlineArray(3)", charArrayType.content);
+
+            // Assert - Composite uses the InlineArray type as a field
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("Engine"));
+            Assert.NotEqual(default, compositeResult);
+            Assert.Contains("ManufacturerCode", compositeResult.content);
+
+            // Assert - MESSAGE_SIZE is correct: uint16(2) + uint8(1) + char[3](3) = 6
+            Assert.Contains("MESSAGE_SIZE = 6", compositeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithSet_NormalizesChoiceNames()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <set name='TestSet' encodingType='uint8'>
+                            <choice name='sunRoof'>0</choice>
+                            <choice name='sportsPack'>1</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var setResult = results.First(r => r.name.Contains("TestSet"));
+
+            Assert.Contains("SunRoof", setResult.content);
+            Assert.Contains("SportsPack", setResult.content);
+            Assert.DoesNotContain("sunRoof", setResult.content);
+            Assert.DoesNotContain("sportsPack", setResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithEnum_NormalizesValueNames()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='TestEnum' encodingType='uint8'>
+                            <validValue name='fooBar'>0</validValue>
+                            <validValue name='bazQux'>1</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+            var enumResult = results.First(r => r.name.Contains("TestEnum"));
+
+            Assert.Contains("FooBar", enumResult.content);
+            Assert.Contains("BazQux", enumResult.content);
+            Assert.DoesNotContain("fooBar", enumResult.content);
+            Assert.DoesNotContain("bazQux", enumResult.content);
+        }
+
+        [Fact]
         public void Generate_WithSet_ProducesSetCode()
         {
             // Arrange

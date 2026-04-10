@@ -15,9 +15,11 @@ namespace SbeSourceGenerator.Generators
     {
         public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            foreach (var compositeDto in schema.Composites)
+            // Types, enums, and sets must be processed before composites
+            // because composites may reference them via <ref> fields.
+            foreach (var typeDto in schema.Types)
             {
-                foreach (var item in GenerateComposite(ns, compositeDto, context, sourceContext))
+                foreach (var item in GenerateType(ns, typeDto, context, sourceContext))
                     yield return item;
             }
             foreach (var enumDto in schema.Enums)
@@ -25,14 +27,14 @@ namespace SbeSourceGenerator.Generators
                 foreach (var item in GenerateEnum(ns, enumDto, context, sourceContext))
                     yield return item;
             }
-            foreach (var typeDto in schema.Types)
-            {
-                foreach (var item in GenerateType(ns, typeDto, context, sourceContext))
-                    yield return item;
-            }
             foreach (var setDto in schema.Sets)
             {
                 foreach (var item in GenerateSet(ns, setDto, context, sourceContext))
+                    yield return item;
+            }
+            foreach (var compositeDto in schema.Composites)
+            {
+                foreach (var item in GenerateComposite(ns, compositeDto, context, sourceContext))
                     yield return item;
             }
         }
@@ -69,7 +71,7 @@ namespace SbeSourceGenerator.Generators
                     return true;
                 })
                 .Select(x => new EnumFieldDefinition(
-                    x.choice.Name,
+                    TypeTranslator.NormalizeName(x.choice.Name),
                     x.choice.Description,
                     x.parsedValue?.ToString() ?? "0",
                     x.choice.SinceVersion,
@@ -201,7 +203,7 @@ namespace SbeSourceGenerator.Generators
                     TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
-                            choice.Name,
+                            TypeTranslator.NormalizeName(choice.Name),
                             choice.Description,
                             choice.InnerText,
                             choice.SinceVersion,
@@ -218,7 +220,7 @@ namespace SbeSourceGenerator.Generators
                     TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType),
                     enumDto.Choices
                         .Select(choice => new EnumFieldDefinition(
-                            choice.Name,
+                            TypeTranslator.NormalizeName(choice.Name),
                             choice.Description,
                             choice.InnerText,
                             choice.SinceVersion,
@@ -297,43 +299,75 @@ namespace SbeSourceGenerator.Generators
                 context.CompositeFieldTypes[$"{compositeDto.Name}.{rf.Name}"] = resolvedRefType;
             }
 
+            // Generate InlineArray types for char fields with length > 1
+            var charArrayTypes = new Dictionary<string, (string GeneratedName, int Length)>();
+            foreach (var ft in fieldTranslations)
+            {
+                if (ft.Translation.PrimitiveType == "char" && ft.Field.Presence != "constant"
+                    && int.TryParse(ft.Field.Length, out var charLen) && charLen > 1)
+                {
+                    var charTypeName = TypeResolverHelper.RegisterGeneratedTypeName(context, ft.Field.Name, sourceContext);
+                    var charTypeDef = new FixedSizeCharTypeDefinition(ns, charTypeName, ft.Field.Description, charLen, ft.Field.CharacterEncoding);
+                    context.CustomTypeLengths[ft.Field.Name] = charLen;
+                    charArrayTypes[ft.Field.Name] = (charTypeName, charLen);
+                    var charSb = new StringBuilder(256);
+                    charTypeDef.AppendFileContent(charSb);
+                    yield return (context.CreateHintName(ns, "Types", charTypeName), charSb.ToString());
+                }
+            }
+
             // Build field definitions preserving original order
             var fields = new List<IFileContentGenerator>(compositeDto.Fields.Count);
             foreach (var field in compositeDto.Fields)
             {
                 if (!string.IsNullOrEmpty(field.PrimitiveType))
                 {
-                    var ft = fieldTranslations.First(x => x.Field == field);
-                    fields.Add((ft.Field.Presence, ft.Field.Length) switch
+                    var ft = fieldTranslations.FirstOrDefault(x => x.Field == field);
+                    if (ft == null) continue;
+
+                    // Char array fields use the generated InlineArray type
+                    if (charArrayTypes.TryGetValue(ft.Field.Name, out var charArrayInfo))
                     {
-                        ("constant", _) => new ConstantTypeFieldDefinition(
+                        fields.Add(new CompositeRefFieldDefinition(
                             TypeTranslator.NormalizeName(ft.Field.Name),
                             ft.Field.Description,
-                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            InsertQuotationsIfNeeded(ft.Field.InnerText, ft.Field.PrimitiveType, ft.Field.Length),
-                            TypeResolverHelper.NormalizeValueRef(ft.Field.ValueRef, context)
-                        ),
-                        ("optional", _) => new NullableValueFieldDefinition(
-                            TypeTranslator.NormalizeName(ft.Field.Name),
-                            ft.Field.Description,
-                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
-                            ft.Field.NullValue == "" ? null : ft.Field.NullValue,
-                            context.EndianConversion
-                        ),
-                        ("", "0") => new ArrayFieldDefinition(
-                            TypeTranslator.NormalizeName(ft.Field.Name),
-                            ft.Field.Description,
-                            "byte"
-                        ),
-                        _ => (IFileContentGenerator)new ValueFieldDefinition(
-                            TypeTranslator.NormalizeName(ft.Field.Name),
-                            ft.Field.Description,
-                            TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
-                            TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
-                            context.EndianConversion
-                        )
-                    });
+                            charArrayInfo.GeneratedName,
+                            charArrayInfo.Length
+                        ));
+                    }
+                    else
+                    {
+                        fields.Add((ft.Field.Presence, ft.Field.Length) switch
+                        {
+                            ("constant", _) => new ConstantTypeFieldDefinition(
+                                TypeTranslator.NormalizeName(ft.Field.Name),
+                                ft.Field.Description,
+                                TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
+                                InsertQuotationsIfNeeded(ft.Field.InnerText, ft.Field.PrimitiveType, ft.Field.Length),
+                                TypeResolverHelper.NormalizeValueRef(ft.Field.ValueRef, context)
+                            ),
+                            ("optional", _) => new NullableValueFieldDefinition(
+                                TypeTranslator.NormalizeName(ft.Field.Name),
+                                ft.Field.Description,
+                                TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
+                                TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
+                                ft.Field.NullValue == "" ? null : ft.Field.NullValue,
+                                context.EndianConversion
+                            ),
+                            ("", "0") => new ArrayFieldDefinition(
+                                TypeTranslator.NormalizeName(ft.Field.Name),
+                                ft.Field.Description,
+                                "byte"
+                            ),
+                            _ => (IFileContentGenerator)new ValueFieldDefinition(
+                                TypeTranslator.NormalizeName(ft.Field.Name),
+                                ft.Field.Description,
+                                TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context),
+                                TypeResolverHelper.GetTypeLength(ft.Translation.PrimitiveType, context),
+                                context.EndianConversion
+                            )
+                        });
+                    }
                 }
                 else if (!string.IsNullOrEmpty(field.Type))
                 {

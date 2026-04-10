@@ -352,6 +352,7 @@ namespace SbeSourceGenerator.Schema
             string minValue = reader.GetAttribute("minValue") ?? "";
             string maxValue = reader.GetAttribute("maxValue") ?? "";
             string deprecated = reader.GetAttribute("deprecated") ?? "";
+            string characterEncoding = reader.GetAttribute("characterEncoding") ?? "";
 
             // Read inner text manually to leave reader on the end element,
             // so the parent loop's reader.Read() correctly advances to the next sibling.
@@ -369,7 +370,7 @@ namespace SbeSourceGenerator.Schema
             }
 
             return new SchemaFieldDto(name, desc, primitiveType, presence, length, nullValue, valueRef,
-                innerText, fieldId, offset, type, sinceVersion, minValue, maxValue, deprecated);
+                innerText, fieldId, offset, type, sinceVersion, minValue, maxValue, deprecated, characterEncoding);
         }
 
         private static string GetRequiredAttribute(XmlReader reader, string attributeName, string elementName, SourceProductionContext sourceContext)
