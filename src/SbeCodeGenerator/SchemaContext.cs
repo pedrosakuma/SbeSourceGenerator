@@ -23,6 +23,13 @@ namespace SbeSourceGenerator
         public Dictionary<string, byte> CustomConstantTypes { get; } = new Dictionary<string, byte>(8);
 
         /// <summary>
+        /// Stores the resolved primitive type and value for constant types.
+        /// Maps type name → (PrimitiveType, Value).
+        /// Used when a message constant field references a constant type (e.g., SeqNum1 → ("uint", "1")).
+        /// </summary>
+        public Dictionary<string, (string PrimitiveType, string Value)> ConstantTypeInfo { get; } = new Dictionary<string, (string, string)>(8);
+
+        /// <summary>
         /// Maps original schema identifiers to the generated identifiers emitted in C# code.
         /// Helps keep references (valueRef, composites, enums) consistent after normalization.
         /// </summary>
@@ -35,10 +42,18 @@ namespace SbeSourceGenerator
         public HashSet<string> GeneratedRuntimeNamespaces { get; }
 
         /// <summary>
-        /// Tracks which types are optional types (have presence="optional").
-        /// Maps type name to its underlying primitive type (e.g., "Int64NULL" -> "long").
+        /// Maps non-optional, non-constant named types to their underlying C# primitive type.
+        /// e.g., "SettlType" -> "ushort". Used when such types are referenced in optional message fields.
+        /// Composites and char array types are NOT included (they don't have a single underlying primitive).
         /// </summary>
-        public Dictionary<string, string> OptionalTypes { get; } = new Dictionary<string, string>(8);
+        public Dictionary<string, string> TypePrimitiveMapping { get; } = new Dictionary<string, string>(16);
+
+        /// <summary>
+        /// Tracks which types are optional types (have presence="optional").
+        /// Maps type name to (underlying primitive type, null value).
+        /// e.g., "Int64NULL" -> ("long", ""), "RptSeq" -> ("uint", "0").
+        /// </summary>
+        public Dictionary<string, (string PrimitiveType, string NullValue)> OptionalTypes { get; } = new Dictionary<string, (string, string)>(8);
 
         /// <summary>
         /// Tracks composite types and their field types.

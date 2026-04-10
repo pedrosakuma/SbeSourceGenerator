@@ -32,7 +32,7 @@ namespace SbeSourceGenerator.Schema
 
             var settings = new XmlReaderSettings
             {
-                DtdProcessing = DtdProcessing.Prohibit,
+                DtdProcessing = DtdProcessing.Ignore,
                 XmlResolver = null,
                 IgnoreComments = true,
                 IgnoreWhitespace = true
