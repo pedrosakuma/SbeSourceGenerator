@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Zero-field group consume**: Groups with `blockLength=0` (no fields) now decode correctly. Previously, `TryRead<T>` advanced by `Unsafe.SizeOf<T>()` (always ≥1 for empty structs) instead of the wire `blockLength`.
+- **Deeply nested group struct generation**: Groups nested 3+ levels deep now correctly generate their data structs. Previously only 1 level of nesting was handled, causing missing types (e.g., Binance ExchangeInfoResponse Permissions).
+- **Nested group variable shadowing**: Nested group consume code now uses unique variable names per depth level (`nestedData1`, `nestedData2`) to avoid C# variable shadowing.
 - **Char array composites**: Fixed char array field generation in composites to use correct `InlineArray` attribute.
 - **Set/enum naming normalization**: Consistent PascalCase naming for generated set and enum types.
 - **Generation order**: Types are now generated before messages, ensuring `SchemaContext` type registrations are available during message generation.
