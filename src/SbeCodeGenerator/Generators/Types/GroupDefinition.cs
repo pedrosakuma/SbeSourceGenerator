@@ -7,7 +7,8 @@ namespace SbeSourceGenerator
     public record GroupDefinition(string Namespace, string Name, string Id, string DimensionType, string Description,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
         string NumInGroupType = "ushort", List<IFileContentGenerator>? Datas = null,
-        List<IFileContentGenerator>? NestedGroups = null) : IFileContentGenerator
+        List<IFileContentGenerator>? NestedGroups = null,
+        EndianConversion EndianConversion = EndianConversion.None) : IFileContentGenerator
     {
         private List<DataFieldDefinition>? _typedDatas;
         private List<GroupDefinition>? _typedNestedGroups;
@@ -51,6 +52,8 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendStructDefinition(tabs, Description, Name, nameof(GroupDefinition));
+            if (EndianConversion != EndianConversion.None)
+                sb.AppendUsings(tabs, "System.Buffers.Binary");
             sb.AppendLine("{", tabs++);
 
             AppendMessageDefinitionConstants(sb, tabs);

@@ -808,5 +808,32 @@ namespace SbeCodeGenerator.Tests
             Assert.NotEqual(default, compositeResult);
             Assert.Contains("float.IsNaN(exponent)", compositeResult.content);
         }
+
+        [Fact]
+        public void Generate_WithMultipleTypesBlocks_MergesAllTypes()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Buy'>1</validValue>
+                            <validValue name='Sell'>2</validValue>
+                        </enum>
+                    </types>
+                    <types>
+                        <composite name='Decimal' description='Decimal value'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            Assert.Contains(results, r => r.name.Contains("Side"));
+            Assert.Contains(results, r => r.name.Contains("Decimal"));
+        }
     }
 }

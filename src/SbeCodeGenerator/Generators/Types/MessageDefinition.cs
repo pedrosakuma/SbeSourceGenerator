@@ -6,7 +6,8 @@ namespace SbeSourceGenerator
 {
     public record MessageDefinition(string Namespace, string RuntimeNamespace, string Name, string Id, string Description, string SemanticType, string Deprecated,
         List<IFileContentGenerator> Fields, List<IFileContentGenerator> Constants,
-        List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas, string SchemaBlockLength = "") : IFileContentGenerator
+        List<IFileContentGenerator> Groups, List<IFileContentGenerator> Datas, string SchemaBlockLength = "",
+        EndianConversion EndianConversion = EndianConversion.None) : IFileContentGenerator
     {
         private List<GroupDefinition>? _typedGroups;
         private List<DataFieldDefinition>? _typedDatas;
@@ -43,7 +44,10 @@ namespace SbeSourceGenerator
 
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
+            if (EndianConversion != EndianConversion.None)
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices", "System.Buffers.Binary");
+            else
+                sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
 
             sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
 

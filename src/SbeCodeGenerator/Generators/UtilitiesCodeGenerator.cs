@@ -7,23 +7,18 @@ using System.Text;
 namespace SbeSourceGenerator.Generators
 {
     /// <summary>
-    /// Generates utility code (e.g., EndianHelpers, SpanReader, SpanWriter).
+    /// Generates utility code (SpanReader, SpanWriter).
     /// </summary>
     internal class UtilitiesCodeGenerator : ICodeGenerator
     {
         public IEnumerable<(string name, string content)> Generate(string ns, ParsedSchema schema, SchemaContext context, SourceProductionContext sourceContext)
         {
-            // Generate EndianHelpers
-            StringBuilder sb = new StringBuilder();
-            new EndianHelpers(ns).AppendFileContent(sb);
-            yield return (context.CreateHintName(ns, "Utilities", "EndianHelpers"), sb.ToString());
-
             var runtimeNamespace = ns;
 
             if (context.GeneratedRuntimeNamespaces.Add(runtimeNamespace))
             {
                 // Generate SpanReader once per runtime namespace
-                sb = new StringBuilder();
+                StringBuilder sb = new StringBuilder();
                 new SpanReaderGenerator(runtimeNamespace).AppendFileContent(sb);
                 yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanReader"), sb.ToString());
 

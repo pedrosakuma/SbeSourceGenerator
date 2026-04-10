@@ -69,15 +69,15 @@ namespace SbeSourceGenerator.Diagnostics
             isEnabledByDefault: true,
             description: "A type definition has an invalid length attribute value.");
 
-        // SBE007: Non-native byte order
+        // SBE007: Non-native byte order (informational)
         public static readonly DiagnosticDescriptor NonNativeByteOrder = new DiagnosticDescriptor(
             id: "SBE007",
-            title: "Non-native byte order",
-            messageFormat: "Schema '{0}' specifies byteOrder='{1}' but the generator only supports native (little-endian) byte order. Generated code will not apply endianness conversion and may produce incorrect values on this platform.",
+            title: "Big-endian schema with conditional byte swap",
+            messageFormat: "Schema '{0}' specifies byteOrder='{1}'. Generated properties include runtime endianness checks. Set SbeAssumeHostEndianness MSBuild property to eliminate the runtime check.",
             category: Category,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Info,
             isEnabledByDefault: true,
-            description: "The schema specifies a byte order that differs from the platform's native endianness. The generator does not emit byte-swap logic, so multi-byte fields will be read/written incorrectly.");
+            description: "The schema specifies big-endian byte order. Generated multi-byte field properties include a BitConverter.IsLittleEndian conditional. To optimize, set <SbeAssumeHostEndianness>LittleEndian</SbeAssumeHostEndianness> in your project file if you know the target host endianness.");
 
         // SBE008: Unresolved type reference
         public static readonly DiagnosticDescriptor UnresolvedTypeReference = new DiagnosticDescriptor(
@@ -117,5 +117,15 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "A set choice bit position must be less than the bit width of the encoding type (e.g., 0-7 for uint8, 0-15 for uint16). Choices exceeding the width are excluded from generated code.");
+
+        // SBE012: Invalid SbeAssumeHostEndianness value
+        public static readonly DiagnosticDescriptor InvalidHostEndianness = new DiagnosticDescriptor(
+            id: "SBE012",
+            title: "Invalid SbeAssumeHostEndianness value",
+            messageFormat: "SbeAssumeHostEndianness has invalid value '{0}'. Expected 'LittleEndian' or 'BigEndian'. Falling back to safe conditional byte-swap behavior.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "The SbeAssumeHostEndianness MSBuild property must be 'LittleEndian' or 'BigEndian'. Invalid values cause the generator to emit conditional runtime endianness checks.");
     }
 }
