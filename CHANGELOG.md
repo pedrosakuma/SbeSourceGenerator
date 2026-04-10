@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-10
+
+### Added
+- **Big-endian byte order support**: Schemas with `byteOrder="bigEndian"` now generate correct endian-aware code. Multi-byte fields use property-based access with `BinaryPrimitives.ReverseEndianness()` conversions. Three generation modes: passthrough (same endianness), always-reverse (opposite), and conditional (safe default). Single-byte fields (byte, sbyte, char) are always passthrough.
+- **`SbeAssumeHostEndianness` MSBuild property**: Optional compile-time hint to eliminate runtime endian branching. Set to `LittleEndian` or `BigEndian` in your `.csproj` to generate branchless code when you know the target host architecture.
+- **Optional float/double fields**: Float and double fields with `presence="optional"` now use IEEE 754 NaN as the null sentinel, with `float.IsNaN()` / `double.IsNaN()` for null checks.
+- **Field-level nullValue override**: The `nullValue` attribute on message fields is now respected, overriding the default type-catalog sentinel value.
+- **SBE012 diagnostic**: Warning when `SbeAssumeHostEndianness` has an invalid value (not `LittleEndian` or `BigEndian`).
+- **SBE011 diagnostic**: Warning when set choice bit positions exceed encoding type width.
+
+### Changed
+- **SBE007 severity**: Reduced from Warning to Info — big-endian schemas are now fully supported; the diagnostic is informational only.
+- Removed obsolete `EndianHelpers` generated utility class (superseded by property-based endian conversion).
+- Removed out-of-scope integration tests (`SpanReaderIntegrationTests`, `ProposedFeaturesTests`, `DeprecatedFieldsIntegrationTests`) that tested internal utilities rather than SBE schema generation.
+
 ## [0.7.0] - 2026-04-09
 
 ### Removed
