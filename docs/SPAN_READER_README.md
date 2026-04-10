@@ -357,11 +357,14 @@ Generated code uses custom delegates with `in` parameters to avoid struct copies
 // public delegate void BidsHandler(in BidsData data);
 // public delegate void AsksHandler(in AsksData data);
 
-decoded.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
-    (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
-);
+// Via MessageDataReader (v1.0.0):
+if (OrderBookData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
+        (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
+    );
+}
 ```
 
 For manual parsing with TryReadBlock:

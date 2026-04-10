@@ -90,9 +90,9 @@ if (trade.TryEncode(buffer, out int bytesWritten))
 }
 
 // Decode from binary format
-if (TradeData.TryParse(receivedBuffer, out var decoded, out _))
+if (TradeData.TryParse(receivedBuffer, out var reader))
 {
-    Console.WriteLine($"Trade: {decoded.TradeId}, Price: {decoded.Price}");
+    Console.WriteLine($"Trade: {reader.Data.TradeId}, Price: {reader.Data.Price}");
 }
 ```
 
@@ -118,13 +118,15 @@ bool success = OrderBookData.TryEncode(
     out int bytesWritten
 );
 
-// Decode with groups
-OrderBookData.TryParse(buffer, out var decoded, out var variableData);
-decoded.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
-    (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
-);
+// Decode with groups — zero-copy via MessageDataReader
+if (OrderBookData.TryParse(buffer, out var reader))
+{
+    Console.WriteLine($"Instrument: {reader.Data.InstrumentId}");
+    reader.ReadGroups(
+        (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
+        (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
+    );
+}
 ```
 
 **Messages with Repeating Groups (Zero-Allocation Callback API):**
@@ -165,15 +167,17 @@ bool success = NewOrderData.TryEncode(
     out int bytesWritten
 );
 
-// Decode varData
-NewOrderData.TryParse(buffer, out var decoded, out var variableData);
-decoded.ConsumeVariableLengthSegments(
-    variableData,
-    symbol => {
-        var text = Encoding.UTF8.GetString(symbol.VarData.Slice(0, symbol.Length));
-        Console.WriteLine($"Symbol: {text}");
-    }
-);
+// Decode varData — zero-copy via MessageDataReader
+if (NewOrderData.TryParse(buffer, out var reader))
+{
+    Console.WriteLine($"Order: {reader.Data.OrderId}");
+    reader.ReadGroups(
+        symbol => {
+            var text = Encoding.UTF8.GetString(symbol.VarData.Slice(0, symbol.Length));
+            Console.WriteLine($"Symbol: {text}");
+        }
+    );
+}
 ```
 
 ## Example Schema

@@ -19,11 +19,11 @@ This guide provides best practices and techniques for optimizing the performance
 The generated SBE code is designed for zero-copy operations:
 
 ```csharp
-// ✅ Good: Zero-copy parsing
+// ✅ Good: Zero-copy parsing via MessageDataReader
 ReadOnlySpan<byte> buffer = GetNetworkData();
-if (TradeData.TryParse(buffer, out var trade, out _))
+if (TradeData.TryParse(buffer, out var trade))
 {
-    ProcessTrade(trade); // No copying
+    ProcessTrade(in trade.Data); // Zero-copy ref readonly access
 }
 
 // ❌ Bad: Unnecessary copying
@@ -179,36 +179,37 @@ if (trade.Price > minPrice && trade.Price < maxPrice)
 
 ### Use TryParse for Validation
 
-The `TryParse` pattern is optimized for performance:
+The `TryParse` pattern returns a zero-copy `MessageDataReader`:
 
 ```csharp
 // ✅ Good: TryParse with minimal validation
-if (TradeData.TryParse(buffer, out var trade, out var variableData))
+if (TradeData.TryParse(buffer, out var trade))
 {
-    ProcessTrade(trade);
+    ProcessTrade(in trade.Data);
 }
 
 // ⚠️ Slower: Additional validation
-if (TradeData.TryParse(buffer, out var trade, out _))
+if (TradeData.TryParse(buffer, out var trade))
 {
-    trade.Validate(); // Extra overhead
-    ProcessTrade(trade);
+    trade.Data.Validate(); // Extra overhead
+    ProcessTrade(in trade.Data);
 }
 ```
 
 ### Minimize Copies
 
 ```csharp
-// ✅ Good: Work directly with parsed data
-if (TradeData.TryParse(buffer, out var trade, out _))
+// ✅ Good: Work directly with zero-copy reader
+if (TradeData.TryParse(buffer, out var trade))
 {
-    ProcessTradeInPlace(ref trade); // Pass by reference
+    // trade.Data is ref readonly — zero copy
+    ProcessPrice(trade.Data.Price);
 }
 
-// ❌ Bad: Create copy
-if (TradeData.TryParse(buffer, out var trade, out _))
+// ❌ Bad: Create unnecessary copy
+if (TradeData.TryParse(buffer, out var trade))
 {
-    var tradeCopy = trade; // Unnecessary copy
+    TradeData tradeCopy = trade.Data; // Explicit copy
     ProcessTrade(tradeCopy);
 }
 ```
@@ -218,22 +219,25 @@ if (TradeData.TryParse(buffer, out var trade, out _))
 For large messages, process groups incrementally:
 
 ```csharp
-// ✅ Good: Process groups as they're consumed (v0.9.0 uses in delegates)
-MarketDataData.TryParse(buffer, out var data, out var variableData);
-data.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidData bid) => ProcessBid(in bid),    // Zero-copy via in
-    (in AskData ask) => ProcessAsk(in ask)     // Zero-copy via in
-);
+// ✅ Good: Process groups as they're consumed via ReadGroups (v1.0.0)
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) => ProcessBid(in bid),    // Zero-copy via in
+        (in AskData ask) => ProcessAsk(in ask)     // Zero-copy via in
+    );
+}
 
 // ❌ Bad: Collect all groups first
 var bids = new List<BidData>(); // Heap allocations
 var asks = new List<AskData>();
-data.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidData bid) => bids.Add(bid),
-    (in AskData ask) => asks.Add(ask)
-);
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) => bids.Add(bid),
+        (in AskData ask) => asks.Add(ask)
+    );
+}
 ProcessBids(bids);
 ProcessAsks(asks);
 ```
@@ -247,41 +251,47 @@ Process repeating groups without materializing collections:
 ```csharp
 // ✅ Good: Streaming processing
 long totalVolume = 0;
-data.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidData bid) => totalVolume += bid.Quantity,
-    (in AskData ask) => totalVolume += ask.Quantity
-);
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) => totalVolume += bid.Quantity,
+        (in AskData ask) => totalVolume += ask.Quantity
+    );
+}
 
 // ❌ Bad: Materialize groups
 var allBids = new List<BidData>();
 var allAsks = new List<AskData>();
-data.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidData bid) => allBids.Add(bid),
-    (in AskData ask) => allAsks.Add(ask)
-);
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) => allBids.Add(bid),
+        (in AskData ask) => allAsks.Add(ask)
+    );
+}
 long totalVolume = allBids.Sum(b => b.Quantity) + allAsks.Sum(a => a.Quantity);
 ```
 
 ### Early Exit
 
-Note: The current `ConsumeVariableLengthSegments` callbacks use `void`-returning `in` delegates, so early exit must use external state:
+Note: The `ReadGroups` callbacks use `void`-returning `in` delegates, so early exit must use external state:
 
 ```csharp
 // ✅ Good: Early exit via external flag
 bool found = false;
-data.ConsumeVariableLengthSegments(
-    variableData,
-    (in BidData bid) =>
-    {
-        if (!found && bid.Price == targetPrice)
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) =>
         {
-            found = true;
-        }
-    },
-    (in AskData ask) => { }
-);
+            if (!found && bid.Price == targetPrice)
+            {
+                found = true;
+            }
+        },
+        (in AskData ask) => { }
+    );
+}
 
 // ❌ Bad: Process all groups
 var match = allBids.FirstOrDefault(b => b.Price == targetPrice);
@@ -296,11 +306,13 @@ When group sizes are known, pre-allocate:
 Span<BidData> bids = stackalloc BidData[expectedBidCount];
 int bidIndex = 0;
 
-data.ConsumeVariableLengthSegments(
-    variableData,
-    bid => bids[bidIndex++] = bid,
-    ask => { }
-);
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    reader.ReadGroups(
+        (in BidData bid) => bids[bidIndex++] = bid,
+        (in AskData ask) => { }
+    );
+}
 
 // Process bids array directly
 ProcessBids(bids.Slice(0, bidIndex));
@@ -425,20 +437,18 @@ void ProcessTrade(in Trade trade)
 ```csharp
 // ❌ Bad: Closure allocation
 int threshold = 100;
-data.ConsumeVariableLengthSegments(
-    variableData,
-    bid => bid.Quantity > threshold, // Closure - allocation
-    ask => true
+reader.ReadGroups(
+    (in BidData bid) => { _ = bid.Quantity > threshold; }, // Closure - allocation
+    (in AskData ask) => { }
 );
 
 // ✅ Good: Use local function or avoid capture
 bool ProcessBid(BidData bid, int threshold) 
     => bid.Quantity > threshold;
 
-data.ConsumeVariableLengthSegments(
-    variableData,
-    bid => ProcessBid(bid, 100),
-    ask => true
+reader.ReadGroups(
+    (in BidData bid) => ProcessBid(bid, 100),
+    (in AskData ask) => { }
 );
 ```
 

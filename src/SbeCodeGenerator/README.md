@@ -24,10 +24,11 @@ A Roslyn incremental source generator that converts [FIX Simple Binary Encoding]
 ## Quick Example
 
 ```csharp
-// Decode (with groups and varData)
-if (OrderData.TryParse(buffer, out var order, out var variableData))
+// Decode (with groups and varData) — zero-copy via MessageDataReader
+if (OrderData.TryParse(buffer, out var reader))
 {
-    Console.WriteLine($"Order {order.OrderId} @ {order.Price}");
+    Console.WriteLine($"Order {reader.Data.OrderId} @ {reader.Data.Price}");
+    reader.ReadGroups(/* group/varData callbacks */);
 }
 
 // Encode (simple message — no groups)
@@ -43,7 +44,7 @@ OrderBookData.TryEncode(orderBook, buffer, bids, asks, out int bytesWritten);
 ## Features
 
 - **Zero-copy blittable structs** — `[StructLayout(Explicit)]` with `[FieldOffset]`, directly overlay on buffers
-- **`TryParse` / `TryEncode`** — safe decode/encode with group and varData support
+- **`TryParse` / `TryEncode`** — safe decode/encode with zero-copy `MessageDataReader` and group/varData support
 - **Zero-copy decode** — `TryReadBlock<T>` and `ReadBlockRef<T>` read directly from spans
 - **`in` delegate callbacks** — group iteration passes structs by readonly reference (no copies)
 - **Schema evolution** — `TryReadBlock` handles `blockLength` mismatches (forward/backward compat)
