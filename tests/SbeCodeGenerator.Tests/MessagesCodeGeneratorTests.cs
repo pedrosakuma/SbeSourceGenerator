@@ -636,5 +636,96 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("return MessageHeader.MESSAGE_SIZE;", msgResult.content);
         }
 
+        [Fact]
+        public void Generate_WithConstantTypeField_ResolvesToPrimitiveTypeAndValue()
+        {
+            // Arrange - SeqNum1 is a constant type (uint32, value=1), used as a constant field in a message
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='SeqNum1' primitiveType='uint32' presence='constant'>1</type>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='seqNo' id='1' type='SeqNum1' presence='constant'/>
+                        <field name='field1' id='2' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
+
+            // Act
+            var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext));
+            var msgResult = results.First(r => r.name.Contains("TestMessage"));
+
+            // Assert - should use the primitive type (uint) and the constant value (1), not the wrapper type
+            Assert.Contains("public const uint SEQ_NO = 1;", msgResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNamedOptionalTypeField_UsesPrimitiveType()
+        {
+            // Arrange - RptSeq is a named optional type (uint32, nullValue=0)
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='RptSeq' primitiveType='uint32' presence='optional' nullValue='0'/>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='rptSeq' id='1' type='RptSeq'/>
+                        <field name='field1' id='2' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
+
+            // Act
+            var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext));
+            var msgResult = results.First(r => r.name.Contains("TestMessage"));
+
+            // Assert - should use uint (not RptSeq struct) and nullValue=0
+            Assert.Contains("private uint rptSeq;", msgResult.content);
+            Assert.Contains("uint?", msgResult.content);
+            Assert.Contains("== 0", msgResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithCompositeOptionalField_CreatesRegularField()
+        {
+            // Arrange - PriceOptional is a composite type used as optional field
+            var generator = new MessagesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='PriceOptional' description='Optional price'>
+                            <type name='mantissa' primitiveType='int64' presence='optional'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-4</type>
+                        </composite>
+                    </types>
+                    <sbe:message name='TestMessage' id='1' description='Test'>
+                        <field name='price' id='1' type='PriceOptional' presence='optional'/>
+                        <field name='field1' id='2' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            var typesGenerator = new TypesCodeGenerator();
+            _ = typesGenerator.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
+
+            // Act
+            var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext));
+            var msgResult = results.First(r => r.name.Contains("TestMessage"));
+
+            // Assert - should be a regular field (not optional), composites handle their own null semantics
+            Assert.Contains("public PriceOptional Price;", msgResult.content);
+            Assert.DoesNotContain("PriceOptional?", msgResult.content); // No nullable
+            Assert.DoesNotContain("== default", msgResult.content); // No default comparison
+        }
+
     }
 }

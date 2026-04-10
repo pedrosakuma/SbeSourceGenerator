@@ -224,29 +224,60 @@ namespace SbeSourceGenerator.Generators
                 {
                     var underlyingType = GetUnderlyingType(field.Type, context);
                     var effectivePrimitiveType = underlyingType ?? resolvedType;
-                    if (!TypesCatalog.HasNullValue(effectivePrimitiveType)
-                        && string.IsNullOrEmpty(field.NullValue)
-                        && sourceContext.CancellationToken != default)
-                    {
-                        sourceContext.ReportDiagnostic(Diagnostic.Create(
-                            SbeDiagnostics.UnknownPrimitiveTypeFallback,
-                            Location.None,
-                            effectivePrimitiveType, "null sentinel", field.Name));
-                    }
 
-                    result.Add(new OptionalMessageFieldDefinition(
-                        generatedFieldName,
-                        field.Id,
-                        resolvedType,
-                        effectivePrimitiveType,
-                        field.Description,
-                        ParseOffset(field.Offset, field.Name, sourceContext),
-                        TypeResolverHelper.GetTypeLength(field.Type, context),
-                        field.SinceVersion,
-                        field.Deprecated,
-                        field.NullValue == "" ? null : field.NullValue,
-                        context.EndianConversion
-                    ));
+                    // When the effective type is not a known primitive (composites, char arrays),
+                    // we can't generate optional null-check code. Fall back to a regular field.
+                    if (!TypesCatalog.HasNullValue(effectivePrimitiveType) && string.IsNullOrEmpty(field.NullValue))
+                    {
+                        var fieldUnderlyingType = GetUnderlyingType(field.Type, context);
+                        result.Add(new MessageFieldDefinition(
+                            generatedFieldName,
+                            field.Id,
+                            resolvedType,
+                            field.Description,
+                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            TypeResolverHelper.GetTypeLength(field.Type, context),
+                            field.SinceVersion,
+                            field.Deprecated,
+                            context.EndianConversion,
+                            fieldUnderlyingType
+                        ));
+                    }
+                    else
+                    {
+                        // When the field references a named optional type (e.g., "RptSeq"),
+                        // use the underlying primitive type directly instead of the wrapper struct.
+                        // Also propagate the null value from the type definition.
+                        var fieldType = resolvedType;
+                        var fieldNullValue = field.NullValue == "" ? null : field.NullValue;
+                        if (context.OptionalTypes.TryGetValue(field.Type, out var optionalTypeInfo))
+                        {
+                            fieldType = effectivePrimitiveType;
+                            if (fieldNullValue == null && !string.IsNullOrEmpty(optionalTypeInfo.NullValue))
+                            {
+                                fieldNullValue = optionalTypeInfo.NullValue;
+                            }
+                        }
+                        else if (context.TypePrimitiveMapping.ContainsKey(field.Type))
+                        {
+                            // Regular named type used as optional field - use primitive type directly
+                            fieldType = effectivePrimitiveType;
+                        }
+
+                        result.Add(new OptionalMessageFieldDefinition(
+                            generatedFieldName,
+                            field.Id,
+                            fieldType,
+                            effectivePrimitiveType,
+                            field.Description,
+                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            TypeResolverHelper.GetTypeLength(field.Type, context),
+                            field.SinceVersion,
+                            field.Deprecated,
+                            fieldNullValue,
+                            context.EndianConversion
+                        ));
+                    }
                 }
                 else
                 {
@@ -274,12 +305,24 @@ namespace SbeSourceGenerator.Generators
             var result = new List<IFileContentGenerator>(constants.Count);
             foreach (var constant in constants)
             {
+                var type = constant.Type;
+                var resolvedType = TypeResolverHelper.ResolveTypeName(TypeTranslator.Translate(type).PrimitiveType, context);
+                var valueRef = TypeResolverHelper.NormalizeValueRef(constant.ValueRef, context);
+
+                // When a constant field references a constant type (e.g., SeqNum1),
+                // resolve to the primitive type and use the type's stored value.
+                if (string.IsNullOrWhiteSpace(valueRef) && context.ConstantTypeInfo.TryGetValue(type, out var info))
+                {
+                    resolvedType = info.PrimitiveType;
+                    valueRef = info.Value;
+                }
+
                 result.Add(new ConstantMessageFieldDefinition(
                     TypeTranslator.NormalizeName(constant.Name),
                     constant.Id,
-                    TypeResolverHelper.ResolveTypeName(TypeTranslator.Translate(constant.Type).PrimitiveType, context),
+                    resolvedType,
                     constant.Description != "" ? constant.Description : constant.Type,
-                    TypeResolverHelper.NormalizeValueRef(constant.ValueRef, context)
+                    valueRef
                 ));
             }
             return result;
@@ -375,8 +418,12 @@ namespace SbeSourceGenerator.Generators
                 return underlyingType;
 
             // Check if it's an optional type (e.g., Int64NULL)
-            if (context.OptionalTypes.TryGetValue(type, out underlyingType))
-                return underlyingType;
+            if (context.OptionalTypes.TryGetValue(type, out var optionalInfo))
+                return optionalInfo.PrimitiveType;
+
+            // Check if it's a regular named type wrapping a primitive (e.g., SettlType -> ushort)
+            if (context.TypePrimitiveMapping.TryGetValue(type, out var primitiveType))
+                return primitiveType;
 
             return null;
         }

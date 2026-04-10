@@ -200,5 +200,26 @@ namespace SbeCodeGenerator.Tests
             TypeResolverHelper.RegisterGeneratedTypeName(context, "MyType");
             Assert.True(context.GeneratedTypeNames.ContainsKey("MyType"));
         }
+
+        [Fact]
+        public void SchemaReader_Parse_WithDoctypeDeclaration_DoesNotThrow()
+        {
+            // B3 UMDF schema includes <!DOCTYPE xml> which must be tolerated
+            var schema = SchemaReader.Parse(@"<?xml version=""1.0"" encoding=""UTF-8""?>
+                <!DOCTYPE xml>
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'
+                    package='test.schema' id='1' version='1' byteOrder='littleEndian'>
+                    <types>
+                        <type name='TestType' primitiveType='uint32'/>
+                    </types>
+                    <sbe:message name='TestMsg' id='1' description='Test'>
+                        <field name='field1' id='1' type='uint32'/>
+                    </sbe:message>
+                </sbe:messageSchema>");
+
+            Assert.NotNull(schema);
+            Assert.Equal("test.schema", schema.Package);
+            Assert.Single(schema.Messages);
+        }
     }
 }

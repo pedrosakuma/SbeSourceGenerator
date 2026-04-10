@@ -156,10 +156,13 @@ namespace SbeSourceGenerator.Generators
                     )
                 };
                 if (generator is ConstantTypeDefinition)
+                {
                     context.CustomConstantTypes[typeDto.Name] = 0;
+                    context.ConstantTypeInfo[typeDto.Name] = (TypeResolverHelper.ResolveTypeName(nativeType, context), typeDto.InnerText);
+                }
                 if (generator is OptionalTypeDefinition)
                 {
-                    context.OptionalTypes[typeDto.Name] = nativeType;
+                    context.OptionalTypes[typeDto.Name] = (nativeType, typeDto.NullValue);
                     var resolvedType = TypeResolverHelper.ResolveTypeName(nativeType, context);
                     if (string.IsNullOrEmpty(typeDto.NullValue) && !TypesCatalog.HasNullValue(resolvedType)
                         && sourceContext.CancellationToken != default)
@@ -169,6 +172,10 @@ namespace SbeSourceGenerator.Generators
                             Location.None,
                             resolvedType, "null sentinel", typeDto.Name));
                     }
+                }
+                if (generator is TypeDefinition)
+                {
+                    context.TypePrimitiveMapping[typeDto.Name] = TypeResolverHelper.ResolveTypeName(nativeType, context);
                 }
                 if (generator is IBlittable blittableType)
                     context.CustomTypeLengths[typeDto.Name] = blittableType.Length;
