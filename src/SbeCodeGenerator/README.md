@@ -1,38 +1,78 @@
 # SBE Source Generator
 
-`SbeSourceGenerator` is a Roslyn incremental source generator that converts Simple Binary Encoding (SBE) XML schemas into strongly typed C# data structures, enums and message parsers. It enables consuming real-time market data feeds without hand-writing SBE decoding code.
+[![NuGet](https://img.shields.io/nuget/v/SbeSourceGenerator.svg)](https://www.nuget.org/packages/SbeSourceGenerator/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+A Roslyn incremental source generator that converts [FIX Simple Binary Encoding](https://github.com/FIXTradingCommunity/fix-simple-binary-encoding) (SBE) XML schemas into high-performance, zero-allocation C# structs. Ideal for real-time market data, trading systems, and any latency-sensitive binary protocol.
 
 ## Getting Started
 
 1. Install the package:
    ```bash
-   dotnet add package SbeSourceGenerator --version 0.1.0-preview.1
+   dotnet add package SbeSourceGenerator
    ```
 
-2. Add SBE schema files (`*.xml`) to your project as `AdditionalFiles`:
+2. Add your SBE schema files as `AdditionalFiles`:
    ```xml
    <ItemGroup>
      <AdditionalFiles Include="Schemas\*.xml" />
    </ItemGroup>
    ```
 
-3. Build the project. The generator creates classes under the namespace inferred from the schema filename. Generated code is accessible at compile time and emitted into the `obj` folder.
+3. Build. Generated code is available at compile time — no runtime reflection, no code-behind files.
+
+## Quick Example
+
+```csharp
+// Decode
+if (TradeData.TryParse(buffer, out var trade, out var variableData))
+{
+    Console.WriteLine($"Trade {trade.TradeId} @ {trade.Price}");
+}
+
+// Encode (fluent API)
+var bytes = trade.CreateEncoder(buffer)
+    .WithLegs(legs)
+    .BytesWritten;
+```
 
 ## Features
 
-- Generates blittable structs for SBE composites, messages and groups.
-- Produces helper types for enums, sets, optional values and decimal conversions.
-- Provides `TryParse` helpers on messages and composites to simplify decoding flows without unsafe casts.
-- Includes diagnostics (`SBE00x`) to highlight malformed schemas or unsupported constructs.
+- **Zero-copy blittable structs** — `[StructLayout(Explicit)]` with `[FieldOffset]`, directly overlay on buffers
+- **`TryParse` / `TryEncode`** — safe decode/encode without unsafe casts
+- **Zero-copy decode** — `TryReadBlock<T>` and `ReadBlockRef<T>` read directly from spans
+- **`in` delegate callbacks** — group iteration passes structs by readonly reference (no copies)
+- **Fluent encoder API** — type-safe `CreateEncoder().WithGroups().WithVarData()` chaining
+- **Schema evolution** — `TryReadBlock` handles `blockLength` mismatches (forward/backward compat)
+- **Big-endian support** — automatic byte swapping for big-endian schemas
+- **Enums, sets, composites** — full SBE type system with optional field support
+- **Nested groups** — recursive group generation to any depth
+- **SpanReader / SpanWriter** — embedded sequential binary reader/writer (no manual offset tracking)
+- **Cross-schema coexistence** — multiple schemas generate isolated namespaces, no conflicts
+- **AOT / trimming compatible** — no reflection, no dynamic code generation
+- **Roslyn diagnostics** — `SBE001`–`SBE006` for schema validation at build time
 
 ## Requirements
 
-- .NET 6.0 SDK or newer for consumer projects.
-- SBE XML schema compliant with FIX Simple Binary Encoding 1.0 namespace (`http://fixprotocol.io/2016/sbe`).
+- **.NET 6.0+** for consumer projects (generator itself targets netstandard2.0)
+- SBE XML schema using the FIX SBE 1.0 namespace (`http://fixprotocol.io/2016/sbe`)
 
-## Diagnostics
+## Performance
 
-The generator surfaces Roslyn diagnostics prefixed with `SBE`. Refer to `AnalyzerReleases.Shipped.md` for current rule set and severities.
+All generated code targets zero allocations on hot paths:
+- Structs are stack-allocated value types
+- `readonly` property getters prevent defensive copies through `in`/`ref readonly`
+- Group callbacks use `in` delegates — no boxing, no struct copies
+- SpanReader/SpanWriter are `ref struct` with `[MethodImpl(AggressiveInlining)]`
+
+## Documentation
+
+Full documentation at [github.com/pedrosakuma/SbeSourceGenerator](https://github.com/pedrosakuma/SbeSourceGenerator):
+
+- [Schema Versioning Guide](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/SCHEMA_VERSIONING.md)
+- [SpanReader API](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/SPAN_READER_README.md)
+- [Fluent Encoder API](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/FLUENT_ENCODER_API.md)
+- [Performance Tuning](https://github.com/pedrosakuma/SbeSourceGenerator/blob/main/docs/PERFORMANCE_TUNING_GUIDE.md)
 
 ## Contributing
 
@@ -40,4 +80,4 @@ Issues and pull requests are welcome at [github.com/pedrosakuma/SbeSourceGenerat
 
 ## License
 
-Distributed under the MIT License. See the `LICENSE.txt` file for more information.
+Distributed under the MIT License. See `LICENSE.txt` for details.
