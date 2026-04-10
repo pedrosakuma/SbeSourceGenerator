@@ -43,7 +43,7 @@ namespace SbeSourceGenerator
                 return;
 
             sb.AppendLine("/// <summary>Returns a string representation of this struct for debugging.</summary>", tabs);
-            sb.AppendTabs(tabs).Append("public override string ToString() => $\"").Append(structName).Append(" {{ ");
+            sb.AppendTabs(tabs).Append("public readonly override string ToString() => $\"").Append(structName).Append(" {{ ");
 
             for (int i = 0; i < fieldNames.Count; i++)
             {

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-10
+
+### Added
+- **Zero-copy decode with `ReadBlockRef<T>`**: New `SpanReader.ReadBlockRef<T>(int blockLength)` returns `ref readonly T` directly into the buffer, avoiding any struct copies. Uses `Unsafe.NullRef<T>()` sentinel for failure — callers check with `Unsafe.IsNullRef`.
+- **`TryReadBlock<T>` with schema backward compatibility**: New `SpanReader.TryReadBlock<T>(int blockLength, out T value)` replaces `TryReadGroupEntry`. When `blockLength < sizeof(T)`, performs partial read with zero-padded trailing fields (schema evolution backward compat). When `blockLength > sizeof(T)`, reads the struct and skips extra bytes (forward compat).
+- **`in` delegate callbacks for group consume** (**Breaking**): Group callbacks changed from `Action<GroupData>` to custom `{GroupName}Handler(in GroupData data)` delegates. This eliminates struct copies when passing group entries to callbacks. Nested groups include parent context: `AccelerationHandler(in PerformanceFiguresData parent, in AccelerationData data)`.
+- **Cross-schema reference validation**: Integration tests confirming multiple SBE schemas coexist in the same project with isolated namespaces, no type conflicts, and independent encode/decode.
+
+### Changed
+- **Simplified TryParse/TryParseWithReader**: Replaced ~30 lines of manual sizeof/skip/evolution logic with single `TryReadBlock<T>(blockLength, out message)` call. TryReadBlock handles all schema evolution cases internally.
+- Generated messages now include `using System.Runtime.InteropServices` for `MemoryMarshal` access.
+
+### Fixed
+- **Zero-field group consume**: Groups with `blockLength=0` (no fields) now decode correctly. Previously, `TryRead<T>` advanced by `Unsafe.SizeOf<T>()` (always ≥1 for empty structs) instead of the wire `blockLength`.
+- **Deeply nested group struct generation**: Groups nested 3+ levels deep now correctly generate their data structs. Previously only 1 level of nesting was handled, causing missing types (e.g., Binance ExchangeInfoResponse Permissions).
+- **Nested group variable shadowing**: Nested group consume code now uses unique variable names per depth level (`nestedData1`, `nestedData2`) to avoid C# variable shadowing.
+- **Char array composites**: Fixed char array field generation in composites to use correct `InlineArray` attribute.
+- **Set/enum naming normalization**: Consistent PascalCase naming for generated set and enum types.
+- **Generation order**: Types are now generated before messages, ensuring `SchemaContext` type registrations are available during message generation.
+
 ## [0.8.0] - 2026-04-10
 
 ### Added

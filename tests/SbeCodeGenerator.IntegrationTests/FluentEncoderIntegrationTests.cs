@@ -56,8 +56,8 @@ namespace SbeCodeGenerator.IntegrationTests
 
             decoded.ConsumeVariableLengthSegments(
                 variableData,
-                bid => decodedBids.Add(bid),
-                ask => decodedAsks.Add(ask)
+                (in Integration.Test.V0.OrderBookData.BidsData bid) => decodedBids.Add(bid),
+                (in Integration.Test.V0.OrderBookData.AsksData ask) => decodedAsks.Add(ask)
             );
 
             Assert.Equal(2, decodedBids.Count);
@@ -193,8 +193,8 @@ namespace SbeCodeGenerator.IntegrationTests
             var askCount = 0;
             decoded.ConsumeVariableLengthSegments(
                 variableData,
-                bid => bidCount++,
-                ask => askCount++
+                (in Integration.Test.V0.OrderBookData.BidsData bid) => bidCount++,
+                (in Integration.Test.V0.OrderBookData.AsksData ask) => askCount++
             );
 
             Assert.Equal(3, bidCount);
@@ -252,8 +252,8 @@ namespace SbeCodeGenerator.IntegrationTests
 
             decoded.ConsumeVariableLengthSegments(
                 variableData,
-                bid => decodedBids.Add(bid),
-                ask => decodedAsks.Add(ask)
+                (in Integration.Test.V0.OrderBookData.BidsData bid) => decodedBids.Add(bid),
+                (in Integration.Test.V0.OrderBookData.AsksData ask) => decodedAsks.Add(ask)
             );
 
             Assert.Equal(3, decodedBids.Count);

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="cross_schema.common"
+                   id="100"
+                   version="0"
+                   semanticVersion="1.0"
+                   description="Common types shared across schemas"
+                   byteOrder="littleEndian">
+    <types>
+        <composite name="MessageHeader" description="Standard message header">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+
+        <composite name="GroupSizeEncoding" description="Repeating group dimensions">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint32" maxValue="2147483647"/>
+        </composite>
+
+        <composite name="VarStringEncoding" description="Variable-length string encoding">
+            <type name="length" primitiveType="uint32" maxValue="1073741824"/>
+            <type name="varData" primitiveType="uint8" length="0" characterEncoding="UTF-8"/>
+        </composite>
+
+        <enum name="Currency" encodingType="uint8">
+            <validValue name="USD">0</validValue>
+            <validValue name="EUR">1</validValue>
+            <validValue name="GBP">2</validValue>
+            <validValue name="JPY">3</validValue>
+        </enum>
+
+        <composite name="Decimal" description="Fixed-point decimal">
+            <type name="mantissa" primitiveType="int64"/>
+            <type name="exponent" primitiveType="int8" presence="constant">-3</type>
+        </composite>
+    </types>
+
+    <sbe:message name="Heartbeat" id="1" description="Heartbeat message">
+        <field name="Timestamp" id="1" type="uint64" description="Epoch timestamp in nanoseconds"/>
+    </sbe:message>
+</sbe:messageSchema>

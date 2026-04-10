@@ -61,7 +61,7 @@ public long Quantity;
 
 ### TryParse Methods
 
-The generated `TryParse` method accepts a `blockLength` parameter for version-aware parsing:
+The generated `TryParse` method uses `TryReadBlock<T>` for version-aware parsing:
 
 ```csharp
 public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength, 
@@ -69,33 +69,21 @@ public static bool TryParse(ReadOnlySpan<byte> buffer, int blockLength,
 {
     var reader = new SpanReader(buffer);
     
-    // Read the message data
-    if (!reader.TryRead<OrderData>(out message))
+    // TryReadBlock advances by blockLength, not sizeof(T)
+    // - blockLength < sizeof: partial read, trailing fields zeroed (backward compat)
+    // - blockLength > sizeof: full read, skips extra bytes (forward compat)
+    if (!reader.TryReadBlock<OrderData>(blockLength, out message))
     {
         variableData = default;
         return false;
     }
     
-    // Handle schema evolution: skip additional bytes if blockLength > MESSAGE_SIZE
-    var additionalBytes = blockLength - MESSAGE_SIZE;
-    if (additionalBytes > 0)
-    {
-        if (!reader.TrySkip(additionalBytes))
-        {
-            variableData = default;
-            return false;
-        }
-        variableData = reader.Remaining;
-    }
-    else
-    {
-        // For backward compatibility: variable data starts at blockLength
-        variableData = buffer.Slice(blockLength);
-    }
-    
+    variableData = reader.Remaining;
     return true;
 }
 ```
+
+> **v0.9.0**: `TryReadBlock<T>` replaces the previous manual `TryRead<T>` + skip/slice logic. It handles all schema evolution cases in a single method call, including the edge case where `blockLength == 0`.
 
 ## Usage Examples
 
@@ -263,13 +251,13 @@ V1 Message on wire:
 │  blockLength=16  │  orderId, price  │
 └──────────────────┴──────────────────┘
 
-V3 Decoder processes:
+V3 Decoder processes (TryReadBlock):
 1. Reads header: blockLength = 16
-2. Reads 25-byte struct (MESSAGE_SIZE)
-   - Bytes 0-15: orderId and price (present)
-   - Bytes 16-24: quantity and side (zeros/undefined)
-3. Computes: additionalBytes = 16 - 25 = -9 (negative)
-4. Sets: variableData = buffer.Slice(16)
+2. TryReadBlock<OrderData>(blockLength=16):
+   - sizeof(OrderData) = 25 > blockLength = 16
+   - Partial read: copies 16 bytes, zero-pads remaining 9
+   - Advances reader by 16 bytes
+3. Result: orderId and price populated, quantity and side = 0
 ```
 
 ### Example: V3 Message Read by V1 Decoder
@@ -281,12 +269,14 @@ V3 Message on wire:
 │  blockLength=25  │  all fields      │
 └──────────────────┴──────────────────┘
 
-V1 Decoder processes:
+V1 Decoder processes (TryReadBlock):
 1. Reads header: blockLength = 25
-2. Reads 25-byte struct (MESSAGE_SIZE for V1 = 16, but buffer is large enough)
-3. Computes: additionalBytes = 25 - 16 = 9 (positive)
-4. Skips 9 bytes (quantity and side)
-5. Sets: variableData = remaining after skip
+2. TryReadBlock<OrderData>(blockLength=25):
+   - sizeof(OrderData) = 16 <= blockLength = 25
+   - Full read: reads 16 bytes for struct
+   - Skips remaining 9 bytes (25 - 16)
+   - Advances reader by 25 bytes
+3. Result: orderId and price populated, extra fields skipped
 ```
 
 ## Testing Schema Evolution

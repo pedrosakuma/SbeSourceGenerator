@@ -40,19 +40,22 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
+        public unsafe void CarData_MessageSize_MatchesRuntimeSize()
+        {
+            Assert.Equal(CarData.MESSAGE_SIZE, sizeof(CarData));
+        }
+
+        [Fact]
         public unsafe void CarData_FixedFieldsRoundTrip()
         {
-            // Use sizeof to get the actual runtime struct size (may differ from MESSAGE_SIZE
-            // due to composite field sizing, which is computed from schema field widths)
-            int actualSize = sizeof(CarData);
-            Span<byte> buffer = stackalloc byte[actualSize];
+            Span<byte> buffer = stackalloc byte[CarData.MESSAGE_SIZE];
             ref CarData car = ref MemoryMarshal.AsRef<CarData>(buffer);
 
             car.SerialNumber = 1234567890UL;
             car.ModelYear = 2024;
             car.Available = BooleanType.T;
             car.Code = Model.B;
-            car.Extras = OptionalExtras.sunRoof | OptionalExtras.cruiseControl;
+            car.Extras = OptionalExtras.SunRoof | OptionalExtras.CruiseControl;
 
             car.Engine.Capacity = 2000;
             car.Engine.NumCylinders = 4;
@@ -61,9 +64,9 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((ushort)2024, car.ModelYear.Value);
             Assert.Equal(BooleanType.T, car.Available);
             Assert.Equal(Model.B, car.Code);
-            Assert.True((car.Extras & OptionalExtras.sunRoof) != 0);
-            Assert.True((car.Extras & OptionalExtras.cruiseControl) != 0);
-            Assert.True((car.Extras & OptionalExtras.sportsPack) == 0);
+            Assert.True((car.Extras & OptionalExtras.SunRoof) != 0);
+            Assert.True((car.Extras & OptionalExtras.CruiseControl) != 0);
+            Assert.True((car.Extras & OptionalExtras.SportsPack) == 0);
             Assert.Equal((ushort)2000, car.Engine.Capacity);
             Assert.Equal((byte)4, car.Engine.NumCylinders);
         }
@@ -77,8 +80,7 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public unsafe void CarData_TryParse_Works()
         {
-            int actualSize = sizeof(CarData);
-            Span<byte> buffer = stackalloc byte[actualSize];
+            Span<byte> buffer = stackalloc byte[CarData.MESSAGE_SIZE];
             ref CarData car = ref MemoryMarshal.AsRef<CarData>(buffer);
             car.SerialNumber = 42;
             car.Engine.Capacity = 1600;
@@ -99,8 +101,7 @@ namespace SbeCodeGenerator.IntegrationTests
             car.Available = BooleanType.F;
             car.Code = Model.A;
 
-            int actualSize = sizeof(CarData);
-            Span<byte> buffer = stackalloc byte[actualSize];
+            Span<byte> buffer = stackalloc byte[CarData.MESSAGE_SIZE];
             Assert.True(car.TryEncode(buffer, out int bytesWritten));
             Assert.Equal(CarData.MESSAGE_SIZE, bytesWritten);
 
@@ -198,7 +199,6 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public unsafe void CarData_ConsumeVariableLengthSegments_WithGroupData()
         {
-            int carSize = sizeof(CarData);
             var buffer = new byte[2048];
             var span = buffer.AsSpan();
             int offset = 0;
@@ -207,7 +207,7 @@ namespace SbeCodeGenerator.IntegrationTests
             ref CarData car = ref MemoryMarshal.AsRef<CarData>(span);
             car.SerialNumber = 42;
             car.Engine.Capacity = 2000;
-            offset += carSize;
+            offset += CarData.MESSAGE_SIZE;
 
             // fuelFigures group: 1 entry
             ref GroupSizeEncoding fuelGroupHeader = ref MemoryMarshal.AsRef<GroupSizeEncoding>(span.Slice(offset));
@@ -273,7 +273,7 @@ namespace SbeCodeGenerator.IntegrationTests
             // Parse: directly slice past the fixed fields since the struct size
             // includes padding from embedded composites
             var parsedCar = MemoryMarshal.AsRef<CarData>(span);
-            var variableData = span.Slice(carSize);
+            var variableData = span.Slice(CarData.MESSAGE_SIZE);
             Assert.Equal(42UL, parsedCar.SerialNumber);
 
             int fuelCount = 0;
@@ -283,7 +283,7 @@ namespace SbeCodeGenerator.IntegrationTests
             string? modelName = null;
 
             parsedCar.ConsumeVariableLengthSegments(variableData,
-                callbackFuelFigures: (CarData.FuelFiguresData fuel) =>
+                callbackFuelFigures: (in CarData.FuelFiguresData fuel) =>
                 {
                     fuelCount++;
                     Assert.Equal((ushort)60, fuel.Speed);
@@ -293,12 +293,12 @@ namespace SbeCodeGenerator.IntegrationTests
                 {
                     Assert.Equal("City", Encoding.ASCII.GetString(usageDesc.VarData));
                 },
-                callbackPerformanceFigures: (CarData.PerformanceFiguresData perf) =>
+                callbackPerformanceFigures: (in CarData.PerformanceFiguresData perf) =>
                 {
                     perfCount++;
                     Assert.Equal((byte)95, perf.OctaneRating.Value);
                 },
-                callbackAcceleration: (CarData.PerformanceFiguresData perf, CarData.AccelerationData accel) =>
+                callbackAcceleration: (in CarData.PerformanceFiguresData perf, in CarData.AccelerationData accel) =>
                 {
                     accelCount++;
                 },
@@ -326,11 +326,11 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public void OptionalExtras_SetOperations()
         {
-            var extras = OptionalExtras.sunRoof | OptionalExtras.sportsPack;
+            var extras = OptionalExtras.SunRoof | OptionalExtras.SportsPack;
 
-            Assert.True((extras & OptionalExtras.sunRoof) != 0);
-            Assert.True((extras & OptionalExtras.sportsPack) != 0);
-            Assert.True((extras & OptionalExtras.cruiseControl) == 0);
+            Assert.True((extras & OptionalExtras.SunRoof) != 0);
+            Assert.True((extras & OptionalExtras.SportsPack) != 0);
+            Assert.True((extras & OptionalExtras.CruiseControl) == 0);
         }
 
         [Fact]

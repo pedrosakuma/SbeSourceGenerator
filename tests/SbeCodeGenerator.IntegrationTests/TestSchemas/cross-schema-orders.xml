@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="cross_schema.orders"
+                   id="101"
+                   version="0"
+                   semanticVersion="1.0"
+                   description="Order schema that redefines common types"
+                   byteOrder="littleEndian">
+    <types>
+        <composite name="MessageHeader" description="Standard message header">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+
+        <composite name="GroupSizeEncoding" description="Repeating group dimensions">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint32" maxValue="2147483647"/>
+        </composite>
+
+        <composite name="VarStringEncoding" description="Variable-length string encoding">
+            <type name="length" primitiveType="uint32" maxValue="1073741824"/>
+            <type name="varData" primitiveType="uint8" length="0" characterEncoding="UTF-8"/>
+        </composite>
+
+        <enum name="Side" encodingType="uint8">
+            <validValue name="Buy">0</validValue>
+            <validValue name="Sell">1</validValue>
+        </enum>
+
+        <enum name="Currency" encodingType="uint8">
+            <validValue name="USD">0</validValue>
+            <validValue name="EUR">1</validValue>
+            <validValue name="GBP">2</validValue>
+            <validValue name="JPY">3</validValue>
+        </enum>
+
+        <composite name="Decimal" description="Fixed-point decimal">
+            <type name="mantissa" primitiveType="int64"/>
+            <type name="exponent" primitiveType="int8" presence="constant">-3</type>
+        </composite>
+    </types>
+
+    <sbe:message name="NewOrder" id="1" description="New order message">
+        <field name="OrderId" id="1" type="uint64" description="Order identifier"/>
+        <field name="Price" id="2" type="Decimal" description="Order price"/>
+        <field name="Quantity" id="3" type="uint32" description="Order quantity"/>
+        <field name="Side" id="4" type="Side" description="Buy or Sell"/>
+        <field name="Currency" id="5" type="Currency" description="Currency"/>
+        <group name="Legs" id="6" description="Multi-leg order legs">
+            <field name="LegSymbol" id="7" type="uint32" description="Leg symbol ID"/>
+            <field name="LegSide" id="8" type="Side" description="Leg side"/>
+            <field name="LegRatio" id="9" type="uint32" description="Leg ratio"/>
+        </group>
+        <data name="ClientOrderId" id="10" type="VarStringEncoding" description="Client order ID"/>
+    </sbe:message>
+</sbe:messageSchema>

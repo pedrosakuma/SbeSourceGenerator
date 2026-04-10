@@ -539,12 +539,15 @@ namespace SbeCodeGenerator.Tests
             var msgResult = results.FirstOrDefault(r => r.name.Contains("CarMessage"));
             Assert.NotEqual(default, msgResult);
 
-            // Top-level group callback: Action<PerformanceFiguresData>
-            Assert.Contains("Action<PerformanceFiguresData> callbackPerformanceFigures", msgResult.content);
-            // Nested group callback should include parent as context: Action<PerformanceFiguresData, AccelerationData>
-            Assert.Contains("Action<PerformanceFiguresData, AccelerationData> callbackAcceleration", msgResult.content);
-            // Nested callback invocation should pass parent data
-            Assert.Contains("callbackAcceleration(data, nestedData)", msgResult.content);
+            // Top-level group callback: custom delegate with in
+            Assert.Contains("PerformanceFiguresHandler callbackPerformanceFigures", msgResult.content);
+            // Nested group callback should include parent as context
+            Assert.Contains("AccelerationHandler callbackAcceleration", msgResult.content);
+            // Delegate types with in parameters
+            Assert.Contains("public delegate void PerformanceFiguresHandler(in PerformanceFiguresData data)", msgResult.content);
+            Assert.Contains("public delegate void AccelerationHandler(in PerformanceFiguresData performanceFiguresData, in AccelerationData data)", msgResult.content);
+            // Nested callback invocation should pass parent data with in
+            Assert.Contains("callbackAcceleration(in data, in nestedData1)", msgResult.content);
         }
 
         [Fact]
@@ -591,7 +594,7 @@ namespace SbeCodeGenerator.Tests
             var msgResult = results.First(r => r.name.Contains("Order"));
 
             // Assert
-            Assert.Contains("public override string ToString()", msgResult.content);
+            Assert.Contains("public readonly override string ToString()", msgResult.content);
             Assert.Contains("OrderData {{ OrderId={OrderId}, Price={Price}, Quantity={Quantity} }}", msgResult.content);
         }
 

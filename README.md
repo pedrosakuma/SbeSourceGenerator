@@ -13,12 +13,14 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Optional fields with null value semantics
 - Composite types (nested composites, `<ref>` elements)
 - Enumerations and bit sets (flag enums)
-- Repeating groups with nested groups (unlimited depth, ancestor context callbacks)
+- Repeating groups with nested groups (unlimited depth, ancestor context callbacks with `in`)
 - Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
 - Automatic and explicit field offset calculation
-- Byte order handling (little-endian native, big-endian with property-based conversion)
+- Byte order handling (little-endian native, big-endian with `readonly` property-based conversion)
 - Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data)
+- Schema evolution forward/backward compatibility via `TryReadBlock<T>`
+- Cross-schema coexistence (multiple schemas with isolated namespaces)
 - Custom `headerType` support
 - `characterEncoding` attribute (UTF-8, Latin1)
 - Explicit `blockLength` on messages
@@ -39,7 +41,7 @@ Or add it directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SbeSourceGenerator" Version="0.7.0" />
+  <PackageReference Include="SbeSourceGenerator" Version="0.9.0" />
 </ItemGroup>
 ```
 
@@ -120,8 +122,8 @@ bool success = OrderBookData.TryEncode(
 OrderBookData.TryParse(buffer, out var decoded, out var variableData);
 decoded.ConsumeVariableLengthSegments(
     variableData,
-    bid => Console.WriteLine($"Bid: {bid.Price}"),
-    ask => Console.WriteLine($"Ask: {ask.Price}")
+    (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
+    (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
 );
 ```
 
@@ -328,7 +330,9 @@ The repository includes several example projects in the `examples/` folder:
 
 The generated code is designed for high performance:
 
-- Zero-copy deserialization where possible
+- Zero-copy deserialization with `ReadBlockRef<T>` (ref readonly into buffer)
+- `in` delegate callbacks for group consume (no struct copies)
+- `readonly` property getters to prevent defensive copies
 - Struct-based value types (no heap allocations)
 - Explicit memory layout for cache efficiency
 - Blittable types for P/Invoke scenarios
@@ -375,4 +379,4 @@ For questions, issues, or feature requests:
 
 ---
 
-**Version**: 0.7.0 (see [Changelog](./CHANGELOG.md))
+**Version**: 0.9.0 (see [Changelog](./CHANGELOG.md))
