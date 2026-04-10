@@ -78,10 +78,16 @@ namespace SbeSourceGenerator
             int offset = 0;
             foreach (var field in Fields)
             {
-                var blittableField = (IBlittableMessageField)field;
-                blittableField.Offset ??= offset;
-                field.AppendFileContent(sb, tabs);
-                offset = blittableField.Offset.Value + blittableField.Length;
+                if (field is IBlittableMessageField blittableField)
+                {
+                    blittableField.Offset ??= offset;
+                    field.AppendFileContent(sb, tabs);
+                    offset = blittableField.Offset.Value + blittableField.Length;
+                }
+                else
+                {
+                    field.AppendFileContent(sb, tabs);
+                }
             }
         }
     }

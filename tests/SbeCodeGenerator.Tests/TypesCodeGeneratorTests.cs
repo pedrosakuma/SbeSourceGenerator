@@ -835,5 +835,30 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains(results, r => r.name.Contains("Side"));
             Assert.Contains(results, r => r.name.Contains("Decimal"));
         }
+
+        [Fact]
+        public void Generate_WithDuplicateEnumName_LastDefinitionWins()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Buy'>1</validValue>
+                        </enum>
+                        <enum name='Side' encodingType='uint8'>
+                            <validValue name='Sell'>2</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            // Both should generate (duplicate detection is a warning, not an error)
+            var sideResults = results.Where(r => r.name.Contains("Side")).ToList();
+            Assert.Equal(2, sideResults.Count);
+            // Last definition includes Sell
+            Assert.Contains("Sell", sideResults.Last().content);
+        }
     }
 }

@@ -127,5 +127,25 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "The SbeAssumeHostEndianness MSBuild property must be 'LittleEndian' or 'BigEndian'. Invalid values cause the generator to emit conditional runtime endianness checks.");
+
+        // SBE013: Duplicate type name
+        public static readonly DiagnosticDescriptor DuplicateTypeName = new DiagnosticDescriptor(
+            id: "SBE013",
+            title: "Duplicate type name",
+            messageFormat: "Type name '{0}' is defined more than once in the schema. The last definition will be used.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "SBE type names must be unique within a schema. Duplicate definitions cause the generator to silently use the last one, which may produce unexpected results.");
+
+        // SBE014: sinceVersion exceeds schema version
+        public static readonly DiagnosticDescriptor SinceVersionExceedsSchemaVersion = new DiagnosticDescriptor(
+            id: "SBE014",
+            title: "sinceVersion exceeds schema version",
+            messageFormat: "Field '{0}' has sinceVersion={1} which exceeds the schema version ({2}). The field will never be included in any generated message version.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "A field's sinceVersion attribute should not exceed the schema's version attribute. Such fields are unreachable and may indicate a schema authoring error.");
     }
 }
