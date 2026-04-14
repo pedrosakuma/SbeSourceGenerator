@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`ToDecimal()` on decimal composites** (#131): Composites with the SBE decimal pattern (mantissa + constant exponent) now generate a `ToDecimal()` method. Optional mantissa returns `decimal?`, non-optional returns `decimal`. Uses pre-computed decimal literal (e.g., `1e-4m`) for zero-overhead conversion.
+- **`ToDateTime()` / `ToDateTimeOffset()` on timestamp composites** (#132): Composites with the SBE timestamp pattern (time + constant unit) now generate conversion methods. Supports nanosecond, microsecond, millisecond, and second time units. Optional time returns nullable types.
+- **`ToDateOnly()` on LocalMktDate and MonthYear** (#133): Types with `semanticType="LocalMktDate"` generate `ToDateOnly()` (days since epoch). Composites with `semanticType="MonthYear"` generate `ToDateOnly()` using year/month/day fields.
+- **`AsSpan()` and `Equals(ReadOnlySpan<byte>)` on InlineArray char types** (#134): Zero-allocation content access and comparison. `AsSpan()` returns trimmed content excluding null-termination. `Equals()` enables comparison with UTF-8 string literals (e.g., `symbol.Equals("PETR4"u8)`).
+- **Named null sentinel constants** (#136): Optional fields now expose a named `{FieldName}NullValue` constant (e.g., `MantissaNullValue`, `TimeNullValue`) instead of inline magic numbers.
+
+### Changed
+- **Field visibility standardization** (#137): All struct fields now use `private` backing fields with `public` property accessors (`readonly get` + `set`). Composite/InlineArray fields use `ref`-returning properties with `[UnscopedRef]`.
+- **`readonly` methods on generated structs** (#135): `TryEncode`, `TryEncodeWithWriter`, `Encode`, `AsSpan`, `Equals`, and `ToString` are now `readonly` instance methods to prevent defensive copies. `ConstantTypeDefinition` emits `readonly struct`.
+
 ## [1.0.2] - 2026-04-10
 
 ### Fixed
