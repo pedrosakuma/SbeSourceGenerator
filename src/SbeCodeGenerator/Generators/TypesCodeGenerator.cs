@@ -404,6 +404,15 @@ namespace SbeSourceGenerator.Generators
             StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
+
+            // Detect decimal pattern: mantissa field + constant exponent field
+            var decimalHelper = TryCreateDecimalHelper(ns, generatedName, compositeDto);
+            if (decimalHelper != null)
+            {
+                sb.Clear();
+                decimalHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDecimal"), sb.ToString());
+            }
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)
@@ -416,5 +425,30 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
+        private static DecimalHelperDefinition? TryCreateDecimalHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            SchemaFieldDto mantissaField = null;
+            SchemaFieldDto exponentField = null;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "mantissa", System.StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.PrimitiveType))
+                    mantissaField = field;
+                else if (string.Equals(field.Name, "exponent", System.StringComparison.OrdinalIgnoreCase)
+                    && field.Presence == "constant"
+                    && !string.IsNullOrEmpty(field.InnerText))
+                    exponentField = field;
+            }
+
+            if (mantissaField == null || exponentField == null)
+                return null;
+
+            if (!int.TryParse(exponentField.InnerText, out var exponent))
+                return null;
+
+            bool isOptional = mantissaField.Presence == "optional";
+            return new DecimalHelperDefinition(ns, generatedName, compositeDto.Description, exponent, isOptional);
+        }
     }
 }

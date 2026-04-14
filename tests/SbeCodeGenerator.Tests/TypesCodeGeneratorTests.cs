@@ -973,5 +973,81 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("public readonly override string ToString()", decimalResult.content);
             Assert.Contains("Decimal {{ Mantissa={Mantissa} }}", decimalResult.content);
         }
+
+        [Fact]
+        public void Generate_WithDecimalComposite_ProducesToDecimalMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='Price' description='Price with 4 decimal places'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-4</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDecimalResult = results.First(r => r.name.Contains("ToDecimal"));
+
+            // Assert — non-optional mantissa returns decimal (not decimal?)
+            Assert.Contains("public partial struct Price", toDecimalResult.content);
+            Assert.Contains("public readonly decimal ToDecimal() => Mantissa * 1e-4m;", toDecimalResult.content);
+            Assert.DoesNotContain("decimal?", toDecimalResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalDecimalComposite_ProducesNullableToDecimalMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='PriceOptional' description='Optional price'>
+                            <type name='mantissa' primitiveType='int64' presence='optional'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-8</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDecimalResult = results.First(r => r.name.Contains("ToDecimal"));
+
+            // Assert — optional mantissa returns decimal?
+            Assert.Contains("public partial struct PriceOptional", toDecimalResult.content);
+            Assert.Contains("public readonly decimal? ToDecimal() => Mantissa.HasValue ? Mantissa.Value * 1e-8m : null;", toDecimalResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNonDecimalComposite_DoesNotProduceToDecimal()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='messageHeader' description='Message header'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Assert — no ToDecimal file generated for non-decimal composites
+            Assert.DoesNotContain(results, r => r.name.Contains("ToDecimal"));
+        }
     }
 }
