@@ -568,10 +568,12 @@ namespace SbeCodeGenerator.Tests
             var msgResult = results.FirstOrDefault(r => r.name.Contains("OrderWithCustomNull"));
             Assert.NotEqual(default, msgResult);
 
-            // Should use custom nullValue=0 instead of default -9223372036854775808L
-            Assert.Contains("== 0", msgResult.content);
-            // Should use custom nullValue=-1 instead of default -2147483648
-            Assert.Contains("== -1", msgResult.content);
+            // Should use custom nullValue=0 via named constant PriceNullValue
+            Assert.Contains("PriceNullValue", msgResult.content);
+            Assert.Contains("== PriceNullValue", msgResult.content);
+            // Should use custom nullValue=-1 via named constant QuantityNullValue
+            Assert.Contains("QuantityNullValue", msgResult.content);
+            Assert.Contains("== QuantityNullValue", msgResult.content);
         }
 
         [Fact]
@@ -688,10 +690,11 @@ namespace SbeCodeGenerator.Tests
             var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext));
             var msgResult = results.First(r => r.name.Contains("TestMessage"));
 
-            // Assert - should use uint (not RptSeq struct) and nullValue=0
+            // Assert - should use uint (not RptSeq struct) and nullValue=0 via named constant
             Assert.Contains("private uint rptSeq;", msgResult.content);
             Assert.Contains("uint?", msgResult.content);
-            Assert.Contains("== 0", msgResult.content);
+            Assert.Contains("RptSeqNullValue", msgResult.content);
+            Assert.Contains("== RptSeqNullValue", msgResult.content);
         }
 
         [Fact]

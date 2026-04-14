@@ -43,11 +43,14 @@ namespace SbeSourceGenerator
                     : $"This field is deprecated since version {SinceVersion}";
                 sb.AppendTabs(tabs).Append("[Obsolete(\"").Append(deprecatedSince).AppendLine("\")]");
             }
-            sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
             if (PrimitiveType != null)
             {
                 var nullValue = NullValue ?? TypesCatalog.GetNullValue(PrimitiveType);
                 string fieldName = Name.FirstCharToLower();
+                string constantName = Name + "NullValue";
+
+                NullableValueFieldDefinition.AppendNullConstant(sb, tabs, PrimitiveType, constantName, nullValue);
+                sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
                 sb.AppendTabs(tabs).Append("private ").Append(Type).Append(" ").Append(fieldName).AppendLine(";");
 
                 if (isDeprecated)
@@ -64,7 +67,7 @@ namespace SbeSourceGenerator
                 }
                 else
                 {
-                    sb.AppendTabs(tabs).Append("public readonly ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(getExpr).Append(" == ").Append(nullValue).Append(" ? null : ").Append(getExpr).AppendLine(";");
+                    sb.AppendTabs(tabs).Append("public readonly ").Append(Type).Append("? ").Append(Name).Append(" => (").Append(PrimitiveType).Append(")").Append(getExpr).Append(" == ").Append(constantName).Append(" ? null : ").Append(getExpr).AppendLine(";");
                 }
                 sb.AppendTabs(tabs).Append("public void Set").Append(Name).Append("(").Append(Type).Append("? value) => ").Append(fieldName).Append(" = value.HasValue ? (").Append(Type).Append(")").Append(EndianFieldHelper.SetterExpression(PrimitiveType, "value.Value", EndianConversion)).Append(" : ").Append(setNullExpr).AppendLine(";");
 
@@ -73,6 +76,7 @@ namespace SbeSourceGenerator
             }
             else
             {
+                sb.AppendTabs(tabs).Append("[FieldOffset(").Append(Offset).AppendLine(")]");
                 sb.AppendTabs(tabs).Append("public ").Append(Type).Append(" ").Append(Name).AppendLine(";");
             }
         }
