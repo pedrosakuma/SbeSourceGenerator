@@ -14,10 +14,12 @@ namespace SbeSourceGenerator
         public string SinceVersion { get; }
         public string Deprecated { get; }
         public EndianConversion EndianConversion { get; }
+        public bool IsStructType { get; }
 
         public MessageFieldDefinition(string Name, string Id, string Type, string Description,
             int? Offset, int Length, string SinceVersion = "", string Deprecated = "",
-            EndianConversion EndianConversion = EndianConversion.None, string? PrimitiveType = null)
+            EndianConversion EndianConversion = EndianConversion.None, string? PrimitiveType = null,
+            bool IsStructType = false)
         {
             this.Name = Name;
             this.Id = Id;
@@ -29,6 +31,7 @@ namespace SbeSourceGenerator
             this.SinceVersion = SinceVersion;
             this.Deprecated = Deprecated;
             this.EndianConversion = EndianConversion;
+            this.IsStructType = IsStructType;
         }
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
@@ -41,7 +44,7 @@ namespace SbeSourceGenerator
                 sb.AppendTabs(tabs).Append("[Obsolete(\"").Append(deprecatedSince).AppendLine("\")]");
             }
             string effectiveType = PrimitiveType ?? Type;
-            EndianFieldHelper.AppendMessageField(sb, tabs, Type, effectiveType, Name, Offset, EndianConversion);
+            EndianFieldHelper.AppendMessageField(sb, tabs, Type, effectiveType, Name, Offset, EndianConversion, IsStructType);
         }
 
         private void AppendSummaryWithVersion(StringBuilder sb, string description, string sinceVersion, int tabs)

@@ -30,25 +30,29 @@ public partial struct TradeData
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(0)]
-	public long TradeId;
+	private long tradeId;
+	public long TradeId { readonly get => tradeId; set => tradeId = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(8)]
-	public long Price;
+	private long price;
+	public long Price { readonly get => price; set => price = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(16)]
-	public long Quantity;
+	private long quantity;
+	public long Quantity { readonly get => quantity; set => quantity = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(24)]
-	public Side Side;
+	private Side side;
+	public Side Side { readonly get => side; set => side = value; }
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, out TradeDataReader reader)
 	{

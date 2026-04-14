@@ -62,6 +62,12 @@ namespace SbeSourceGenerator
         public Dictionary<string, string> CompositeFieldTypes { get; } = new Dictionary<string, string>(16);
 
         /// <summary>
+        /// Tracks struct types (composites, InlineArray char types) by their original schema name.
+        /// Used to detect fields that need ref-returning properties instead of value properties.
+        /// </summary>
+        public HashSet<string> StructTypeNames { get; } = new HashSet<string>();
+
+        /// <summary>
         /// The byte order (endianness) specified in the schema.
         /// Defaults to "littleEndian" if not specified.
         /// </summary>

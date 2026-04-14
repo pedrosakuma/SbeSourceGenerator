@@ -24,22 +24,26 @@ public partial struct MessageHeader
 	/// 
 	/// (ValueFieldDefinition)
 	/// </summary>
-	public ushort BlockLength;
+	private ushort blockLength;
+	public ushort BlockLength { readonly get => blockLength; set => blockLength = value; }
 	/// <summary>
 	/// 
 	/// (ValueFieldDefinition)
 	/// </summary>
-	public ushort TemplateId;
+	private ushort templateId;
+	public ushort TemplateId { readonly get => templateId; set => templateId = value; }
 	/// <summary>
 	/// 
 	/// (ValueFieldDefinition)
 	/// </summary>
-	public ushort SchemaId;
+	private ushort schemaId;
+	public ushort SchemaId { readonly get => schemaId; set => schemaId = value; }
 	/// <summary>
 	/// 
 	/// (ValueFieldDefinition)
 	/// </summary>
-	public ushort Version;
+	private ushort version;
+	public ushort Version { readonly get => version; set => version = value; }
 	/// <summary>Returns a string representation of this struct for debugging.</summary>
 	public readonly override string ToString() => $"MessageHeader {{ BlockLength={BlockLength}, TemplateId={TemplateId}, SchemaId={SchemaId}, Version={Version} }}";
 }

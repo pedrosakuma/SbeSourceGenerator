@@ -316,6 +316,7 @@ namespace SbeSourceGenerator.Generators
                     var charTypeName = TypeResolverHelper.RegisterGeneratedTypeName(context, ft.Field.Name, sourceContext);
                     var charTypeDef = new FixedSizeCharTypeDefinition(ns, charTypeName, ft.Field.Description, charLen, ft.Field.CharacterEncoding);
                     context.CustomTypeLengths[ft.Field.Name] = charLen;
+                    context.StructTypeNames.Add(ft.Field.Name);
                     charArrayTypes[ft.Field.Name] = (charTypeName, charLen);
                     var charSb = new StringBuilder(256);
                     charTypeDef.AppendFileContent(charSb);
@@ -399,6 +400,7 @@ namespace SbeSourceGenerator.Generators
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
+            context.StructTypeNames.Add(compositeDto.Name);
             StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
