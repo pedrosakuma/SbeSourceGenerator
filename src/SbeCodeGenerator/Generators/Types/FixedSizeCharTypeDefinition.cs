@@ -30,12 +30,23 @@ namespace SbeSourceGenerator
                 sb.AppendTabs(tabs).Append("public struct ").Append(Name).AppendLine();
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("private byte value;", tabs);
-                sb.AppendLine("public override string ToString()", tabs);
+
+                // AsSpan() — zero-allocation trimmed content access
+                sb.AppendLine("/// <summary>Returns the trimmed content as a ReadOnlySpan&lt;byte&gt; (zero-allocation). Excludes null-termination padding.</summary>", tabs);
+                sb.AppendLine("[System.Diagnostics.CodeAnalysis.UnscopedRef]", tabs);
+                sb.AppendLine("public ReadOnlySpan<byte> AsSpan()", tabs);
                 sb.AppendLine("{", tabs++);
                 sb.AppendLine("ReadOnlySpan<byte> span = this;", tabs);
                 sb.AppendTabs(tabs).AppendLine("var index = span.IndexOf((byte)0);");
-                sb.AppendTabs(tabs).Append("return System.Text.").Append(ResolvedEncoding).Append(".GetString(span.Slice(0, index == -1 ? ").Append(Length).AppendLine(" : index));");
+                sb.AppendTabs(tabs).Append("return span.Slice(0, index == -1 ? ").Append(Length).AppendLine(" : index);");
                 sb.AppendLine("}", --tabs);
+
+                // Equals(ReadOnlySpan<byte>) — zero-allocation comparison
+                sb.AppendLine("/// <summary>Compares the content to a byte span without allocation. Useful with UTF-8 string literals: symbol.Equals(\"PETR4\"u8)</summary>", tabs);
+                sb.AppendLine("public bool Equals(ReadOnlySpan<byte> other) => AsSpan().SequenceEqual(other);", tabs);
+
+                // ToString() — delegates to AsSpan()
+                sb.AppendTabs(tabs).Append("public override string ToString() => System.Text.").Append(ResolvedEncoding).AppendLine(".GetString(AsSpan());");
                 sb.AppendLine("}", --tabs);
             }
         }
