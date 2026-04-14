@@ -88,7 +88,7 @@ public partial struct TradeData
 	/// <param name="bytesWritten">Number of bytes written on success.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool TryEncode(Span<byte> buffer, out int bytesWritten)
+	public readonly bool TryEncode(Span<byte> buffer, out int bytesWritten)
 	{
 		if (buffer.Length < MESSAGE_SIZE)
 		{
@@ -108,7 +108,7 @@ public partial struct TradeData
 	/// <param name="writer">The writer to use.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool TryEncodeWithWriter(ref SpanWriter writer)
+	public readonly bool TryEncodeWithWriter(ref SpanWriter writer)
 	{
 		return writer.TryWrite(this);
 	}
@@ -119,7 +119,7 @@ public partial struct TradeData
 	/// <param name="buffer">The destination buffer.</param>
 	/// <returns>Number of bytes written.</returns>
 	/// <exception cref="InvalidOperationException">Thrown when buffer is too small.</exception>
-	public int Encode(Span<byte> buffer)
+	public readonly int Encode(Span<byte> buffer)
 	{
 		if (!TryEncode(buffer, out int bytesWritten))
 		    throw new InvalidOperationException($"Failed to encode TradeData. Buffer size: {buffer.Length}, Required: {MESSAGE_SIZE}");

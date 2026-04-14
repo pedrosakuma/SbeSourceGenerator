@@ -122,7 +122,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <param name=\"bytesWritten\">Number of bytes written on success.</param>", tabs);
             sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
-            sb.AppendTabs(tabs).AppendLine("public bool TryEncode(Span<byte> buffer, out int bytesWritten)");
+            sb.AppendTabs(tabs).AppendLine("public readonly bool TryEncode(Span<byte> buffer, out int bytesWritten)");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
             sb.AppendLine("{", tabs++);
@@ -144,7 +144,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <param name=\"writer\">The writer to use.</param>", tabs);
             sb.AppendLine("/// <returns>True if encoding succeeded; otherwise, false.</returns>", tabs);
             sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
-            sb.AppendTabs(tabs).AppendLine("public bool TryEncodeWithWriter(ref SpanWriter writer)");
+            sb.AppendTabs(tabs).AppendLine("public readonly bool TryEncodeWithWriter(ref SpanWriter writer)");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("return writer.TryWrite(this);", tabs);
             sb.AppendLine("}", --tabs);
@@ -157,7 +157,7 @@ namespace SbeSourceGenerator
             sb.AppendLine("/// <param name=\"buffer\">The destination buffer.</param>", tabs);
             sb.AppendLine("/// <returns>Number of bytes written.</returns>", tabs);
             sb.AppendLine("/// <exception cref=\"InvalidOperationException\">Thrown when buffer is too small.</exception>", tabs);
-            sb.AppendTabs(tabs).AppendLine("public int Encode(Span<byte> buffer)");
+            sb.AppendTabs(tabs).AppendLine("public readonly int Encode(Span<byte> buffer)");
             sb.AppendLine("{", tabs++);
             sb.AppendLine("if (!TryEncode(buffer, out int bytesWritten))", tabs);
             sb.AppendTabs(tabs).Append("    throw new InvalidOperationException($\"Failed to encode ").Append(Name).AppendLine("Data. Buffer size: {buffer.Length}, Required: {MESSAGE_SIZE}\");");
