@@ -1160,5 +1160,108 @@ namespace SbeCodeGenerator.Tests
             // Assert
             Assert.DoesNotContain(results, r => r.name.Contains("ToDateTime"));
         }
+
+        [Fact]
+        public void Generate_WithLocalMktDateType_ProducesToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='LocalMktDate32' primitiveType='int32' semanticType='LocalMktDate' description='Days since epoch'/>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — non-optional returns DateOnly
+            Assert.Contains("public partial struct LocalMktDate32", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("AddDays(Value)", toDateOnlyResult.content);
+            Assert.DoesNotContain("DateOnly?", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalLocalMktDateType_ProducesNullableToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='LocalMktDate32Optional' primitiveType='int32' presence='optional' nullValue='0' semanticType='LocalMktDate' description='Optional days since epoch'/>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — optional returns DateOnly?
+            Assert.Contains("public partial struct LocalMktDate32Optional", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("Value.HasValue", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMonthYearComposite_ProducesToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='MaturityMonthYear' semanticType='MonthYear' description='Month-Year with optional day'>
+                            <type name='year' primitiveType='uint16' presence='optional'/>
+                            <type name='month' primitiveType='uint8' presence='optional'/>
+                            <type name='day' primitiveType='uint8' presence='optional'/>
+                            <type name='week' primitiveType='uint8' presence='optional'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert
+            Assert.Contains("public partial struct MaturityMonthYear", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("Day ?? 1", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMonthYearNoDayComposite_DefaultsDay()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='SimpleMonthYear' semanticType='MonthYear' description='Just month and year'>
+                            <type name='year' primitiveType='uint16'/>
+                            <type name='month' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — no day field, defaults to 1
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.DoesNotContain("Day ??", toDateOnlyResult.content);
+            // Non-optional year/month are wrapped in nullable for the pattern match
+            Assert.Contains("(ushort?)Year is { } y", toDateOnlyResult.content);
+            Assert.Contains("(byte?)Month is { } m", toDateOnlyResult.content);
+        }
     }
 }

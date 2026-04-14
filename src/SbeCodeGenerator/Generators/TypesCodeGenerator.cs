@@ -183,6 +183,16 @@ namespace SbeSourceGenerator.Generators
                 generator.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Types", generatedName), sb.ToString());
 
+                // Detect LocalMktDate pattern on simple types
+                if (string.Equals(typeDto.SemanticType, "LocalMktDate", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var dateHelper = generator is OptionalTypeDefinition
+                        ? DateHelperDefinition.LocalMktDateOptional(ns, generatedName)
+                        : DateHelperDefinition.LocalMktDate(ns, generatedName);
+                    sb.Clear();
+                    dateHelper.AppendFileContent(sb);
+                    yield return (context.CreateHintName(ns, "Types", generatedName + ".ToDateOnly"), sb.ToString());
+                }
             }
         }
 
@@ -422,6 +432,15 @@ namespace SbeSourceGenerator.Generators
                 timestampHelper.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDateTime"), sb.ToString());
             }
+
+            // Detect MonthYear pattern: semanticType="MonthYear" with year/month fields
+            var monthYearHelper = TryCreateMonthYearHelper(ns, generatedName, compositeDto);
+            if (monthYearHelper != null)
+            {
+                sb.Clear();
+                monthYearHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDateOnly"), sb.ToString());
+            }
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)
@@ -506,6 +525,34 @@ namespace SbeSourceGenerator.Generators
             }
 
             return null;
+        }
+
+        private static DateHelperDefinition? TryCreateMonthYearHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            if (!string.Equals(compositeDto.SemanticType, "MonthYear", System.StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            SchemaFieldDto? yearField = null;
+            SchemaFieldDto? monthField = null;
+            bool hasDay = false;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "year", System.StringComparison.OrdinalIgnoreCase))
+                    yearField = field;
+                else if (string.Equals(field.Name, "month", System.StringComparison.OrdinalIgnoreCase))
+                    monthField = field;
+                else if (string.Equals(field.Name, "day", System.StringComparison.OrdinalIgnoreCase))
+                    hasDay = true;
+            }
+
+            if (yearField == null || monthField == null)
+                return null;
+
+            return DateHelperDefinition.MonthYear(ns, generatedName,
+                yearOptional: yearField.Presence == "optional",
+                monthOptional: monthField.Presence == "optional",
+                hasDay: hasDay);
         }
     }
 }
