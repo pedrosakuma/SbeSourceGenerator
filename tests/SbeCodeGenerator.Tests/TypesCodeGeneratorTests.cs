@@ -1049,5 +1049,116 @@ namespace SbeCodeGenerator.Tests
             // Assert — no ToDecimal file generated for non-decimal composites
             Assert.DoesNotContain(results, r => r.name.Contains("ToDecimal"));
         }
+
+        [Fact]
+        public void Generate_WithTimestampNanosComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='nanosecond'>0</validValue>
+                            <validValue name='second'>5</validValue>
+                        </enum>
+                        <composite name='UTCTimestampNanos' description='Nanosecond timestamp'>
+                            <type name='time' primitiveType='uint64' presence='optional'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.nanosecond'>0</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert — optional time field returns DateTime? and DateTimeOffset?
+            Assert.Contains("public partial struct UTCTimestampNanos", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTime? ToDateTime()", toDateTimeResult.content);
+            Assert.Contains("AddTicks((long)(Time.Value / 100))", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTimeOffset? ToDateTimeOffset()", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithTimestampSecondsComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='second'>5</validValue>
+                        </enum>
+                        <composite name='UTCTimestampSeconds' description='Second timestamp'>
+                            <type name='time' primitiveType='uint64'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.second'>5</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert — non-optional time returns DateTime (not nullable)
+            Assert.Contains("public readonly System.DateTime ToDateTime()", toDateTimeResult.content);
+            Assert.Contains("FromUnixTimeSeconds((long)Time)", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTimeOffset ToDateTimeOffset()", toDateTimeResult.content);
+            Assert.DoesNotContain("DateTime?", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithTimestampMillisComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='millisecond'>3</validValue>
+                        </enum>
+                        <composite name='UTCTimestampMillis' description='Millisecond timestamp'>
+                            <type name='time' primitiveType='uint64'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.millisecond'>3</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert
+            Assert.Contains("FromUnixTimeMilliseconds((long)Time)", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNonTimestampComposite_DoesNotProduceToDateTime()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='Engine' description='Engine data'>
+                            <type name='capacity' primitiveType='uint16'/>
+                            <type name='numCylinders' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Assert
+            Assert.DoesNotContain(results, r => r.name.Contains("ToDateTime"));
+        }
     }
 }

@@ -413,6 +413,15 @@ namespace SbeSourceGenerator.Generators
                 decimalHelper.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDecimal"), sb.ToString());
             }
+
+            // Detect timestamp pattern: time field + constant unit field
+            var timestampHelper = TryCreateTimestampHelper(ns, generatedName, compositeDto);
+            if (timestampHelper != null)
+            {
+                sb.Clear();
+                timestampHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDateTime"), sb.ToString());
+            }
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)
@@ -449,6 +458,54 @@ namespace SbeSourceGenerator.Generators
 
             bool isOptional = mantissaField.Presence == "optional";
             return new DecimalHelperDefinition(ns, generatedName, compositeDto.Description, exponent, isOptional);
+        }
+
+        private static TimestampHelperDefinition? TryCreateTimestampHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            SchemaFieldDto? timeField = null;
+            SchemaFieldDto? unitField = null;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "time", System.StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.PrimitiveType))
+                    timeField = field;
+                else if (string.Equals(field.Name, "unit", System.StringComparison.OrdinalIgnoreCase)
+                    && field.Presence == "constant")
+                    unitField = field;
+            }
+
+            if (timeField == null || unitField == null)
+                return null;
+
+            var unit = ResolveTimeUnit(unitField);
+            if (unit == null)
+                return null;
+
+            bool isOptional = timeField.Presence == "optional";
+            return new TimestampHelperDefinition(ns, generatedName, compositeDto.Description, unit.Value, isOptional);
+        }
+
+        private static TimeUnitKind? ResolveTimeUnit(SchemaFieldDto unitField)
+        {
+            // Try valueRef first (e.g., "TimeUnit.nanosecond")
+            var valueRef = unitField.ValueRef ?? "";
+            var dotIndex = valueRef.LastIndexOf('.');
+            var valueName = dotIndex >= 0 ? valueRef.Substring(dotIndex + 1) : valueRef;
+
+            if (!string.IsNullOrEmpty(valueName))
+            {
+                if (valueName.IndexOf("nanosecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Nanosecond;
+                if (valueName.IndexOf("microsecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Microsecond;
+                if (valueName.IndexOf("millisecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Millisecond;
+                if (valueName.IndexOf("second", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Second;
+            }
+
+            return null;
         }
     }
 }
