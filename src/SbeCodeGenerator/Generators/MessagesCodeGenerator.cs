@@ -28,7 +28,14 @@ namespace SbeSourceGenerator.Generators
                 foreach (var version in versions)
                 {
                     var versionNamespace = GetVersionNamespace(baseNamespace, ns, version);
-                    var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
+
+                    // For the base struct (version 0), include all fields up to the schema version
+                    // so that BLOCK_LENGTH matches the wire blockLength. (#143)
+                    int effectiveVersion = version;
+                    if (version == 0 && versions.Count > 1)
+                        effectiveVersion = schemaVersion >= 0 ? schemaVersion : versions[versions.Count - 1];
+
+                    var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, effectiveVersion, sourceContext, context);
 
                     string headerTypeName = "MessageHeader";
                     if (context.GeneratedTypeNames.TryGetValue(context.HeaderType, out var resolvedHeaderName))
@@ -39,17 +46,17 @@ namespace SbeSourceGenerator.Generators
                         ns,
                         generatedMessageName,
                         messageDto.Id,
-                        $"{messageDto.Description} (Version {version})",
+                        $"{messageDto.Description} (Version {effectiveVersion})",
                         messageDto.SemanticType,
                         messageDto.Deprecated,
                         fieldsForVersion,
                         BuildConstants(messageDto.Constants, context),
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
-                        GetDataForVersion(messageDto.Data, version, context),
+                        GetDataForVersion(messageDto.Data, effectiveVersion, context),
                         messageDto.BlockLength,
                         context.EndianConversion,
                         schema.Id,
-                        version.ToString(),
+                        effectiveVersion.ToString(),
                         headerTypeName
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256

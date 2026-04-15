@@ -39,20 +39,25 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void V0Type_HasOnlyBaseFields()
+        public void V0Type_IncludesAllSchemaVersionFields()
         {
-            // V0 should have only orderId and price (16 bytes)
-            Assert.Equal(16, V0.EvolvingOrderData.MESSAGE_SIZE);
+            // Base type (V0 alias) should have all fields up to schema version 2
+            // so BLOCK_LENGTH matches the wire blockLength (#143)
+            Assert.Equal(25, V0.EvolvingOrderData.MESSAGE_SIZE);
             
-            // Verify we can create and use V0 type
+            // Verify we can create and use base type with all fields
             Span<byte> buffer = stackalloc byte[V0.EvolvingOrderData.MESSAGE_SIZE];
             ref V0.EvolvingOrderData message = ref MemoryMarshal.AsRef<V0.EvolvingOrderData>(buffer);
             
             message.OrderId = 100;
             message.Price = 9950;
+            message.Quantity = 50;
+            message.Side = 1;
             
             Assert.Equal(100, message.OrderId.Value);
             Assert.Equal(9950, message.Price.Value);
+            Assert.Equal(50, message.Quantity);
+            Assert.Equal(1, message.Side);
         }
 
         [Fact]
@@ -99,16 +104,19 @@ namespace SbeCodeGenerator.IntegrationTests
         public void VersionedTypes_CanBeUsedTogether()
         {
             // Demonstrate using multiple versions in the same code
-            Span<byte> v0Buffer = stackalloc byte[V0.EvolvingOrderData.MESSAGE_SIZE];
+            Span<byte> baseBuffer = stackalloc byte[V0.EvolvingOrderData.MESSAGE_SIZE];
             Span<byte> v1Buffer = stackalloc byte[V1.EvolvingOrderData.MESSAGE_SIZE];
             Span<byte> v2Buffer = stackalloc byte[V2.EvolvingOrderData.MESSAGE_SIZE];
             
-            ref V0.EvolvingOrderData v0Msg = ref MemoryMarshal.AsRef<V0.EvolvingOrderData>(v0Buffer);
+            // Base type has all schema-version fields
+            ref V0.EvolvingOrderData baseMsg = ref MemoryMarshal.AsRef<V0.EvolvingOrderData>(baseBuffer);
             ref V1.EvolvingOrderData v1Msg = ref MemoryMarshal.AsRef<V1.EvolvingOrderData>(v1Buffer);
             ref V2.EvolvingOrderData v2Msg = ref MemoryMarshal.AsRef<V2.EvolvingOrderData>(v2Buffer);
             
-            v0Msg.OrderId = 1;
-            v0Msg.Price = 1000;
+            baseMsg.OrderId = 1;
+            baseMsg.Price = 1000;
+            baseMsg.Quantity = 25;
+            baseMsg.Side = 1;
             
             v1Msg.OrderId = 2;
             v1Msg.Price = 2000;
@@ -120,7 +128,8 @@ namespace SbeCodeGenerator.IntegrationTests
             v2Msg.Side = 2; // Sell
             
             // Each version has its appropriate fields
-            Assert.Equal(1, v0Msg.OrderId.Value);
+            Assert.Equal(1, baseMsg.OrderId.Value);
+            Assert.Equal(25, baseMsg.Quantity);
             Assert.Equal(50, v1Msg.Quantity);
             Assert.Equal(2, v2Msg.Side);
         }
@@ -128,16 +137,20 @@ namespace SbeCodeGenerator.IntegrationTests
         [Fact]
         public void TryParse_WorksForEachVersion()
         {
-            // Test that TryParse works for V0
+            // Test that TryParse works for base type (has all schema-version fields)
             Span<byte> v0Buffer = stackalloc byte[V0.EvolvingOrderData.MESSAGE_SIZE];
             ref V0.EvolvingOrderData v0Setup = ref MemoryMarshal.AsRef<V0.EvolvingOrderData>(v0Buffer);
             v0Setup.OrderId = 123;
             v0Setup.Price = 9900;
+            v0Setup.Quantity = 50;
+            v0Setup.Side = 2;
             
             var v0Success = V0.EvolvingOrderData.TryParse(v0Buffer, out var v0Parsed);
             Assert.True(v0Success);
             Assert.Equal(123, v0Parsed.Data.OrderId.Value);
             Assert.Equal(9900, v0Parsed.Data.Price.Value);
+            Assert.Equal(50, v0Parsed.Data.Quantity);
+            Assert.Equal(2, v0Parsed.Data.Side);
             
             // Test that TryParse works for V1
             Span<byte> v1Buffer = stackalloc byte[V1.EvolvingOrderData.MESSAGE_SIZE];
@@ -164,6 +177,16 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(789, v2Parsed.Data.OrderId.Value);
             Assert.Equal(300, v2Parsed.Data.Quantity);
             Assert.Equal(1, v2Parsed.Data.Side);
+        }
+
+        [Fact]
+        public void BaseType_BlockLengthMatchesSchemaVersion()
+        {
+            // Regression test for #143: BLOCK_LENGTH must equal the schema-version
+            // size so ReadGroups starts parsing at the correct wire offset.
+            // V2 schema: orderId(8) + price(8) + quantity(8) + side(1) = 25
+            Assert.Equal(25, V0.EvolvingOrderData.BLOCK_LENGTH);
+            Assert.Equal(V2.EvolvingOrderData.BLOCK_LENGTH, V0.EvolvingOrderData.BLOCK_LENGTH);
         }
 
         [Fact]
