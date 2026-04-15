@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-04-15
 
 ### Added
 - **`ToDecimal()` on decimal composites** (#131): Composites with the SBE decimal pattern (mantissa + constant exponent) now generate a `ToDecimal()` method. Optional mantissa returns `decimal?`, non-optional returns `decimal`. Uses pre-computed decimal literal (e.g., `1e-4m`) for zero-overhead conversion.
