@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-04-15
+
+### Fixed
+- **Remaining CS8656 on optional type Value property** (#139): Added `readonly` modifier to `Value` getter in `OptionalTypeDefinition`, fixing 4 remaining CS8656 errors on `LocalMktDateOptional` and `LocalMktDate32Optional`.
+
+### Changed
+- **Integration tests now treat warnings as errors**: Added `TreatWarningsAsErrors` to the integration test project to catch generated code warnings (like CS8656) as build failures, preventing future regressions.
+
 ## [1.1.1] - 2025-07-25
 
 ### Fixed
