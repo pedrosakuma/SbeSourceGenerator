@@ -30,25 +30,29 @@ public partial struct QuoteData
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(0)]
-	public long BidPrice;
+	private long bidPrice;
+	public long BidPrice { readonly get => bidPrice; set => bidPrice = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(8)]
-	public long BidQuantity;
+	private long bidQuantity;
+	public long BidQuantity { readonly get => bidQuantity; set => bidQuantity = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(16)]
-	public long AskPrice;
+	private long askPrice;
+	public long AskPrice { readonly get => askPrice; set => askPrice = value; }
 	/// <summary>
 	/// 
 	/// (MessageFieldDefinition)
 	/// </summary>
 	[FieldOffset(24)]
-	public long AskQuantity;
+	private long askQuantity;
+	public long AskQuantity { readonly get => askQuantity; set => askQuantity = value; }
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryParse(ReadOnlySpan<byte> buffer, out QuoteDataReader reader)
 	{
@@ -84,7 +88,7 @@ public partial struct QuoteData
 	/// <param name="bytesWritten">Number of bytes written on success.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool TryEncode(Span<byte> buffer, out int bytesWritten)
+	public readonly bool TryEncode(Span<byte> buffer, out int bytesWritten)
 	{
 		if (buffer.Length < MESSAGE_SIZE)
 		{
@@ -104,7 +108,7 @@ public partial struct QuoteData
 	/// <param name="writer">The writer to use.</param>
 	/// <returns>True if encoding succeeded; otherwise, false.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool TryEncodeWithWriter(ref SpanWriter writer)
+	public readonly bool TryEncodeWithWriter(ref SpanWriter writer)
 	{
 		return writer.TryWrite(this);
 	}
@@ -115,7 +119,7 @@ public partial struct QuoteData
 	/// <param name="buffer">The destination buffer.</param>
 	/// <returns>Number of bytes written.</returns>
 	/// <exception cref="InvalidOperationException">Thrown when buffer is too small.</exception>
-	public int Encode(Span<byte> buffer)
+	public readonly int Encode(Span<byte> buffer)
 	{
 		if (!TryEncode(buffer, out int bytesWritten))
 		    throw new InvalidOperationException($"Failed to encode QuoteData. Buffer size: {buffer.Length}, Required: {MESSAGE_SIZE}");

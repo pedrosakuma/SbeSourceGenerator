@@ -22,42 +22,56 @@ namespace SbeSourceGenerator
         }
 
         /// <summary>
-        /// Appends a field declaration with endian-aware property if needed.
-        /// For single-byte or EndianConversion.None: emits a public field.
-        /// For multi-byte with conversion: emits private field + public property.
+        /// Appends a field declaration with consistent property pattern.
+        /// Always emits private backing field + public property with readonly get and set.
         /// </summary>
         public static void AppendField(StringBuilder sb, int tabs, string type, string name,
             EndianConversion conversion)
         {
+            string fieldName = name.FirstCharToLower();
+            sb.AppendTabs(tabs).Append("private ").Append(type).Append(" ").Append(fieldName).AppendLine(";");
+
             if (!NeedsConversion(type, conversion))
             {
-                sb.AppendTabs(tabs).Append("public ").Append(type).Append(" ").Append(name).AppendLine(";");
+                sb.AppendTabs(tabs).Append("public ").Append(type).Append(" ").Append(name)
+                    .Append(" { readonly get => ").Append(fieldName)
+                    .Append("; set => ").Append(fieldName).Append(" = value; }")
+                    .AppendLine();
                 return;
             }
 
-            string fieldName = name.FirstCharToLower();
-            sb.AppendTabs(tabs).Append("private ").Append(type).Append(" ").Append(fieldName).AppendLine(";");
             AppendPropertyWithConversion(sb, tabs, type, name, fieldName, conversion);
         }
 
         /// <summary>
-        /// Appends a message field declaration with [FieldOffset] and endian-aware property if needed.
-        /// declaredType is the C# declared type (e.g., "MyEnum" or "int").
-        /// primitiveType is the underlying numeric type used for endian conversion (e.g., "ushort" for a ushort-backed enum).
+        /// Appends a message field declaration with [FieldOffset] and consistent property pattern.
+        /// For struct types (composites, InlineArrays), emits ref-returning property to allow sub-field mutation.
+        /// For primitive/enum types, emits private backing field + public property with readonly get and set.
         /// </summary>
         public static void AppendMessageField(StringBuilder sb, int tabs, string declaredType, string primitiveType, string name,
-            int? offset, EndianConversion conversion)
+            int? offset, EndianConversion conversion, bool isStructType = false)
         {
             sb.AppendTabs(tabs).Append("[FieldOffset(").Append(offset).AppendLine(")]");
 
-            if (!NeedsConversion(primitiveType, conversion))
+            string fieldName = name.FirstCharToLower();
+            sb.AppendTabs(tabs).Append("private ").Append(declaredType).Append(" ").Append(fieldName).AppendLine(";");
+
+            if (isStructType)
             {
-                sb.AppendTabs(tabs).Append("public ").Append(declaredType).Append(" ").Append(name).AppendLine(";");
+                sb.AppendTabs(tabs).AppendLine("[System.Diagnostics.CodeAnalysis.UnscopedRef]");
+                sb.AppendTabs(tabs).Append("public ref ").Append(declaredType).Append(" ").Append(name)
+                    .Append(" => ref ").Append(fieldName).AppendLine(";");
                 return;
             }
 
-            string fieldName = name.FirstCharToLower();
-            sb.AppendTabs(tabs).Append("private ").Append(declaredType).Append(" ").Append(fieldName).AppendLine(";");
+            if (!NeedsConversion(primitiveType, conversion))
+            {
+                sb.AppendTabs(tabs).Append("public ").Append(declaredType).Append(" ").Append(name)
+                    .Append(" { readonly get => ").Append(fieldName)
+                    .Append("; set => ").Append(fieldName).Append(" = value; }")
+                    .AppendLine();
+                return;
+            }
 
             bool needsCast = declaredType != primitiveType;
             string getExpr = needsCast

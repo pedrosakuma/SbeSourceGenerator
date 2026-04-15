@@ -740,7 +740,9 @@ namespace SbeCodeGenerator.Tests
             var engineResult = results.FirstOrDefault(r => r.name.Contains("Engine"));
             Assert.NotEqual(default, engineResult);
             // Should embed Booster as a field
-            Assert.Contains("public Booster Booster;", engineResult.content);
+            Assert.Contains("private Booster booster;", engineResult.content);
+            Assert.Contains("[System.Diagnostics.CodeAnalysis.UnscopedRef]", engineResult.content);
+            Assert.Contains("public ref Booster Booster => ref booster;", engineResult.content);
             // Engine should be blittable (all fields fixed-size)
             Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 1)]", engineResult.content);
             // MESSAGE_SIZE should include Booster size (1 char + 2 uint16 = 3) + capacity(2) + numCylinders(1) = 6
@@ -802,7 +804,9 @@ namespace SbeCodeGenerator.Tests
             // Outer composite should embed Inner as a field
             var outerResult = results.FirstOrDefault(r => r.name.Contains("Outer") && !r.name.Contains("Inner"));
             Assert.NotEqual(default, outerResult);
-            Assert.Contains("public Inner Inner;", outerResult.content);
+            Assert.Contains("private Inner inner;", outerResult.content);
+            Assert.Contains("[System.Diagnostics.CodeAnalysis.UnscopedRef]", outerResult.content);
+            Assert.Contains("public ref Inner Inner => ref inner;", outerResult.content);
             // Outer size: uint32(4) + Inner(3) = 7
             Assert.Contains("MESSAGE_SIZE = 7;", outerResult.content);
         }
@@ -968,6 +972,296 @@ namespace SbeCodeGenerator.Tests
             // Assert
             Assert.Contains("public readonly override string ToString()", decimalResult.content);
             Assert.Contains("Decimal {{ Mantissa={Mantissa} }}", decimalResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithDecimalComposite_ProducesToDecimalMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='Price' description='Price with 4 decimal places'>
+                            <type name='mantissa' primitiveType='int64'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-4</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDecimalResult = results.First(r => r.name.Contains("ToDecimal"));
+
+            // Assert — non-optional mantissa returns decimal (not decimal?)
+            Assert.Contains("public partial struct Price", toDecimalResult.content);
+            Assert.Contains("public readonly decimal ToDecimal() => Mantissa * 1e-4m;", toDecimalResult.content);
+            Assert.DoesNotContain("decimal?", toDecimalResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalDecimalComposite_ProducesNullableToDecimalMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='PriceOptional' description='Optional price'>
+                            <type name='mantissa' primitiveType='int64' presence='optional'/>
+                            <type name='exponent' primitiveType='int8' presence='constant'>-8</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDecimalResult = results.First(r => r.name.Contains("ToDecimal"));
+
+            // Assert — optional mantissa returns decimal?
+            Assert.Contains("public partial struct PriceOptional", toDecimalResult.content);
+            Assert.Contains("public readonly decimal? ToDecimal() => Mantissa.HasValue ? Mantissa.Value * 1e-8m : null;", toDecimalResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNonDecimalComposite_DoesNotProduceToDecimal()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='messageHeader' description='Message header'>
+                            <type name='blockLength' primitiveType='uint16'/>
+                            <type name='templateId' primitiveType='uint16'/>
+                            <type name='schemaId' primitiveType='uint16'/>
+                            <type name='version' primitiveType='uint16'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Assert — no ToDecimal file generated for non-decimal composites
+            Assert.DoesNotContain(results, r => r.name.Contains("ToDecimal"));
+        }
+
+        [Fact]
+        public void Generate_WithTimestampNanosComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='nanosecond'>0</validValue>
+                            <validValue name='second'>5</validValue>
+                        </enum>
+                        <composite name='UTCTimestampNanos' description='Nanosecond timestamp'>
+                            <type name='time' primitiveType='uint64' presence='optional'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.nanosecond'>0</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert — optional time field returns DateTime? and DateTimeOffset?
+            Assert.Contains("public partial struct UTCTimestampNanos", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTime? ToDateTime()", toDateTimeResult.content);
+            Assert.Contains("AddTicks((long)(Time.Value / 100))", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTimeOffset? ToDateTimeOffset()", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithTimestampSecondsComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='second'>5</validValue>
+                        </enum>
+                        <composite name='UTCTimestampSeconds' description='Second timestamp'>
+                            <type name='time' primitiveType='uint64'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.second'>5</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert — non-optional time returns DateTime (not nullable)
+            Assert.Contains("public readonly System.DateTime ToDateTime()", toDateTimeResult.content);
+            Assert.Contains("FromUnixTimeSeconds((long)Time)", toDateTimeResult.content);
+            Assert.Contains("public readonly System.DateTimeOffset ToDateTimeOffset()", toDateTimeResult.content);
+            Assert.DoesNotContain("DateTime?", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithTimestampMillisComposite_ProducesToDateTimeMethods()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <enum name='TimeUnit' encodingType='uint8'>
+                            <validValue name='millisecond'>3</validValue>
+                        </enum>
+                        <composite name='UTCTimestampMillis' description='Millisecond timestamp'>
+                            <type name='time' primitiveType='uint64'/>
+                            <type name='unit' primitiveType='uint8' presence='constant' valueRef='TimeUnit.millisecond'>3</type>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateTimeResult = results.First(r => r.name.Contains("ToDateTime"));
+
+            // Assert
+            Assert.Contains("FromUnixTimeMilliseconds((long)Time)", toDateTimeResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithNonTimestampComposite_DoesNotProduceToDateTime()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='Engine' description='Engine data'>
+                            <type name='capacity' primitiveType='uint16'/>
+                            <type name='numCylinders' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            // Assert
+            Assert.DoesNotContain(results, r => r.name.Contains("ToDateTime"));
+        }
+
+        [Fact]
+        public void Generate_WithLocalMktDateType_ProducesToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='LocalMktDate32' primitiveType='int32' semanticType='LocalMktDate' description='Days since epoch'/>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — non-optional returns DateOnly
+            Assert.Contains("public partial struct LocalMktDate32", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("AddDays(Value)", toDateOnlyResult.content);
+            Assert.DoesNotContain("DateOnly?", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithOptionalLocalMktDateType_ProducesNullableToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <type name='LocalMktDate32Optional' primitiveType='int32' presence='optional' nullValue='0' semanticType='LocalMktDate' description='Optional days since epoch'/>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — optional returns DateOnly?
+            Assert.Contains("public partial struct LocalMktDate32Optional", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("Value.HasValue", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMonthYearComposite_ProducesToDateOnlyMethod()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='MaturityMonthYear' semanticType='MonthYear' description='Month-Year with optional day'>
+                            <type name='year' primitiveType='uint16' presence='optional'/>
+                            <type name='month' primitiveType='uint8' presence='optional'/>
+                            <type name='day' primitiveType='uint8' presence='optional'/>
+                            <type name='week' primitiveType='uint8' presence='optional'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert
+            Assert.Contains("public partial struct MaturityMonthYear", toDateOnlyResult.content);
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.Contains("Day ?? 1", toDateOnlyResult.content);
+        }
+
+        [Fact]
+        public void Generate_WithMonthYearNoDayComposite_DefaultsDay()
+        {
+            // Arrange
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <sbe:messageSchema xmlns:sbe='http://fixprotocol.io/2016/sbe'>
+                    <types>
+                        <composite name='SimpleMonthYear' semanticType='MonthYear' description='Just month and year'>
+                            <type name='year' primitiveType='uint16'/>
+                            <type name='month' primitiveType='uint8'/>
+                        </composite>
+                    </types>
+                </sbe:messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var toDateOnlyResult = results.First(r => r.name.Contains("ToDateOnly"));
+
+            // Assert — no day field, defaults to 1
+            Assert.Contains("public readonly System.DateOnly? ToDateOnly()", toDateOnlyResult.content);
+            Assert.DoesNotContain("Day ??", toDateOnlyResult.content);
+            // Non-optional year/month are wrapped in nullable for the pattern match
+            Assert.Contains("(ushort?)Year is { } y", toDateOnlyResult.content);
+            Assert.Contains("(byte?)Month is { } m", toDateOnlyResult.content);
         }
     }
 }

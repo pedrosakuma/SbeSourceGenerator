@@ -86,12 +86,14 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
-        public void AppendField_None_EmitsPublicField()
+        public void AppendField_None_EmitsPrivateFieldAndProperty()
         {
             var sb = new StringBuilder();
             EndianFieldHelper.AppendField(sb, 0, "int", "Price", EndianConversion.None);
-            Assert.Contains("public int Price;", sb.ToString());
-            Assert.DoesNotContain("private", sb.ToString());
+            var result = sb.ToString();
+            Assert.Contains("private int price;", result);
+            Assert.Contains("readonly get => price", result);
+            Assert.Contains("set => price = value;", result);
         }
 
         [Fact]
@@ -101,7 +103,7 @@ namespace SbeCodeGenerator.Tests
             EndianFieldHelper.AppendField(sb, 0, "int", "Price", EndianConversion.AlwaysReverse);
             var result = sb.ToString();
             Assert.Contains("private int price;", result);
-            Assert.Contains("public int Price", result);
+            Assert.Contains("readonly get => ", result);
             Assert.Contains("BinaryPrimitives.ReverseEndianness(price)", result);
         }
 
@@ -117,12 +119,14 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
-        public void AppendField_SingleByte_AlwaysPassthrough()
+        public void AppendField_SingleByte_AlwaysPrivateWithProperty()
         {
             var sb = new StringBuilder();
             EndianFieldHelper.AppendField(sb, 0, "byte", "Tag", EndianConversion.AlwaysReverse);
-            Assert.Contains("public byte Tag;", sb.ToString());
-            Assert.DoesNotContain("private", sb.ToString());
+            var result = sb.ToString();
+            Assert.Contains("private byte tag;", result);
+            Assert.Contains("readonly get => tag", result);
+            Assert.Contains("set => tag = value;", result);
         }
 
         [Fact]
@@ -137,13 +141,15 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
-        public void AppendMessageField_None_EmitsPublicField()
+        public void AppendMessageField_None_EmitsPrivateFieldAndProperty()
         {
             var sb = new StringBuilder();
             EndianFieldHelper.AppendMessageField(sb, 0, "uint", "uint", "Price", 4, EndianConversion.None);
             var result = sb.ToString();
             Assert.Contains("[FieldOffset(4)]", result);
-            Assert.Contains("public uint Price;", result);
+            Assert.Contains("private uint price;", result);
+            Assert.Contains("readonly get => price", result);
+            Assert.Contains("set => price = value;", result);
         }
 
         [Fact]
@@ -216,8 +222,9 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("BinaryPrimitives.ReverseEndianness", content);
             Assert.Contains("private uint", content);
             Assert.Contains("private ulong", content);
-            Assert.Contains("public uint Price", content);
-            Assert.Contains("public ulong Quantity", content);
+            Assert.Contains("readonly get =>", content);
+            Assert.Contains("uint Price", content);
+            Assert.Contains("ulong Quantity", content);
             Assert.Contains("using System.Buffers.Binary;", content);
         }
 
@@ -237,8 +244,10 @@ namespace SbeCodeGenerator.Tests
 
             var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
             var content = results[0].content;
-            Assert.Contains("public uint Price;", content);
-            Assert.Contains("public ulong Quantity;", content);
+            Assert.Contains("private uint price;", content);
+            Assert.Contains("readonly get => price", content);
+            Assert.Contains("private ulong quantity;", content);
+            Assert.Contains("readonly get => quantity", content);
             Assert.DoesNotContain("BinaryPrimitives.ReverseEndianness", content);
         }
 
@@ -260,8 +269,9 @@ namespace SbeCodeGenerator.Tests
 
             var results = generator.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
             var content = results[0].content;
-            // Single byte field should be a public field
-            Assert.Contains("public byte Tag;", content);
+            // Single byte field should use private backing + property
+            Assert.Contains("private byte tag;", content);
+            Assert.Contains("readonly get => tag", content);
             // Multi-byte field should use endian conversion
             Assert.Contains("private uint", content);
         }
@@ -373,8 +383,9 @@ namespace SbeCodeGenerator.Tests
             var results = messagesGen.Generate("TestNs", schema, context, default(SourceProductionContext)).ToList();
             var content = results[0].content;
 
-            // byte-backed enum should NOT have endian conversion
-            Assert.Contains("public Side Side;", content);
+            // byte-backed enum should use private backing + property (no endian conversion)
+            Assert.Contains("private Side side;", content);
+            Assert.Contains("readonly get => side", content);
             Assert.DoesNotContain("BinaryPrimitives.ReverseEndianness", content);
         }
 

@@ -183,6 +183,16 @@ namespace SbeSourceGenerator.Generators
                 generator.AppendFileContent(sb);
                 yield return (context.CreateHintName(ns, "Types", generatedName), sb.ToString());
 
+                // Detect LocalMktDate pattern on simple types
+                if (string.Equals(typeDto.SemanticType, "LocalMktDate", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var dateHelper = generator is OptionalTypeDefinition
+                        ? DateHelperDefinition.LocalMktDateOptional(ns, generatedName)
+                        : DateHelperDefinition.LocalMktDate(ns, generatedName);
+                    sb.Clear();
+                    dateHelper.AppendFileContent(sb);
+                    yield return (context.CreateHintName(ns, "Types", generatedName + ".ToDateOnly"), sb.ToString());
+                }
             }
         }
 
@@ -316,6 +326,7 @@ namespace SbeSourceGenerator.Generators
                     var charTypeName = TypeResolverHelper.RegisterGeneratedTypeName(context, ft.Field.Name, sourceContext);
                     var charTypeDef = new FixedSizeCharTypeDefinition(ns, charTypeName, ft.Field.Description, charLen, ft.Field.CharacterEncoding);
                     context.CustomTypeLengths[ft.Field.Name] = charLen;
+                    context.StructTypeNames.Add(ft.Field.Name);
                     charArrayTypes[ft.Field.Name] = (charTypeName, charLen);
                     var charSb = new StringBuilder(256);
                     charTypeDef.AppendFileContent(charSb);
@@ -399,9 +410,37 @@ namespace SbeSourceGenerator.Generators
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
+            context.StructTypeNames.Add(compositeDto.Name);
             StringBuilder sb = new StringBuilder(1024);
             generator.AppendFileContent(sb);
             yield return (context.CreateHintName(ns, "Composites", generatedName), sb.ToString());
+
+            // Detect decimal pattern: mantissa field + constant exponent field
+            var decimalHelper = TryCreateDecimalHelper(ns, generatedName, compositeDto);
+            if (decimalHelper != null)
+            {
+                sb.Clear();
+                decimalHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDecimal"), sb.ToString());
+            }
+
+            // Detect timestamp pattern: time field + constant unit field
+            var timestampHelper = TryCreateTimestampHelper(ns, generatedName, compositeDto);
+            if (timestampHelper != null)
+            {
+                sb.Clear();
+                timestampHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDateTime"), sb.ToString());
+            }
+
+            // Detect MonthYear pattern: semanticType="MonthYear" with year/month fields
+            var monthYearHelper = TryCreateMonthYearHelper(ns, generatedName, compositeDto);
+            if (monthYearHelper != null)
+            {
+                sb.Clear();
+                monthYearHelper.AppendFileContent(sb);
+                yield return (context.CreateHintName(ns, "Composites", generatedName + ".ToDateOnly"), sb.ToString());
+            }
         }
 
         private static string InsertQuotationsIfNeeded(string innerText, string type, string length)
@@ -414,5 +453,106 @@ namespace SbeSourceGenerator.Generators
             };
         }
 
+        private static DecimalHelperDefinition? TryCreateDecimalHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            SchemaFieldDto mantissaField = null;
+            SchemaFieldDto exponentField = null;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "mantissa", System.StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.PrimitiveType))
+                    mantissaField = field;
+                else if (string.Equals(field.Name, "exponent", System.StringComparison.OrdinalIgnoreCase)
+                    && field.Presence == "constant"
+                    && !string.IsNullOrEmpty(field.InnerText))
+                    exponentField = field;
+            }
+
+            if (mantissaField == null || exponentField == null)
+                return null;
+
+            if (!int.TryParse(exponentField.InnerText, out var exponent))
+                return null;
+
+            bool isOptional = mantissaField.Presence == "optional";
+            return new DecimalHelperDefinition(ns, generatedName, compositeDto.Description, exponent, isOptional);
+        }
+
+        private static TimestampHelperDefinition? TryCreateTimestampHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            SchemaFieldDto? timeField = null;
+            SchemaFieldDto? unitField = null;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "time", System.StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.PrimitiveType))
+                    timeField = field;
+                else if (string.Equals(field.Name, "unit", System.StringComparison.OrdinalIgnoreCase)
+                    && field.Presence == "constant")
+                    unitField = field;
+            }
+
+            if (timeField == null || unitField == null)
+                return null;
+
+            var unit = ResolveTimeUnit(unitField);
+            if (unit == null)
+                return null;
+
+            bool isOptional = timeField.Presence == "optional";
+            return new TimestampHelperDefinition(ns, generatedName, compositeDto.Description, unit.Value, isOptional);
+        }
+
+        private static TimeUnitKind? ResolveTimeUnit(SchemaFieldDto unitField)
+        {
+            // Try valueRef first (e.g., "TimeUnit.nanosecond")
+            var valueRef = unitField.ValueRef ?? "";
+            var dotIndex = valueRef.LastIndexOf('.');
+            var valueName = dotIndex >= 0 ? valueRef.Substring(dotIndex + 1) : valueRef;
+
+            if (!string.IsNullOrEmpty(valueName))
+            {
+                if (valueName.IndexOf("nanosecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Nanosecond;
+                if (valueName.IndexOf("microsecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Microsecond;
+                if (valueName.IndexOf("millisecond", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Millisecond;
+                if (valueName.IndexOf("second", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return TimeUnitKind.Second;
+            }
+
+            return null;
+        }
+
+        private static DateHelperDefinition? TryCreateMonthYearHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
+        {
+            if (!string.Equals(compositeDto.SemanticType, "MonthYear", System.StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            SchemaFieldDto? yearField = null;
+            SchemaFieldDto? monthField = null;
+            bool hasDay = false;
+
+            foreach (var field in compositeDto.Fields)
+            {
+                if (string.Equals(field.Name, "year", System.StringComparison.OrdinalIgnoreCase))
+                    yearField = field;
+                else if (string.Equals(field.Name, "month", System.StringComparison.OrdinalIgnoreCase))
+                    monthField = field;
+                else if (string.Equals(field.Name, "day", System.StringComparison.OrdinalIgnoreCase))
+                    hasDay = true;
+            }
+
+            if (yearField == null || monthField == null)
+                return null;
+
+            return DateHelperDefinition.MonthYear(ns, generatedName,
+                yearOptional: yearField.Presence == "optional",
+                monthOptional: monthField.Presence == "optional",
+                hasDay: hasDay);
+        }
     }
 }

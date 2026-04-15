@@ -240,7 +240,8 @@ namespace SbeSourceGenerator.Generators
                             field.SinceVersion,
                             field.Deprecated,
                             context.EndianConversion,
-                            fieldUnderlyingType
+                            fieldUnderlyingType,
+                            context.StructTypeNames.Contains(field.Type)
                         ));
                     }
                     else
@@ -293,7 +294,8 @@ namespace SbeSourceGenerator.Generators
                         field.SinceVersion,
                         field.Deprecated,
                         context.EndianConversion,
-                        underlyingType
+                        underlyingType,
+                        context.StructTypeNames.Contains(field.Type)
                     ));
                 }
             }
@@ -356,7 +358,8 @@ namespace SbeSourceGenerator.Generators
                         field.SinceVersion,
                         field.Deprecated,
                         context.EndianConversion,
-                        underlyingFieldType
+                        underlyingFieldType,
+                        context.StructTypeNames.Contains(field.Type)
                     ));
                 }
 
