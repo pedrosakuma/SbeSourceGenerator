@@ -726,8 +726,7 @@ namespace SbeCodeGenerator.Tests
 
             // Assert - should be a regular field (not optional), composites handle their own null semantics
             Assert.Contains("private PriceOptional price;", msgResult.content);
-            Assert.Contains("[System.Diagnostics.CodeAnalysis.UnscopedRef]", msgResult.content);
-            Assert.Contains("public ref PriceOptional Price => ref price;", msgResult.content);
+            Assert.Contains("public PriceOptional Price { readonly get => price; set => price = value; }", msgResult.content);
             Assert.DoesNotContain("PriceOptional?", msgResult.content); // No nullable
             Assert.DoesNotContain("== default", msgResult.content); // No default comparison
         }

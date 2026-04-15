@@ -57,8 +57,7 @@ namespace SbeCodeGenerator.IntegrationTests
             car.Code = Model.B;
             car.Extras = OptionalExtras.SunRoof | OptionalExtras.CruiseControl;
 
-            car.Engine.Capacity = 2000;
-            car.Engine.NumCylinders = 4;
+            car.Engine = new Engine { Capacity = 2000, NumCylinders = 4 };
 
             Assert.Equal(1234567890UL, car.SerialNumber);
             Assert.Equal((ushort)2024, car.ModelYear.Value);
@@ -83,7 +82,7 @@ namespace SbeCodeGenerator.IntegrationTests
             Span<byte> buffer = stackalloc byte[CarData.MESSAGE_SIZE];
             ref CarData car = ref MemoryMarshal.AsRef<CarData>(buffer);
             car.SerialNumber = 42;
-            car.Engine.Capacity = 1600;
+            car.Engine = new Engine { Capacity = 1600 };
 
             var success = CarData.TryParse(buffer, out var parsed);
 
@@ -206,7 +205,7 @@ namespace SbeCodeGenerator.IntegrationTests
             // Write Car fixed fields
             ref CarData car = ref MemoryMarshal.AsRef<CarData>(span);
             car.SerialNumber = 42;
-            car.Engine.Capacity = 2000;
+            car.Engine = new Engine { Capacity = 2000 };
             offset += CarData.MESSAGE_SIZE;
 
             // fuelFigures group: 1 entry

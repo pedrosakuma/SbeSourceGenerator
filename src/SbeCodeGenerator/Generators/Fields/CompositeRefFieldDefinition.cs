@@ -13,9 +13,10 @@ namespace SbeSourceGenerator
             string fieldName = Name.FirstCharToLower();
             sb.AppendSummary(Description, tabs, nameof(CompositeRefFieldDefinition));
             sb.AppendTabs(tabs).Append("private ").Append(TypeName).Append(" ").Append(fieldName).AppendLine(";");
-            sb.AppendTabs(tabs).AppendLine("[System.Diagnostics.CodeAnalysis.UnscopedRef]");
-            sb.AppendTabs(tabs).Append("public ref ").Append(TypeName).Append(" ").Append(Name)
-                .Append(" => ref ").Append(fieldName).AppendLine(";");
+            sb.AppendTabs(tabs).Append("public ").Append(TypeName).Append(" ").Append(Name)
+                .Append(" { readonly get => ").Append(fieldName)
+                .Append("; set => ").Append(fieldName).Append(" = value; }")
+                .AppendLine();
         }
     }
 }

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-07-25
+
+### Fixed
+- **CS8656 regression with composite struct fields** (#139): Composite-type fields (e.g., `Price`, `Engine`, `Instrument`) now use value-returning `readonly get; set;` properties instead of `ref`-returning properties. This fixes 337 CS8656 compiler errors when `readonly` methods (like `ToString`) accessed mutable ref-returning properties. Sub-field mutation (`msg.Engine.Capacity = 5`) must now use whole-struct assignment (`msg.Engine = new Engine { Capacity = 5 }`).
+
 ## [1.1.0] - 2026-04-15
 
 ### Added
@@ -15,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Named null sentinel constants** (#136): Optional fields now expose a named `{FieldName}NullValue` constant (e.g., `MantissaNullValue`, `TimeNullValue`) instead of inline magic numbers.
 
 ### Changed
-- **Field visibility standardization** (#137): All struct fields now use `private` backing fields with `public` property accessors (`readonly get` + `set`). Composite/InlineArray fields use `ref`-returning properties with `[UnscopedRef]`.
+- **Field visibility standardization** (#137): All struct fields now use `private` backing fields with `public` property accessors (`readonly get` + `set`).
 - **`readonly` methods on generated structs** (#135): `TryEncode`, `TryEncodeWithWriter`, `Encode`, `AsSpan`, `Equals`, and `ToString` are now `readonly` instance methods to prevent defensive copies. `ConstantTypeDefinition` emits `readonly struct`.
 
 ## [1.0.2] - 2026-04-10
