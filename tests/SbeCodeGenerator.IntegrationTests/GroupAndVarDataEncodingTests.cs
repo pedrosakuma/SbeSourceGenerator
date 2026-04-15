@@ -358,5 +358,43 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal(symbol, decodedSymbol);
             Assert.Equal((byte)symbolBytes.Length, symbolLength);
         }
+
+        [Fact]
+        public void VarDataCreate_EmptyBuffer_ReturnsEmptyInstance()
+        {
+            // Arrange - Simulate the scenario from issue #142:
+            // When groups consume all remaining bytes, varData.Create receives an empty buffer
+            ReadOnlySpan<byte> emptyBuffer = ReadOnlySpan<byte>.Empty;
+
+            // Act - This previously threw ArgumentOutOfRangeException
+            var result = Integration.Test.V0.VarString8.Create(emptyBuffer);
+
+            // Assert
+            Assert.Equal(0, result.Length);
+            Assert.Equal(0, result.VarData.Length);
+            // TotalLength is computed (lengthSize + Length = 1 + 0 = 1), but TrySkip handles this gracefully
+            Assert.Equal(1, result.TotalLength);
+        }
+
+        [Fact]
+        public void VarDataCreate_TruncatedBuffer_ClampsDataLength()
+        {
+            // Arrange - Buffer has length prefix (says 10 bytes) but only 3 data bytes available
+            Span<byte> truncated = stackalloc byte[4]; // 1 byte length + 3 bytes data
+            truncated[0] = 10; // length prefix claims 10 bytes
+            truncated[1] = 0x41; // 'A'
+            truncated[2] = 0x42; // 'B'
+            truncated[3] = 0x43; // 'C'
+
+            // Act - Should not throw, should clamp to available data
+            var result = Integration.Test.V0.VarString8.Create(truncated);
+
+            // Assert - Length field reflects wire value, but VarData is clamped
+            Assert.Equal(10, result.Length);
+            Assert.Equal(3, result.VarData.Length);
+            Assert.Equal((byte)'A', result.VarData[0]);
+            Assert.Equal((byte)'B', result.VarData[1]);
+            Assert.Equal((byte)'C', result.VarData[2]);
+        }
     }
 }

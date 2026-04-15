@@ -87,12 +87,15 @@ namespace SbeSourceGenerator
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("", tabs);
 
-                    sb.AppendSummary("Create instance from buffer, reading the length prefix and slicing the data.", tabs, nameof(CompositeDefinition));
+                    sb.AppendSummary("Create instance from buffer, reading the length prefix and slicing the data. Returns an empty instance when the buffer is too small.", tabs, nameof(CompositeDefinition));
                     sb.AppendTabs(tabs).Append("public static ").Append(Name).Append(" Create(ReadOnlySpan<byte> buffer)");
                     sb.AppendLine();
                     sb.AppendLine("{", tabs++);
+                    sb.AppendTabs(tabs).Append("if (buffer.Length < ").Append(lengthSize.ToString()).AppendLine(")");
+                    sb.AppendTabs(tabs + 1).Append("return new ").Append(Name).Append("(0, ReadOnlySpan<").Append(arrayField.PrimitiveType).AppendLine(">.Empty);");
                     sb.AppendTabs(tabs).Append("var length = MemoryMarshal.AsRef<").Append(valueField.PrimitiveType).AppendLine(">(buffer);");
-                    sb.AppendTabs(tabs).Append("return new ").Append(Name).Append("(length, buffer.Slice(").Append(lengthSize.ToString()).Append(", (int)length));").AppendLine();
+                    sb.AppendTabs(tabs).Append("var dataLength = System.Math.Min((int)length, buffer.Length - ").Append(lengthSize.ToString()).AppendLine(");");
+                    sb.AppendTabs(tabs).Append("return new ").Append(Name).Append("(length, buffer.Slice(").Append(lengthSize.ToString()).Append(", dataLength));").AppendLine();
                     sb.AppendLine("}", --tabs);
 
                     sb.AppendSummary("Total wire size of this variable-length segment (length prefix + data).", tabs, nameof(CompositeDefinition));

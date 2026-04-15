@@ -684,6 +684,68 @@ namespace SbeCodeGenerator.Tests
         }
 
         [Fact]
+        public void Generate_RefStruct_CreateMethodHandlesEmptyBuffer()
+        {
+            // Arrange - Create method should guard against empty buffers (issue #142)
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='VarString8' description='Variable length UTF-8 string'>
+                            <type name='length' primitiveType='uint8'/>
+                            <type name='varData' length='0' primitiveType='uint8' characterEncoding='UTF-8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("VarString8"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify bounds check for empty buffer
+            Assert.Contains("if (buffer.Length < 1)", compositeResult.content);
+            Assert.Contains("return new VarString8(0, ReadOnlySpan<byte>.Empty);", compositeResult.content);
+            
+            // Verify data length clamping for truncated buffers
+            Assert.Contains("System.Math.Min((int)length, buffer.Length - 1)", compositeResult.content);
+        }
+
+        [Fact]
+        public void Generate_RefStruct_CreateMethodHandlesEmptyBuffer_UInt16Length()
+        {
+            // Arrange - Verify bounds check uses correct length prefix size for ushort
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <composite name='VarString16' description='Variable length UTF-8 string with 16-bit length'>
+                            <type name='length' primitiveType='uint16'/>
+                            <type name='varData' length='0' primitiveType='uint8' characterEncoding='UTF-8'/>
+                        </composite>
+                    </types>
+                </messageSchema>");
+
+            // Act
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext));
+
+            // Assert
+            var resultList = results.ToList();
+            var compositeResult = resultList.FirstOrDefault(r => r.name.Contains("VarString16"));
+            Assert.NotEqual(default, compositeResult);
+            
+            // Verify bounds check uses correct length prefix size (2 bytes for ushort)
+            Assert.Contains("if (buffer.Length < 2)", compositeResult.content);
+            Assert.Contains("return new VarString16(0, ReadOnlySpan<byte>.Empty);", compositeResult.content);
+            Assert.Contains("System.Math.Min((int)length, buffer.Length - 2)", compositeResult.content);
+        }
+
+        [Fact]
         public void Generate_BlittableComposite_RemainsUnchanged()
         {
             // Arrange - Blittable composites should NOT be readonly ref structs

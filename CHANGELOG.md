@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.2] - 2026-04-15
 
 ### Fixed
+- **VarData composite `Create` throws on empty buffer** (#142): Added bounds check in generated `Create` method for variable-length composites (e.g., `TextEncoding`, `VarString8`). Previously, `MemoryMarshal.AsRef` threw `ArgumentOutOfRangeException` when `reader.Remaining` was empty. Now returns an empty instance when the buffer is too small for the length prefix, and clamps data length when the buffer is truncated.
 - **Remaining CS8656 on optional type Value property** (#139): Added `readonly` modifier to `Value` getter in `OptionalTypeDefinition`, fixing 4 remaining CS8656 errors on `LocalMktDateOptional` and `LocalMktDate32Optional`.
 
 ### Changed
