@@ -58,9 +58,10 @@ namespace SbeSourceGenerator
 
             if (isStructType)
             {
-                sb.AppendTabs(tabs).AppendLine("[System.Diagnostics.CodeAnalysis.UnscopedRef]");
-                sb.AppendTabs(tabs).Append("public ref ").Append(declaredType).Append(" ").Append(name)
-                    .Append(" => ref ").Append(fieldName).AppendLine(";");
+                sb.AppendTabs(tabs).Append("public ").Append(declaredType).Append(" ").Append(name)
+                    .Append(" { readonly get => ").Append(fieldName)
+                    .Append("; set => ").Append(fieldName).Append(" = value; }")
+                    .AppendLine();
                 return;
             }
 

@@ -741,8 +741,7 @@ namespace SbeCodeGenerator.Tests
             Assert.NotEqual(default, engineResult);
             // Should embed Booster as a field
             Assert.Contains("private Booster booster;", engineResult.content);
-            Assert.Contains("[System.Diagnostics.CodeAnalysis.UnscopedRef]", engineResult.content);
-            Assert.Contains("public ref Booster Booster => ref booster;", engineResult.content);
+            Assert.Contains("public Booster Booster { readonly get => booster; set => booster = value; }", engineResult.content);
             // Engine should be blittable (all fields fixed-size)
             Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 1)]", engineResult.content);
             // MESSAGE_SIZE should include Booster size (1 char + 2 uint16 = 3) + capacity(2) + numCylinders(1) = 6
@@ -805,8 +804,7 @@ namespace SbeCodeGenerator.Tests
             var outerResult = results.FirstOrDefault(r => r.name.Contains("Outer") && !r.name.Contains("Inner"));
             Assert.NotEqual(default, outerResult);
             Assert.Contains("private Inner inner;", outerResult.content);
-            Assert.Contains("[System.Diagnostics.CodeAnalysis.UnscopedRef]", outerResult.content);
-            Assert.Contains("public ref Inner Inner => ref inner;", outerResult.content);
+            Assert.Contains("public Inner Inner { readonly get => inner; set => inner = value; }", outerResult.content);
             // Outer size: uint32(4) + Inner(3) = 7
             Assert.Contains("MESSAGE_SIZE = 7;", outerResult.content);
         }

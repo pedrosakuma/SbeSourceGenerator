@@ -85,8 +85,9 @@ namespace SbeCodeGenerator.IntegrationTests
             inst.InstrumentId = 12345;
 
             // Write ISIN code into the Isin field
-            var isinBytes = Encoding.Latin1.GetBytes("US0378331005");
-            isinBytes.CopyTo(MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref inst.Isin, 1)).Slice(0, 12));
+            IsinCode isin = default;
+            Encoding.Latin1.GetBytes("US0378331005").CopyTo(MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref isin, 1)).Slice(0, 12));
+            inst.Isin = isin;
 
             Assert.True(Instrument.TryParse(buffer, out var parsed, out _));
             Assert.Equal(12345L, parsed.InstrumentId);
@@ -145,8 +146,8 @@ namespace SbeCodeGenerator.IntegrationTests
             ref var trade = ref MemoryMarshal.AsRef<TradeData>(buffer);
 
             trade.TradeId = 999L;
-            trade.Instrument.InstrumentId = 42L;
-            trade.Price.Mantissa = 15000000L;
+            trade.Instrument = new Instrument { InstrumentId = 42L };
+            trade.Price = new DecimalEncoding { Mantissa = 15000000L };
             trade.Quantity = 100L;
             trade.Status = StatusCode.Filled;
             trade.Flags = TradingFlags.Regular | TradingFlags.DarkPool;
