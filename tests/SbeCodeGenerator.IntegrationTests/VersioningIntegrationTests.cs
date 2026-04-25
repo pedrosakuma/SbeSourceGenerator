@@ -39,20 +39,27 @@ namespace SbeCodeGenerator.IntegrationTests
         }
 
         [Fact]
-        public void V0Type_HasOnlyBaseFields()
+        public void V0Type_IsWidestStruct_IncludesAllSinceVersionFields()
         {
-            // V0 should have only orderId and price (16 bytes)
-            Assert.Equal(16, V0.EvolvingOrderData.MESSAGE_SIZE);
-            
-            // Verify we can create and use V0 type
+            // Issue #143/#149: the unsuffixed (V0-namespace) struct is the widest variant —
+            // it includes every field added across the schema's version history (orderId + price
+            // + quantity + side + slack = 25 bytes), so consumers can read everything a current
+            // producer would have written. The narrow V0 layout is still available via the
+            // {Msg}VersionMap + V1/V2 namespaces.
+            Assert.Equal(25, V0.EvolvingOrderData.MESSAGE_SIZE);
+
             Span<byte> buffer = stackalloc byte[V0.EvolvingOrderData.MESSAGE_SIZE];
             ref V0.EvolvingOrderData message = ref MemoryMarshal.AsRef<V0.EvolvingOrderData>(buffer);
-            
+
             message.OrderId = 100;
             message.Price = 9950;
-            
+            message.Quantity = 50;
+            message.Side = 1;
+
             Assert.Equal(100, message.OrderId.Value);
             Assert.Equal(9950, message.Price.Value);
+            Assert.Equal(50, message.Quantity);
+            Assert.Equal(1, message.Side);
         }
 
         [Fact]

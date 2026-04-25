@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-04-25
+
+### Fixed
+- **Unsuffixed `{Message}Data` alias collapsed to baseline V0 instead of widest version** (#149): The `effectiveVersion` widening logic introduced in v1.1.4 (#143) was inadvertently dropped while wiring the per-version blockLength compute for the new `{Msg}VersionMap` (#146). Restored: the unsuffixed canonical struct again includes every field added across the schema's version history (matches the natural reader expectation and v1.1.4 behavior). The per-version `{Msg}V{N}Data` aliases and the `{Msg}VersionMap` entries continue to use each version's own blockLength.
+
 ## [1.2.0] - 2026-04-25
 
 ### Added

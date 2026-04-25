@@ -31,7 +31,17 @@ namespace SbeSourceGenerator.Generators
                 foreach (var version in versions)
                 {
                     var versionNamespace = GetVersionNamespace(baseNamespace, ns, version);
-                    var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, version, sourceContext, context);
+
+                    // For the canonical/unsuffixed struct (version 0 file), include all fields up to the
+                    // schema version so the unsuffixed alias is the widest struct, matching #143 and the
+                    // natural reader expectation ("give me everything the schema can tell me about this
+                    // message"). The per-version blockLength used by the VersionMap is computed below
+                    // using each version's *own* field set, independently.
+                    int effectiveVersion = version;
+                    if (version == 0 && versions.Count > 1)
+                        effectiveVersion = schemaVersion >= 0 ? schemaVersion : versions[versions.Count - 1];
+
+                    var fieldsForVersion = GetFieldsForVersion(messageDto.Fields, effectiveVersion, sourceContext, context);
 
                     string headerTypeName = "MessageHeader";
                     if (context.GeneratedTypeNames.TryGetValue(context.HeaderType, out var resolvedHeaderName))
@@ -42,17 +52,17 @@ namespace SbeSourceGenerator.Generators
                         ns,
                         generatedMessageName,
                         messageDto.Id,
-                        $"{messageDto.Description} (Version {version})",
+                        $"{messageDto.Description} (Version {effectiveVersion})",
                         messageDto.SemanticType,
                         messageDto.Deprecated,
                         fieldsForVersion,
                         BuildConstants(messageDto.Constants, context),
                         BuildGroups(messageDto.Groups, versionNamespace, context, sourceContext),
-                        GetDataForVersion(messageDto.Data, version, context),
+                        GetDataForVersion(messageDto.Data, effectiveVersion, context),
                         messageDto.BlockLength,
                         context.EndianConversion,
                         schema.Id,
-                        version.ToString(),
+                        effectiveVersion.ToString(),
                         headerTypeName
                     );
                     int estimatedCapacity = 2048 + fieldsForVersion.Count * 256
@@ -66,7 +76,7 @@ namespace SbeSourceGenerator.Generators
                     yield return (fileName, sb.ToString());
 
                     // Compute this version's wire BLOCK_LENGTH using the version's *own* field set
-                    // (sinceVersion <= version), NOT the V0 effectiveVersion override. This is what
+                    // (sinceVersion <= version), NOT the widened effectiveVersion above. This is what
                     // a producer at that version would have written on the wire — the basis for the version map.
                     int blockLength;
                     if (!string.IsNullOrEmpty(messageDto.BlockLength)
