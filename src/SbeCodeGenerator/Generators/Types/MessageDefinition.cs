@@ -663,7 +663,146 @@ namespace SbeSourceGenerator
                 AppendReadGroups(sb, tabs);
             }
 
+            // Issue #156: foreach-style enumerators for top-level groups (zero-alloc, no closure).
+            // Only emitted when ALL top-level groups are simple (no nested groups, no group-level varData),
+            // because computing offsets of later groups requires cheap O(1) skips.
+            if (HasSimpleTopLevelGroupsForEnumerator)
+            {
+                AppendGroupEnumerators(sb, tabs);
+            }
+
             sb.AppendLine("}", --tabs);
+        }
+
+        private bool HasSimpleTopLevelGroupsForEnumerator
+        {
+            get
+            {
+                if (TypedGroups.Count == 0) return false;
+                foreach (var g in TypedGroups)
+                {
+                    if (g.HasGroupData || g.HasNestedGroups) return false;
+                }
+                return true;
+            }
+        }
+
+        private void AppendGroupEnumerators(StringBuilder sb, int tabs)
+        {
+            // Per-group: emit a static skip helper + property + nested ref struct enumerator.
+            // Each enumerator is independent: it reads its own dimension prefix on first MoveNext.
+            // The property computes the start offset by chaining static skip helpers across prior groups.
+            for (int idx = 0; idx < TypedGroups.Count; idx++)
+            {
+                var group = TypedGroups[idx];
+                var entryType = $"{Name}Data.{group.Name}Data";
+                var dimType = group.DimensionType;
+                var enumName = $"{group.Name}Enumerator";
+
+                // Static skip helper: consumes dimension + numInGroup * blockLength bytes.
+                sb.AppendLine("", tabs);
+                sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+                sb.AppendTabs(tabs).Append("private static int Skip").Append(group.Name)
+                    .AppendLine("(ReadOnlySpan<byte> buffer, int offset)");
+                sb.AppendLine("{", tabs++);
+                sb.AppendTabs(tabs).Append("if ((uint)offset > (uint)(buffer.Length - ").Append(dimType)
+                    .AppendLine(".MESSAGE_SIZE)) return buffer.Length;");
+                sb.AppendTabs(tabs).Append("ref readonly var dim = ref Unsafe.As<byte, ").Append(dimType)
+                    .AppendLine(">(ref MemoryMarshal.GetReference(buffer.Slice(offset)));");
+                sb.AppendTabs(tabs).Append("return offset + ").Append(dimType)
+                    .AppendLine(".MESSAGE_SIZE + (int)(dim.NumInGroup * dim.BlockLength);");
+                sb.AppendLine("}", --tabs);
+
+                // Property — builds the start offset by skipping all prior simple groups.
+                sb.AppendLine("", tabs);
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendTabs(tabs).Append("/// Iterates the <c>").Append(group.Name)
+                    .AppendLine("</c> group entries with zero allocation.");
+                sb.AppendLine("/// Each access returns a fresh enumerator; iterate with <c>foreach</c>.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendTabs(tabs).Append("public ").Append(enumName).Append(" ").Append(group.Name).Append(" => new ")
+                    .Append(enumName).Append("(_buffer, ");
+                if (idx == 0)
+                {
+                    sb.Append("_blockLength");
+                }
+                else
+                {
+                    // Chain skip calls: Skip{prev}(buffer, ... Skip{first}(buffer, _blockLength) ...)
+                    for (int j = 0; j < idx; j++)
+                        sb.Append("Skip").Append(TypedGroups[j].Name).Append("(_buffer, ");
+                    sb.Append("_blockLength");
+                    for (int j = 0; j < idx; j++)
+                        sb.Append(")");
+                }
+                sb.AppendLine(");");
+
+                // Nested enumerator ref struct.
+                sb.AppendLine("", tabs);
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendTabs(tabs).Append("/// Zero-allocation enumerator for the <c>").Append(group.Name)
+                    .AppendLine("</c> group.");
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendTabs(tabs).Append("public ref struct ").Append(enumName).AppendLine();
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("private readonly ReadOnlySpan<byte> _buffer;", tabs);
+                sb.AppendLine("private int _offset;", tabs);
+                sb.AppendLine("private int _remaining;", tabs);
+                sb.AppendLine("private int _entryBlockLength;", tabs);
+                sb.AppendLine("private bool _initialized;", tabs);
+                sb.AppendLine("", tabs);
+
+                sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+                sb.AppendTabs(tabs).Append("internal ").Append(enumName)
+                    .AppendLine("(ReadOnlySpan<byte> buffer, int startOffset)");
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("_buffer = buffer;", tabs);
+                sb.AppendLine("_offset = startOffset;", tabs);
+                sb.AppendLine("_remaining = 0;", tabs);
+                sb.AppendLine("_entryBlockLength = 0;", tabs);
+                sb.AppendLine("_initialized = false;", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("", tabs);
+
+                sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+                sb.AppendTabs(tabs).Append("public ").Append(enumName).AppendLine(" GetEnumerator() => this;");
+                sb.AppendLine("", tabs);
+
+                // Current — returns ref readonly into buffer (zero-copy).
+                sb.AppendTabs(tabs).Append("public ref readonly ").Append(entryType).AppendLine(" Current");
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+                sb.AppendTabs(tabs).Append("get => ref Unsafe.As<byte, ").Append(entryType)
+                    .AppendLine(">(ref MemoryMarshal.GetReference(_buffer.Slice(_offset)));");
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("", tabs);
+
+                // MoveNext — reads dimension on first call, advances cursor on subsequent calls.
+                sb.AppendLine("public bool MoveNext()", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("if (!_initialized)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("_initialized = true;", tabs);
+                sb.AppendTabs(tabs).Append("if ((uint)_offset > (uint)(_buffer.Length - ").Append(dimType)
+                    .AppendLine(".MESSAGE_SIZE)) return false;");
+                sb.AppendTabs(tabs).Append("ref readonly var dim = ref Unsafe.As<byte, ").Append(dimType)
+                    .AppendLine(">(ref MemoryMarshal.GetReference(_buffer.Slice(_offset)));");
+                sb.AppendLine("_entryBlockLength = (int)dim.BlockLength;", tabs);
+                sb.AppendLine("_remaining = (int)dim.NumInGroup;", tabs);
+                sb.AppendTabs(tabs).Append("_offset += ").Append(dimType).AppendLine(".MESSAGE_SIZE;");
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("else", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("_offset += _entryBlockLength;", tabs);
+                sb.AppendLine("}", --tabs);
+                sb.AppendLine("if (_remaining <= 0) return false;", tabs);
+                sb.AppendLine("if ((uint)_offset > (uint)(_buffer.Length - _entryBlockLength)) return false;", tabs);
+                sb.AppendLine("_remaining--;", tabs);
+                sb.AppendLine("return true;", tabs);
+                sb.AppendLine("}", --tabs);
+
+                sb.AppendLine("}", --tabs);
+            }
         }
 
         private void AppendReadGroups(StringBuilder sb, int tabs)

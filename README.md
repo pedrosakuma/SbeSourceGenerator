@@ -59,12 +59,17 @@ See the [v1.2.0 entry in CHANGELOG.md](./CHANGELOG.md) for the full list.
 
 ## What's New in v1.0.0
 
-**Zero-copy `MessageDataReader`** — `TryParse` returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`), process groups via `reader.ReadGroups(...)`, and (since v1.3.0) recover the raw wire bytes via `reader.Buffer` / `reader.Block` for replay/forwarding scenarios — no re-parse needed.
+**Zero-copy `MessageDataReader`** — `TryParse` returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`), iterate top-level groups via `foreach` (since v1.5.0, no closure alloc) or `reader.ReadGroups(...)`, and recover the raw wire bytes via `reader.Buffer` / `reader.Block` (since v1.3.0) for replay/forwarding scenarios.
 
 ```csharp
 if (CarData.TryParse(buffer, out var car))
 {
     Console.WriteLine(car.Data.SerialNumber);  // zero-copy field access
+
+    // v1.5.0: foreach-style enumerators on simple top-level groups (zero alloc, no closures).
+    foreach (ref readonly var fuel in car.FuelFigures) { /* ... */ }
+
+    // For groups with nested groups or group-level varData, ReadGroups remains:
     car.ReadGroups(
         (in FuelFiguresData fuel) => { /* ... */ },
         (in PerformanceFiguresData perf, AccelerationData.AccelerationHandler onAccel) => { /* ... */ });

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-04-25
+
+### Added — DevEx P0 features
+
+- **Foreach-style enumerators on `{Msg}DataReader` for top-level groups** (#156): Each top-level group now also exposes a property returning a `ref struct` enumerator usable with `foreach`. Zero allocation, no closure capture, `ref readonly Current` for zero-copy access:
+  ```csharp
+  if (OrderBookData.TryParse(buffer, out var reader))
+  {
+      foreach (ref readonly var bid in reader.Bids) { /* ... */ }
+      foreach (ref readonly var ask in reader.Asks) { /* ... */ }
+  }
+  ```
+  The enumerators are **independent per-group views** — each access computes its own start offset by skipping prior groups, so out-of-order access (`Asks` before `Bids`), early `break`, and repeated iteration are all safe and don't corrupt one another. `ReadGroups` continues to work unchanged (idempotent) for messages that need group-level varData or nested groups.
+
+  **Gating**: emitted only when *all* top-level groups are simple (no nested groups, no group-level varData). Complex messages keep `ReadGroups` only.
+
+### Performance
+- The new enumerator API is allocation-free and aggressively inlined. `MoveNext` is a small loop with a single dimension read; `Current` is a `ref readonly` into the original buffer. Designed to JIT down to the same shape as a hand-written for-loop over `MemoryMarshal.AsRef`.
+
 ## [1.4.0] - 2026-04-25
 
 ### Added — DevEx P0 features
