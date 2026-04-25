@@ -246,10 +246,22 @@ ProcessAsks(asks);
 
 ### Streaming Group Processing
 
-Process repeating groups without materializing collections:
+For **simple top-level groups** (no nested groups, no group-level varData), prefer the v1.5.0 `foreach` enumerator API — it's allocation-free **and** avoids the closure capture problem entirely:
 
 ```csharp
-// ✅ Good: Streaming processing
+// ✅ Best (v1.5.0+): foreach — no closure allocation, supports break, ref readonly access
+long totalVolume = 0;
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    foreach (ref readonly var bid in reader.Bids) totalVolume += bid.Quantity;
+    foreach (ref readonly var ask in reader.Asks) totalVolume += ask.Quantity;
+}
+```
+
+For messages with **nested groups or group-level varData**, the foreach API is not generated — fall back to `ReadGroups`:
+
+```csharp
+// ✅ Good: Streaming processing via callbacks (works for any message)
 long totalVolume = 0;
 if (MarketDataData.TryParse(buffer, out var reader))
 {
@@ -274,7 +286,22 @@ long totalVolume = allBids.Sum(b => b.Quantity) + allAsks.Sum(a => a.Quantity);
 
 ### Early Exit
 
-Note: The `ReadGroups` callbacks use `void`-returning `in` delegates, so early exit must use external state:
+For **simple top-level groups** (v1.5.0+), `foreach` supports natural `break` — independent per-group enumerators mean breaking out of one group does NOT corrupt later groups:
+
+```csharp
+// ✅ Best: foreach with break — zero alloc, intuitive
+if (MarketDataData.TryParse(buffer, out var reader))
+{
+    foreach (ref readonly var bid in reader.Bids)
+    {
+        if (bid.Quantity > 1_000_000) break;  // Asks group remains intact
+        Process(in bid);
+    }
+    foreach (ref readonly var ask in reader.Asks) Process(in ask);
+}
+```
+
+For messages requiring `ReadGroups`: callbacks use `void`-returning `in` delegates, so early exit must use external state:
 
 ```csharp
 // ✅ Good: Early exit via external flag
@@ -434,20 +461,29 @@ void ProcessTrade(in Trade trade)
 
 ### 5. Closure Allocations
 
+**The biggest source of accidental allocations on the read path.** Lambdas passed to `ReadGroups` that capture locals from the enclosing scope force the compiler to emit a heap-allocated display class — one allocation per `ReadGroups` call.
+
 ```csharp
-// ❌ Bad: Closure allocation
+// ❌ Bad: Closure allocation (display class) per call
 int threshold = 100;
 reader.ReadGroups(
-    (in BidData bid) => { _ = bid.Quantity > threshold; }, // Closure - allocation
+    (in BidData bid) => { _ = bid.Quantity > threshold; },
     (in AskData ask) => { }
 );
 
-// ✅ Good: Use local function or avoid capture
-bool ProcessBid(BidData bid, int threshold) 
+// ✅ Best (v1.5.0+, simple groups): foreach has no closure to capture
+int threshold = 100;
+foreach (ref readonly var bid in reader.Bids)
+{
+    _ = bid.Quantity > threshold;  // closes over local naturally, no alloc
+}
+
+// ✅ Good fallback (complex groups): use a local function or non-capturing lambda
+static bool ProcessBid(in BidData bid, int threshold)
     => bid.Quantity > threshold;
 
 reader.ReadGroups(
-    (in BidData bid) => ProcessBid(bid, 100),
+    (in BidData bid) => ProcessBid(in bid, 100),
     (in AskData ask) => { }
 );
 ```
