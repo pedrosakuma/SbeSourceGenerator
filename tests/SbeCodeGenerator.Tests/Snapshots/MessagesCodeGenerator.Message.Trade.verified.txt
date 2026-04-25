@@ -5,24 +5,20 @@ using System.Runtime.InteropServices;
 namespace TestNamespace.V0;
 /// <summary>
 /// Trade message (Version 0)
-/// (MessageDefinition)
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Pack = 1)]
 public partial struct TradeData
 {
 	/// <summary>
 	/// Message Id
-	/// (ConstantMessageFieldDefinition)
 	/// </summary>
 	public const int MESSAGE_ID = 1;
 	/// <summary>
 	/// Message Size
-	/// (ConstantMessageFieldDefinition)
 	/// </summary>
 	public const int MESSAGE_SIZE = 25;
 	/// <summary>
 	/// Block length for wire protocol
-	/// (ConstantMessageFieldDefinition)
 	/// </summary>
 	public const int BLOCK_LENGTH = MESSAGE_SIZE;
 	/// <summary>

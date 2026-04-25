@@ -51,7 +51,7 @@ namespace SbeSourceGenerator
         public bool HasNestedGroups => NestedGroups != null && NestedGroups.Count > 0;
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendStructDefinition(tabs, Description, Name, nameof(GroupDefinition));
+            sb.AppendStructDefinition(tabs, Description, Name);
             if (EndianConversion != EndianConversion.None)
                 sb.AppendUsings(tabs, "System.Buffers.Binary");
             sb.AppendLine("{", tabs++);

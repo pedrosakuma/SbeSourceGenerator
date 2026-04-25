@@ -12,20 +12,49 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Message encoding/decoding with proper field layout
 - Optional fields with null value semantics
 - Composite types (nested composites, `<ref>` elements)
-- Enumerations and bit sets (flag enums)
+- Enumerations and bit sets (flag enums) with `Has(flag)` / `Is{Flag}()` extension helpers
 - Repeating groups with nested groups (unlimited depth, ancestor context callbacks with `in`)
 - Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
+- Derived numeric constants (`MinValue`/`MaxValue` on type wrappers; `Decimals`/`Multiplier`/`MultiplierDecimal`/`Divisor` on decimal composites)
 - Automatic and explicit field offset calculation
 - Byte order handling (little-endian native, big-endian with `readonly` property-based conversion)
-- Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data)
+- Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data) with per-message `{Msg}VersionMap` for `blockLength → version` lookup
 - Schema evolution forward/backward compatibility via `TryReadBlock<T>`
 - Cross-schema coexistence (multiple schemas with isolated namespaces)
 - Custom `headerType` support
 - `characterEncoding` attribute (UTF-8, Latin1)
 - Explicit `blockLength` on messages
 - Validation constraints (min/max ranges)
+- Zero-cost `SbeDispatcher` + `ISbeMessageHandler` for devirtualized message routing
 - Comprehensive build-time diagnostics (SBE001–SBE014)
+
+## What's New in v1.2.0
+
+Four additive consumer-ergonomics features — all emit-time only, zero impact on the encode/decode hot path:
+
+```csharp
+// #144: inlinable bit-test helpers on [Flags] sets
+if (order.Flags.IsOddLot() && order.Flags.Has(TradingFlags.PreMarket | TradingFlags.AfterHours)) { ... }
+
+// #145: derived constants on decimal composites
+decimal price = mantissa * Price.MultiplierDecimal;          // single source of truth for scale
+string formatted = price.ToString($"F{Price.Decimals}");
+
+// #146: blockLength → version lookup for evolved messages
+if (EvolvingOrderVersionMap.TryGetVersion(header.BlockLength, out int version)) { ... }
+
+// #147: zero-cost devirtualized dispatch (struct handler is JIT-specialized)
+struct MyHandler : ISbeMessageHandler {
+    public void OnTrade(in TradeDataReader r, int blockLength, int version) { /* hot path */ }
+    /* ... OnXxx for each message ... */
+    public void OnUnknownMessage(int templateId, int blockLength, int version, ReadOnlySpan<byte> payload) { }
+}
+var handler = new MyHandler();
+SbeDispatcher.Dispatch(buffer, ref handler);
+```
+
+See the [v1.2.0 entry in CHANGELOG.md](./CHANGELOG.md) for the full list.
 
 ## What's New in v1.0.0
 
@@ -259,7 +288,11 @@ SBESourceGenerator (Orchestrator)
     │   └── Types
     │
     ├── MessagesCodeGenerator
-    │   └── Messages with Groups & parsing helpers
+    │   └── Messages with Groups, parsing helpers, and {Msg}VersionMap
+    │
+    ├── DispatcherGenerator
+    │   ├── ISbeMessageHandler (per-schema interface)
+    │   └── SbeDispatcher (struct-generic zero-cost dispatch)
     │
     └── UtilitiesCodeGenerator
         ├── SpanReader

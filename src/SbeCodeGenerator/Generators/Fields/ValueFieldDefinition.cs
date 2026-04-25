@@ -8,7 +8,7 @@ namespace SbeSourceGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
-            sb.AppendSummary(Description, tabs, nameof(ValueFieldDefinition));
+            sb.AppendSummary(Description, tabs);
             EndianFieldHelper.AppendField(sb, tabs, PrimitiveType, Name, EndianConversion);
         }
     }

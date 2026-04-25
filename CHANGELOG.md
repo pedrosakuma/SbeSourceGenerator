@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-25
+
+### Added
+- **Inlinable extension methods for `[Flags]` set enums** (#144): Generated set types now ship a sibling `{Set}Extensions` static class with `Has(flag)` plus per-choice `Is{Flag}()` predicates, all marked `[MethodImpl(AggressiveInlining)]`. Lets call sites read like `flags.IsOddLot()` without losing the `(v & X) != 0` codegen.
+- **Derived numeric constants for primitive type wrappers and decimal composites** (#145): Wrapped primitive types now expose `MinValue` / `MaxValue` constants when declared on the schema. Decimal composites (mantissa + constant exponent) additionally expose `Decimals`, `Multiplier` (double), `MultiplierDecimal`, and `Divisor` (long) — all `const`, single source of truth for formatting and scaling.
+- **Per-message `{Msg}VersionMap`** (#146): Messages with multiple versions now generate a static class mapping each version's wire `blockLength` to its version number via a small `(int BlockLength, int Version)[]` array and an aggressively-inlined `TryGetVersion`.
+- **Zero-cost `SbeDispatcher`** (#147): Each schema generates an `ISbeMessageHandler` interface (one `On{Msg}` method per template) and a `SbeDispatcher.Dispatch<T>(buffer, ref handler) where T : struct, ISbeMessageHandler` static method. The struct constraint lets the JIT specialize and devirtualize, so dispatch compiles down to a header-parse plus a `switch` on `templateId`.
+
+### Performance
+- All four additions are emit-time only and do not alter generated hot-path code; encode / decode / round-trip benchmarks remain within noise of the prior release.
+
+### Changed
+- **Generated XML doc summaries no longer include the generator class origin**: removed the trailing `/// (TypeDefinition)` / `/// (CompositeDefinition)` / etc. lines that leaked the source generator's internal class names into user-facing IntelliSense.
+
 ## [1.1.2] - 2026-04-15
 
 ### Fixed

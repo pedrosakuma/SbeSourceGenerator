@@ -15,7 +15,7 @@ namespace SbeSourceGenerator
             else
                 sb.AppendUsings(tabs, "System.Runtime.InteropServices");
             sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-            sb.AppendSummary(Description, tabs, nameof(CompositeDefinition));
+            sb.AppendSummary(Description, tabs);
 
             if (blittable)
             {
@@ -51,12 +51,12 @@ namespace SbeSourceGenerator
                     // For ref structs, manually add readonly fields
                     if (field is ValueFieldDefinition vfd)
                     {
-                        sb.AppendSummary(vfd.Description, tabs, nameof(ValueFieldDefinition));
+                        sb.AppendSummary(vfd.Description, tabs);
                         sb.AppendTabs(tabs).Append("public readonly ").Append(vfd.PrimitiveType).Append(" ").Append(vfd.Name).AppendLine(";");
                     }
                     else if (field is ArrayFieldDefinition afd)
                     {
-                        sb.AppendSummary(afd.Description, tabs, nameof(ArrayFieldDefinition));
+                        sb.AppendSummary(afd.Description, tabs);
                         sb.AppendTabs(tabs).Append("public readonly ReadOnlySpan<").Append(afd.PrimitiveType).Append("> ").Append(afd.Name).AppendLine(";");
                     }
                     else
@@ -79,7 +79,7 @@ namespace SbeSourceGenerator
                 {
                     int lengthSize = TypesCatalog.GetPrimitiveLength(valueField.PrimitiveType);
 
-                    sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs, nameof(CompositeDefinition));
+                    sb.AppendSummary($"Initializes a new instance of {Name} with the specified values.", tabs);
                     sb.AppendTabs(tabs).Append("public ").Append(Name).Append("(").Append(valueField.PrimitiveType).Append(" ").Append(valueField.Name.FirstCharToLower()).Append(", ReadOnlySpan<").Append(arrayField.PrimitiveType).Append("> ").Append(arrayField.Name.FirstCharToLower()).AppendLine(")");
                     sb.AppendLine("{", tabs++);
                     sb.AppendTabs(tabs).Append(valueField.Name).Append(" = ").Append(valueField.Name.FirstCharToLower()).AppendLine(";");
@@ -87,7 +87,7 @@ namespace SbeSourceGenerator
                     sb.AppendLine("}", --tabs);
                     sb.AppendLine("", tabs);
 
-                    sb.AppendSummary("Create instance from buffer, reading the length prefix and slicing the data.", tabs, nameof(CompositeDefinition));
+                    sb.AppendSummary("Create instance from buffer, reading the length prefix and slicing the data.", tabs);
                     sb.AppendTabs(tabs).Append("public static ").Append(Name).Append(" Create(ReadOnlySpan<byte> buffer)");
                     sb.AppendLine();
                     sb.AppendLine("{", tabs++);
@@ -95,11 +95,11 @@ namespace SbeSourceGenerator
                     sb.AppendTabs(tabs).Append("return new ").Append(Name).Append("(length, buffer.Slice(").Append(lengthSize.ToString()).Append(", (int)length));").AppendLine();
                     sb.AppendLine("}", --tabs);
 
-                    sb.AppendSummary("Total wire size of this variable-length segment (length prefix + data).", tabs, nameof(CompositeDefinition));
+                    sb.AppendSummary("Total wire size of this variable-length segment (length prefix + data).", tabs);
                     sb.AppendTabs(tabs).Append("public int TotalLength => ").Append(lengthSize.ToString()).Append(" + (int)").Append(valueField.Name).AppendLine(";");
                 }
 
-                sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs, nameof(CompositeDefinition));
+                sb.AppendSummary("Callback delegate used on ConsumeVariableLengthSegments", tabs);
                 sb.AppendTabs(tabs).Append("public delegate void Callback(").Append(Name).AppendLine(" data);");
             }
             else

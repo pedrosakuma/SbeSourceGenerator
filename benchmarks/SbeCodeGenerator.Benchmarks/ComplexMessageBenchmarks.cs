@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Benchmark.Messages;
+using Benchmark.Messages.V0;
 
 namespace SbeCodeGenerator.Benchmarks;
 
@@ -13,11 +13,11 @@ public class ComplexMessageBenchmarks
 {
     private byte[] _buffer = null!;
     private ComplexMarketDataData _complexData;
-    private BidsData_[] _bids = null!;
-    private AsksData_[] _asks = null!;
-    private TradesData[] _trades = null!;
-    
-    private const int BufferSize = 128 * 1024; // 128KB buffer
+    private ComplexMarketDataData.BidsData[] _bids = null!;
+    private ComplexMarketDataData.AsksData[] _asks = null!;
+    private ComplexMarketDataData.TradesData[] _trades = null!;
+
+    private const int BufferSize = 128 * 1024;
     private const int BidCount = 50;
     private const int AskCount = 50;
     private const int TradeCount = 20;
@@ -33,11 +33,10 @@ public class ComplexMessageBenchmarks
             Flags = 0xFF
         };
 
-        // Setup bids
-        _bids = new BidsData_[BidCount];
+        _bids = new ComplexMarketDataData.BidsData[BidCount];
         for (int i = 0; i < BidCount; i++)
         {
-            _bids[i] = new BidsData_
+            _bids[i] = new ComplexMarketDataData.BidsData
             {
                 Price = 1000000 - (i * 100),
                 Quantity = 100 + i,
@@ -45,11 +44,10 @@ public class ComplexMessageBenchmarks
             };
         }
 
-        // Setup asks
-        _asks = new AsksData_[AskCount];
+        _asks = new ComplexMarketDataData.AsksData[AskCount];
         for (int i = 0; i < AskCount; i++)
         {
-            _asks[i] = new AsksData_
+            _asks[i] = new ComplexMarketDataData.AsksData
             {
                 Price = 1010000 + (i * 100),
                 Quantity = 50 + i,
@@ -57,11 +55,10 @@ public class ComplexMessageBenchmarks
             };
         }
 
-        // Setup trades
-        _trades = new TradesData[TradeCount];
+        _trades = new ComplexMarketDataData.TradesData[TradeCount];
         for (int i = 0; i < TradeCount; i++)
         {
-            _trades[i] = new TradesData
+            _trades[i] = new ComplexMarketDataData.TradesData
             {
                 TradeId = (ulong)(1000000 + i),
                 Price = 1005000 + (i * 50),
@@ -74,34 +71,24 @@ public class ComplexMessageBenchmarks
     [Benchmark(Description = "Encode Complex Message")]
     public bool EncodeComplexMessage()
     {
-        _complexData.BeginEncoding(_buffer, out var writer);
-        ComplexMarketDataData.TryEncodeBids(ref writer, _bids);
-        ComplexMarketDataData.TryEncodeAsks(ref writer, _asks);
-        ComplexMarketDataData.TryEncodeTrades(ref writer, _trades);
-        return true;
+        return ComplexMarketDataData.TryEncode(_complexData, _buffer, _bids, _asks, _trades, out _);
     }
 
     [Benchmark(Description = "Decode Complex Message")]
     public int DecodeComplexMessage()
     {
-        // First encode
-        _complexData.BeginEncoding(_buffer, out var writer);
-        ComplexMarketDataData.TryEncodeBids(ref writer, _bids);
-        ComplexMarketDataData.TryEncodeAsks(ref writer, _asks);
-        ComplexMarketDataData.TryEncodeTrades(ref writer, _trades);
+        ComplexMarketDataData.TryEncode(_complexData, _buffer, _bids, _asks, _trades, out _);
 
-        // Then decode and count
         int bidCount = 0;
         int askCount = 0;
         int tradeCount = 0;
 
-        if (ComplexMarketDataData.TryParse(_buffer, out var decoded, out var variableData))
+        if (ComplexMarketDataData.TryParse(_buffer, out var reader))
         {
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
-                bid => bidCount++,
-                ask => askCount++,
-                trade => tradeCount++
+            reader.ReadGroups(
+                (in ComplexMarketDataData.BidsData _) => bidCount++,
+                (in ComplexMarketDataData.AsksData _) => askCount++,
+                (in ComplexMarketDataData.TradesData _) => tradeCount++
             );
         }
 
@@ -111,32 +98,26 @@ public class ComplexMessageBenchmarks
     [Benchmark(Description = "Round-trip Complex Message")]
     public bool RoundTripComplexMessage()
     {
-        // Encode
-        _complexData.BeginEncoding(_buffer, out var writer);
-        ComplexMarketDataData.TryEncodeBids(ref writer, _bids);
-        ComplexMarketDataData.TryEncodeAsks(ref writer, _asks);
-        ComplexMarketDataData.TryEncodeTrades(ref writer, _trades);
-
-        // Decode
-        if (!ComplexMarketDataData.TryParse(_buffer, out var decoded, out var variableData))
+        if (!ComplexMarketDataData.TryEncode(_complexData, _buffer, _bids, _asks, _trades, out _))
             return false;
 
-        // Verify basic fields
+        if (!ComplexMarketDataData.TryParse(_buffer, out var reader))
+            return false;
+
+        ref readonly var decoded = ref reader.Data;
         if (decoded.InstrumentId != _complexData.InstrumentId ||
             decoded.Timestamp != _complexData.Timestamp ||
             decoded.Flags != _complexData.Flags)
             return false;
 
-        // Count groups
         int bidCount = 0;
         int askCount = 0;
         int tradeCount = 0;
 
-        decoded.ConsumeVariableLengthSegments(
-            variableData,
-            bid => bidCount++,
-            ask => askCount++,
-            trade => tradeCount++
+        reader.ReadGroups(
+            (in ComplexMarketDataData.BidsData _) => bidCount++,
+            (in ComplexMarketDataData.AsksData _) => askCount++,
+            (in ComplexMarketDataData.TradesData _) => tradeCount++
         );
 
         return bidCount == BidCount && askCount == AskCount && tradeCount == TradeCount;

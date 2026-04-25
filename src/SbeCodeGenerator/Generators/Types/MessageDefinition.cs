@@ -50,7 +50,7 @@ namespace SbeSourceGenerator
             else
                 sb.AppendUsings(tabs, RuntimeNamespace, $"{RuntimeNamespace}.Runtime", "System.Runtime.CompilerServices");
 
-            sb.AppendStructDefinition(tabs, Description, Name, nameof(MessageDefinition), Namespace);
+            sb.AppendStructDefinition(tabs, Description, Name, Namespace);
 
             sb.AppendLine("{", tabs++);
             AppendMessageDefinitionConstants(sb, tabs);

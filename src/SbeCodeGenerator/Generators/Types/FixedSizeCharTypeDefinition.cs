@@ -16,7 +16,7 @@ namespace SbeSourceGenerator
             if (Length == 0)
             {
                 sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-                sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
+                sb.AppendSummary(Description, tabs);
                 sb.AppendTabs(tabs).Append("public struct ").Append(Name).AppendLine();
                 sb.AppendLine("{", tabs++);
                 sb.AppendTabs(tabs).AppendLine("public byte Value;");
@@ -25,7 +25,7 @@ namespace SbeSourceGenerator
             else
             {
                 sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-                sb.AppendSummary(Description, tabs, nameof(FixedSizeCharTypeDefinition));
+                sb.AppendSummary(Description, tabs);
                 sb.AppendTabs(tabs).Append("[System.Runtime.CompilerServices.InlineArray(").Append(Length).AppendLine(")]");
                 sb.AppendTabs(tabs).Append("public struct ").Append(Name).AppendLine();
                 sb.AppendLine("{", tabs++);

@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
+using Benchmark.Messages.V0.Runtime;
 
 namespace SbeCodeGenerator.Benchmarks
 {
@@ -35,7 +36,7 @@ namespace SbeCodeGenerator.Benchmarks
             public const int MESSAGE_SIZE = 16;
         }
 
-        private byte[] _buffer;
+        private byte[] _buffer = System.Array.Empty<byte>();
         private const int NumBids = 100;
         private const int NumAsks = 100;
 

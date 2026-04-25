@@ -152,7 +152,9 @@ namespace SbeSourceGenerator.Generators
                         typeDto.Description,
                         TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
-                        TypeResolverHelper.GetTypeLength(nativeType, context)
+                        TypeResolverHelper.GetTypeLength(nativeType, context),
+                        typeDto.MinValue,
+                        typeDto.MaxValue
                     )
                 };
                 if (generator is ConstantTypeDefinition)
@@ -455,8 +457,8 @@ namespace SbeSourceGenerator.Generators
 
         private static DecimalHelperDefinition? TryCreateDecimalHelper(string ns, string generatedName, SchemaCompositeDto compositeDto)
         {
-            SchemaFieldDto mantissaField = null;
-            SchemaFieldDto exponentField = null;
+            SchemaFieldDto? mantissaField = null;
+            SchemaFieldDto? exponentField = null;
 
             foreach (var field in compositeDto.Fields)
             {

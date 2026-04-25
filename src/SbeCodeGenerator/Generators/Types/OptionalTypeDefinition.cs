@@ -12,7 +12,7 @@ namespace SbeSourceGenerator
                 nullValue = TypesCatalog.GetNullValue(PrimitiveType);
             sb.AppendLine("#pragma warning disable CS0649", tabs);
             sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-            sb.AppendSummary(Description, tabs, nameof(OptionalTypeDefinition));
+            sb.AppendSummary(Description, tabs);
             sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
             sb.AppendLine("{", tabs++);
             NullableValueFieldDefinition.AppendNullConstant(sb, tabs, PrimitiveType, "ValueNullValue", nullValue);

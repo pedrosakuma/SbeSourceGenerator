@@ -366,7 +366,24 @@ public IEnumerable<(string name, string content)> Generate(
 **Generated Output Structure:**
 ```
 {namespace}\Messages\{MessageName}.cs
+{namespace}\Messages\{MessageName}VersionMap.cs   (only when message has multiple versions)
 ```
+
+### DispatcherGenerator
+
+**Responsibility**: Generate the per-schema zero-cost message dispatcher (Issue #147).
+
+**Handles:**
+- One `ISbeMessageHandler` interface per schema (one `On{Msg}` method per `<message>`, plus `OnUnknownMessage`)
+- One `SbeDispatcher` static class with a generic `Dispatch<T>(buffer, ref handler) where T : struct, ISbeMessageHandler` method
+- Body: parse `MessageHeader`, switch on `TemplateId`, call the matching handler method with a strongly-typed `{Msg}DataReader`
+
+**Why `struct, ISbeMessageHandler`**: the JIT generates a specialized version of `Dispatch<T>` for each handler type and devirtualizes every call. There is no virtual indirection at runtime — just a header parse and a `switch`.
+
+**Generated Output Structure:**
+```
+{namespace}\Dispatcher\ISbeMessageHandler.cs
+{namespace}\Dispatcher\SbeDispatcher.cs
 ```
 
 ### UtilitiesCodeGenerator

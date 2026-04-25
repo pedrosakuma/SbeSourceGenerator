@@ -13,7 +13,7 @@ namespace SbeSourceGenerator
             string getExpr = EndianFieldHelper.GetterExpression(PrimitiveType, fieldName, EndianConversion);
             string constantName = Name + "NullValue";
 
-            sb.AppendSummary(Description, tabs, nameof(NullableValueFieldDefinition));
+            sb.AppendSummary(Description, tabs);
             sb.AppendLine("#pragma warning disable CS0649", tabs);
             AppendNullConstant(sb, tabs, PrimitiveType, constantName, nullValue);
             sb.AppendTabs(tabs).Append("private ").Append(PrimitiveType).Append(" ").Append(fieldName).AppendLine(";");

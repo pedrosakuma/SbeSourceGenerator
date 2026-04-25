@@ -2,7 +2,6 @@
 namespace TestNamespace;
 /// <summary>
 /// Template ID and length of message root
-/// (CompositeDefinition)
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public partial struct MessageHeader
@@ -22,25 +21,21 @@ public partial struct MessageHeader
 	}
 	/// <summary>
 	/// 
-	/// (ValueFieldDefinition)
 	/// </summary>
 	private ushort blockLength;
 	public ushort BlockLength { readonly get => blockLength; set => blockLength = value; }
 	/// <summary>
 	/// 
-	/// (ValueFieldDefinition)
 	/// </summary>
 	private ushort templateId;
 	public ushort TemplateId { readonly get => templateId; set => templateId = value; }
 	/// <summary>
 	/// 
-	/// (ValueFieldDefinition)
 	/// </summary>
 	private ushort schemaId;
 	public ushort SchemaId { readonly get => schemaId; set => schemaId = value; }
 	/// <summary>
 	/// 
-	/// (ValueFieldDefinition)
 	/// </summary>
 	private ushort version;
 	public ushort Version { readonly get => version; set => version = value; }
