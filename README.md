@@ -14,10 +14,12 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Composite types (nested composites, `<ref>` elements)
 - Enumerations and bit sets (flag enums) with `Has(flag)` / `Is{Flag}()` extension helpers
 - Repeating groups with nested groups (unlimited depth, ancestor context callbacks with `in`)
+- `foreach`-style zero-allocation enumerator on simple top-level groups (v1.5.0)
 - Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
 - Derived numeric constants (`MinValue`/`MaxValue` on type wrappers; `Decimals`/`Multiplier`/`MultiplierDecimal`/`Divisor` on decimal composites)
 - Allocation-free formatting via `ISpanFormattable` on char types and decimal composites; `AsTrimmedSpan()` on InlineArray char types
+- Static header parsing helpers (`TryReadTemplateId` / `TryReadHeader`) on the message header composite
 - Automatic and explicit field offset calculation
 - Byte order handling (little-endian native, big-endian with `readonly` property-based conversion)
 - Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data) with per-message `{Msg}VersionMap` for `blockLength → version` lookup
@@ -29,6 +31,37 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Validation constraints (min/max ranges)
 - Zero-cost `SbeDispatcher` + `ISbeMessageHandler` for devirtualized message routing
 - Comprehensive build-time diagnostics (SBE001–SBE014)
+
+## What's New in v1.5.0
+
+```csharp
+// #156: foreach-style enumerator for top-level simple groups — zero alloc, no closure capture
+if (OrderBookData.TryParse(buffer, out var reader))
+{
+    foreach (ref readonly var bid in reader.Bids) Process(in bid);
+    foreach (ref readonly var ask in reader.Asks) Process(in ask);
+}
+```
+
+Independent per-group views — out-of-order access, early `break`, and repeated iteration are all safe (no shared cursor). Emitted only when all top-level groups are simple (no nested groups, no group-level varData); otherwise `ReadGroups` remains the only API.
+
+## What's New in v1.4.0
+
+```csharp
+// #155: AsTrimmedSpan — like AsSpan but strips trailing space/null padding (FIX convention) without allocating.
+ReadOnlySpan<byte> sym = msg.Symbol.AsTrimmedSpan();
+if (sym.SequenceEqual("PETR4"u8)) { /* ... */ }
+
+// #153: ISpanFormattable on char types and decimal composites — allocation-free formatting
+Span<char> dest = stackalloc char[32];
+msg.Price.TryFormat(dest, out int written, default, CultureInfo.InvariantCulture);
+
+// #156 (helpers): single source of truth for header layout
+if (MessageHeader.TryReadHeader(buffer, out var blockLength, out var templateId, out var schemaId, out var version))
+{
+    // dispatch without hardcoding offsets
+}
+```
 
 ## What's New in v1.2.0
 
@@ -174,10 +207,16 @@ bool success = OrderBookData.TryEncode(
 if (OrderBookData.TryParse(buffer, out var reader))
 {
     Console.WriteLine($"Instrument: {reader.Data.InstrumentId}");
-    reader.ReadGroups(
-        (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
-        (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
-    );
+
+    // v1.5.0: foreach for simple top-level groups — no closure alloc, supports break.
+    foreach (ref readonly var bid in reader.Bids) Console.WriteLine($"Bid: {bid.Price}");
+    foreach (ref readonly var ask in reader.Asks) Console.WriteLine($"Ask: {ask.Price}");
+
+    // ReadGroups still works (and is required for nested groups / group-level varData):
+    // reader.ReadGroups(
+    //     (in BidsData bid) => Console.WriteLine($"Bid: {bid.Price}"),
+    //     (in AsksData ask) => Console.WriteLine($"Ask: {ask.Price}")
+    // );
 }
 ```
 

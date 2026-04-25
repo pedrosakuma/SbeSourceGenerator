@@ -378,9 +378,20 @@ if (reader.TryRead<MessageHeader>(out var header))
 
 This pattern is ideal for reading multiple messages from a single buffer, where each message's total size (block + groups + varData) is tracked by `BytesConsumed`.
 
-### Callback Pattern (v1.0.0+)
+### Callback Pattern (v1.0.0+) and Foreach Pattern (v1.5.0+)
 
-Generated code uses custom delegates with `in` parameters to avoid struct copies:
+For **simple top-level groups**, prefer the `foreach` enumerator (zero closure allocation, supports `break`):
+
+```csharp
+// Via MessageDataReader (v1.5.0+):
+if (OrderBookData.TryParse(buffer, out var reader))
+{
+    foreach (ref readonly var bid in reader.Bids) Console.WriteLine($"Bid: {bid.Price}");
+    foreach (ref readonly var ask in reader.Asks) Console.WriteLine($"Ask: {ask.Price}");
+}
+```
+
+For messages with **nested groups or group-level varData**, use callbacks (only API generated for those):
 
 ```csharp
 // Generated delegates:
