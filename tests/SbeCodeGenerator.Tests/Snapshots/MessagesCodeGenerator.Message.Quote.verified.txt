@@ -168,4 +168,18 @@ public ref struct QuoteDataReader
 	/// Gets a readonly reference to the QuoteData directly in the buffer (zero-copy).
 	/// </summary>
 	public ref readonly QuoteData Data => ref Unsafe.As<byte, QuoteData>(ref MemoryMarshal.GetReference(_buffer));
+	
+	/// <summary>
+	/// The full source buffer this reader was constructed from (block + groups + varData).
+	/// Note: the span may extend past the message; use <see cref="BytesConsumed"/> after <c>ReadGroups</c> to slice exactly.
+	/// </summary>
+	public readonly ReadOnlySpan<byte> Buffer => _buffer;
+	
+	/// <summary>
+	/// The fixed-size message block, sized to the wire's blockLength.
+	/// </summary>
+	public readonly ReadOnlySpan<byte> Block => _buffer.Slice(0, _blockLength);
+	
+	/// <summary>The wire blockLength this reader was constructed with.</summary>
+	public readonly int BlockLength => _blockLength;
 }

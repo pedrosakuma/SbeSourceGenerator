@@ -58,7 +58,7 @@ See the [v1.2.0 entry in CHANGELOG.md](./CHANGELOG.md) for the full list.
 
 ## What's New in v1.0.0
 
-**Zero-copy `MessageDataReader`** — `TryParse` now returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`) and process groups via `reader.ReadGroups(...)`.
+**Zero-copy `MessageDataReader`** — `TryParse` returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`), process groups via `reader.ReadGroups(...)`, and (since v1.3.0) recover the raw wire bytes via `reader.Buffer` / `reader.Block` for replay/forwarding scenarios — no re-parse needed.
 
 ```csharp
 if (CarData.TryParse(buffer, out var car))

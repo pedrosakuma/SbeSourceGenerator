@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-25
+
+### Added
+- **Raw buffer access on `{Message}DataReader`** (#151): The generated zero-copy reader now exposes `Buffer` (full source `ReadOnlySpan<byte>`), `Block` (slice sized to the wire `blockLength`), and `BlockLength` as `readonly` properties. Lets dispatcher-based consumers forward or buffer the original bytes (e.g. snapshot-heal flows) without re-parsing or maintaining a parallel manual switch just to capture the body. The data was already in the reader's private `_buffer` field; this only adds public accessors — no codegen size or runtime cost change.
+
 ## [1.2.1] - 2026-04-25
 
 ### Fixed
