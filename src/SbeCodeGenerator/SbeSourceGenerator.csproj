@@ -11,7 +11,7 @@
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<PackageId>SbeSourceGenerator</PackageId>
 		<Title>SBE Source Generator</Title>
-		<Version>1.3.0</Version>
+		<Version>1.4.0</Version>
 		<Authors>Pedro Sakuma</Authors>
 		<Company>Pedro Sakuma</Company>
 		<Product>SBE Source Generator</Product>

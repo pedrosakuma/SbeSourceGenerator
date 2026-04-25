@@ -5,7 +5,8 @@ using System.Text;
 namespace SbeSourceGenerator
 {
     public record CompositeDefinition(string Namespace, string Name, string Description, string SemanticType,
-        List<IFileContentGenerator> Fields, EndianConversion EndianConversion = EndianConversion.None) : IFileContentGenerator
+        List<IFileContentGenerator> Fields, EndianConversion EndianConversion = EndianConversion.None,
+        bool IsMessageHeader = false) : IFileContentGenerator
     {
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
@@ -105,7 +106,55 @@ namespace SbeSourceGenerator
             else
             {
                 FileContentGeneratorExtensions.AppendToString(sb, tabs, Name, Fields);
+                if (IsMessageHeader)
+                {
+                    AppendHeaderHelpers(sb, tabs);
+                }
             }
+            sb.AppendLine("}", --tabs);
+        }
+
+        private void AppendHeaderHelpers(StringBuilder sb, int tabs)
+        {
+            // Issue #156: static convenience helpers so consumers don't hardcode
+            // header offsets when they need to peek at the templateId before dispatching.
+            // Field accessors handle endian conversion, so we delegate to them.
+            var valueFields = Fields.OfType<ValueFieldDefinition>().ToList();
+            bool hasField(string n) => valueFields.Any(f => string.Equals(f.Name, n, System.StringComparison.OrdinalIgnoreCase));
+            if (!(hasField("BlockLength") && hasField("TemplateId") && hasField("SchemaId") && hasField("Version")))
+                return;
+
+            sb.AppendLine("", tabs);
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// Reads the templateId from a buffer that starts with this header. Returns false if the buffer is too small.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]", tabs);
+            sb.AppendLine("public static bool TryReadTemplateId(ReadOnlySpan<byte> buffer, out ushort templateId)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE) { templateId = 0; return false; }", tabs);
+            sb.AppendTabs(tabs).Append("templateId = MemoryMarshal.AsRef<").Append(Name).AppendLine(">(buffer).TemplateId;");
+            sb.AppendLine("return true;", tabs);
+            sb.AppendLine("}", --tabs);
+
+            sb.AppendLine("", tabs);
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// Reads the four standard header fields (blockLength, templateId, schemaId, version)", tabs);
+            sb.AppendLine("/// in a single call. Returns false if the buffer is smaller than the header.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]", tabs);
+            sb.AppendLine("public static bool TryReadHeader(ReadOnlySpan<byte> buffer, out ushort blockLength, out ushort templateId, out ushort schemaId, out ushort version)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("if (buffer.Length < MESSAGE_SIZE)", tabs);
+            sb.AppendLine("{", tabs++);
+            sb.AppendLine("blockLength = 0; templateId = 0; schemaId = 0; version = 0;", tabs);
+            sb.AppendLine("return false;", tabs);
+            sb.AppendLine("}", --tabs);
+            sb.AppendTabs(tabs).Append("ref readonly var h = ref MemoryMarshal.AsRef<").Append(Name).AppendLine(">(buffer);");
+            sb.AppendLine("blockLength = h.BlockLength;", tabs);
+            sb.AppendLine("templateId = h.TemplateId;", tabs);
+            sb.AppendLine("schemaId = h.SchemaId;", tabs);
+            sb.AppendLine("version = h.Version;", tabs);
+            sb.AppendLine("return true;", tabs);
             sb.AppendLine("}", --tabs);
         }
     }

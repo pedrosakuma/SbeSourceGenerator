@@ -17,6 +17,7 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Variable-length data (varData) with configurable length prefix (uint8/uint16/uint32)
 - Constant fields in messages, composites, and groups
 - Derived numeric constants (`MinValue`/`MaxValue` on type wrappers; `Decimals`/`Multiplier`/`MultiplierDecimal`/`Divisor` on decimal composites)
+- Allocation-free formatting via `ISpanFormattable` on char types and decimal composites; `AsTrimmedSpan()` on InlineArray char types
 - Automatic and explicit field offset calculation
 - Byte order handling (little-endian native, big-endian with `readonly` property-based conversion)
 - Schema versioning (`sinceVersion`, `deprecated` on fields, enums, sets, data) with per-message `{Msg}VersionMap` for `blockLength → version` lookup

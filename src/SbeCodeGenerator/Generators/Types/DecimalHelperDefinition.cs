@@ -13,11 +13,14 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-            sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).AppendLine();
+            sb.AppendTabs(tabs).Append("public partial struct ").Append(Name).Append(" : ISpanFormattable").AppendLine();
             sb.AppendLine("{", tabs++);
 
             var exponentStr = Exponent.ToString(CultureInfo.InvariantCulture);
             var multiplier = $"1e{exponentStr}m";
+            int decimals = Exponent < 0 ? -Exponent : 0;
+            // Default format string (e.g. "F4") used when caller passes empty format.
+            var defaultFormat = $"\"F{decimals.ToString(CultureInfo.InvariantCulture)}\"";
 
             // Issue #145: emit derived constants — single source of truth for decimal places.
             AppendDerivedConstants(sb, tabs);
@@ -29,6 +32,18 @@ namespace SbeSourceGenerator
                 sb.AppendLine("/// Returns null if the mantissa is null (optional field).", tabs);
                 sb.AppendLine("/// </summary>", tabs);
                 sb.AppendTabs(tabs).Append("public readonly decimal? ToDecimal() => Mantissa.HasValue ? Mantissa.Value * ").Append(multiplier).AppendLine(" : null;");
+
+                // Issue #153: ISpanFormattable — allocation-free decimal formatting using the schema's known decimal count.
+                sb.AppendLine("/// <summary>Allocation-free formatting; defaults to <c>F" + decimals.ToString(CultureInfo.InvariantCulture) + "</c>. Empty output for null mantissa.</summary>", tabs);
+                sb.AppendLine("public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format = default, IFormatProvider? provider = null)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendLine("var v = ToDecimal();", tabs);
+                sb.AppendLine("if (!v.HasValue) { charsWritten = 0; return true; }", tabs);
+                sb.AppendTabs(tabs).Append("return v.Value.TryFormat(destination, out charsWritten, format.IsEmpty ? ").Append(defaultFormat).AppendLine(" : format, provider);");
+                sb.AppendLine("}", --tabs);
+
+                sb.AppendLine("/// <summary>IFormattable implementation; uses <c>F" + decimals.ToString(CultureInfo.InvariantCulture) + "</c> when format is null. Returns empty string for null mantissa.</summary>", tabs);
+                sb.AppendTabs(tabs).Append("public readonly string ToString(string? format, IFormatProvider? provider) => ToDecimal() is decimal v ? v.ToString(format ?? ").Append(defaultFormat).AppendLine(", provider) : string.Empty;");
             }
             else
             {
@@ -36,6 +51,16 @@ namespace SbeSourceGenerator
                 sb.AppendTabs(tabs).Append("/// Converts the mantissa to a decimal using the constant exponent (10^").Append(exponentStr).AppendLine(").");
                 sb.AppendLine("/// </summary>", tabs);
                 sb.AppendTabs(tabs).Append("public readonly decimal ToDecimal() => Mantissa * ").Append(multiplier).AppendLine(";");
+
+                // Issue #153
+                sb.AppendLine("/// <summary>Allocation-free formatting; defaults to <c>F" + decimals.ToString(CultureInfo.InvariantCulture) + "</c>.</summary>", tabs);
+                sb.AppendLine("public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format = default, IFormatProvider? provider = null)", tabs);
+                sb.AppendLine("{", tabs++);
+                sb.AppendTabs(tabs).Append("return ToDecimal().TryFormat(destination, out charsWritten, format.IsEmpty ? ").Append(defaultFormat).AppendLine(" : format, provider);");
+                sb.AppendLine("}", --tabs);
+
+                sb.AppendLine("/// <summary>IFormattable implementation; uses <c>F" + decimals.ToString(CultureInfo.InvariantCulture) + "</c> when format is null.</summary>", tabs);
+                sb.AppendTabs(tabs).Append("public readonly string ToString(string? format, IFormatProvider? provider) => ToDecimal().ToString(format ?? ").Append(defaultFormat).AppendLine(", provider);");
             }
 
             sb.AppendLine("}", --tabs);
