@@ -637,6 +637,25 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("/// Gets a readonly reference to the ").Append(Name).AppendLine("Data directly in the buffer (zero-copy).");
             sb.AppendLine("/// </summary>", tabs);
             sb.AppendTabs(tabs).Append("public ref readonly ").Append(Name).Append("Data Data => ref Unsafe.As<byte, ").Append(Name).AppendLine("Data>(ref MemoryMarshal.GetReference(_buffer));");
+            sb.AppendLine("", tabs);
+
+            // Issue #151: expose raw spans so consumers can forward/buffer the original bytes
+            // (e.g. snapshot-heal flows that stash the message for later replay).
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// The full source buffer this reader was constructed from (block + groups + varData).", tabs);
+            sb.AppendLine("/// Note: the span may extend past the message; use <see cref=\"BytesConsumed\"/> after <c>ReadGroups</c> to slice exactly.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("public readonly ReadOnlySpan<byte> Buffer => _buffer;", tabs);
+            sb.AppendLine("", tabs);
+
+            sb.AppendLine("/// <summary>", tabs);
+            sb.AppendLine("/// The fixed-size message block, sized to the wire's blockLength.", tabs);
+            sb.AppendLine("/// </summary>", tabs);
+            sb.AppendLine("public readonly ReadOnlySpan<byte> Block => _buffer.Slice(0, _blockLength);", tabs);
+            sb.AppendLine("", tabs);
+
+            sb.AppendLine("/// <summary>The wire blockLength this reader was constructed with.</summary>", tabs);
+            sb.AppendLine("public readonly int BlockLength => _blockLength;", tabs);
 
             // ReadGroups — only for messages with variable data
             if (HasVariableData)
