@@ -2,7 +2,6 @@ using SbeSourceGenerator;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Schema;
 using System.Linq;
-using SbeSourceGenerator.Schema;
 using Xunit;
 
 namespace SbeCodeGenerator.Tests

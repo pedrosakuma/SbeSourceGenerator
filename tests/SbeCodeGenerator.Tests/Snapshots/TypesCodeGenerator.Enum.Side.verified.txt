@@ -1,7 +1,6 @@
 ﻿namespace TestNamespace;
 /// <summary>
 /// 
-/// (EnumDefinition)
 /// </summary>
 public enum Side : byte
 {

@@ -9,13 +9,13 @@ namespace SbeSourceGenerator
         public void AppendFileContent(StringBuilder sb, int tabs = 0)
         {
             sb.AppendTabs(tabs).Append("namespace ").Append(Namespace).AppendLine(";");
-            sb.AppendSummary(Description, tabs, nameof(EnumDefinition));
+            sb.AppendSummary(Description, tabs);
             sb.AppendTabs(tabs).Append("public enum ").Append(Name).Append(" : ").Append(ChangeTypeIfNeeded(EncodingType)).AppendLine();
             sb.AppendLine("{", tabs++);
             foreach (var field in Fields)
             {
                 if (field.Description != "")
-                    sb.AppendSummary(field.Description, tabs, nameof(EnumDefinition));
+                    sb.AppendSummary(field.Description, tabs);
                 else if (!string.IsNullOrEmpty(field.SinceVersion))
                 {
                     sb.AppendTabs(tabs).AppendLine("/// <summary>");

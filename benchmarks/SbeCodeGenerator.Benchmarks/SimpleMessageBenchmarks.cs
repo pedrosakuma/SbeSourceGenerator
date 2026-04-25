@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Benchmark.Messages;
+using Benchmark.Messages.V0;
 
 namespace SbeCodeGenerator.Benchmarks;
 
@@ -41,7 +41,7 @@ public class SimpleMessageBenchmarks
         _order.TryEncode(_buffer, out _);
         
         // Then decode
-        return SimpleOrderData.TryParse(_buffer, out _, out _);
+        return SimpleOrderData.TryParse(_buffer, out _);
     }
 
     [Benchmark(Description = "Round-trip Simple Message")]
@@ -52,13 +52,14 @@ public class SimpleMessageBenchmarks
             return false;
         
         // Decode
-        if (!SimpleOrderData.TryParse(_buffer, out var decoded, out _))
+        if (!SimpleOrderData.TryParse(_buffer, out var reader))
             return false;
         
         // Verify
+        ref readonly var decoded = ref reader.Data;
         return decoded.OrderId == _order.OrderId &&
-               decoded.Price == _order.Price &&
-               decoded.Quantity == _order.Quantity &&
+               decoded.Price.Value == _order.Price.Value &&
+               decoded.Quantity.Value == _order.Quantity.Value &&
                decoded.Side == _order.Side;
     }
 }

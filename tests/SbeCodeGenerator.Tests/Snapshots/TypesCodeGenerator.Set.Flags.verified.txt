@@ -1,11 +1,38 @@
 ﻿namespace TestNamespace;
 /// <summary>
 /// 
-/// (EnumFlagsDefinition)
 /// </summary>
 [System.Flags]
 public enum Flags : byte
 {
 	Active = 1,
 	Cancelled = 2,
+}
+
+/// <summary>
+/// Inlinable bit-test helpers for <see cref="Flags"/>.
+/// </summary>
+public static class FlagsExtensions
+{
+	/// <summary>
+	/// Returns true when all bits in <paramref name="flag"/> are set on <paramref name="value"/>.
+	/// </summary>
+	[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+	public static bool Has(this Flags value, Flags flag)
+		=> (value & flag) == flag;
+	
+	/// <summary>
+	/// True when <c>Active</c> bit is set.
+	/// </summary>
+	[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+	public static bool IsActive(this Flags value)
+		=> (value & Flags.Active) != 0;
+	
+	/// <summary>
+	/// True when <c>Cancelled</c> bit is set.
+	/// </summary>
+	[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+	public static bool IsCancelled(this Flags value)
+		=> (value & Flags.Cancelled) != 0;
+	
 }

@@ -33,8 +33,9 @@ This is a **Roslyn incremental source generator** (`IIncrementalGenerator`) that
 ```
 XML schema (*.xml via AdditionalFiles)
   → SBESourceGenerator (entry point, namespace derivation, SchemaContext creation)
-    → TypesCodeGenerator   (enums, types, composites, sets)
-    → MessagesCodeGenerator (messages, fields, groups, varData)
+    → TypesCodeGenerator   (enums, types, composites, sets, derived constants on decimal composites)
+    → MessagesCodeGenerator (messages, fields, groups, varData, per-message {Msg}VersionMap when multi-version)
+    → DispatcherGenerator   (per-schema ISbeMessageHandler + zero-cost SbeDispatcher.Dispatch<T>)
     → UtilitiesCodeGenerator (SpanReader, SpanWriter, endian helpers)
     → ValidationGenerator   (optional validation)
   → sourceContext.AddSource() per generated file

@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Benchmark.Messages;
+using Benchmark.Messages.V0;
 
 namespace SbeCodeGenerator.Benchmarks;
 
@@ -27,9 +27,9 @@ public class OptionalFieldBenchmarks
             Price = 995000,
             Quantity = 100,
             Side = Side.Buy,
-            StopPrice = 1000000, // With optional value
-            ClientOrderId = 987654321UL // With optional value
         };
+        _orderWithOptionals.SetStopPrice(1000000);
+        _orderWithOptionals.SetClientOrderId(987654321UL);
 
         _orderWithoutOptionals = new OrderWithOptionalsData
         {
@@ -57,13 +57,13 @@ public class OptionalFieldBenchmarks
     public bool DecodeWithOptionals()
     {
         _orderWithOptionals.TryEncode(_buffer, out _);
-        return OrderWithOptionalsData.TryParse(_buffer, out _, out _);
+        return OrderWithOptionalsData.TryParse(_buffer, out _);
     }
 
     [Benchmark(Description = "Decode Message with Optionals Null")]
     public bool DecodeWithoutOptionals()
     {
         _orderWithoutOptionals.TryEncode(_buffer, out _);
-        return OrderWithOptionalsData.TryParse(_buffer, out _, out _);
+        return OrderWithOptionalsData.TryParse(_buffer, out _);
     }
 }

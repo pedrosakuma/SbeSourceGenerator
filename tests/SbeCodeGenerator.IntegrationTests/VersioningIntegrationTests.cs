@@ -193,5 +193,26 @@ namespace SbeCodeGenerator.IntegrationTests
             var v2Content = File.ReadAllText(v2File);
             Assert.Contains("Since version 2", v2Content);
         }
+
+        [Fact]
+        public void EvolvingOrderVersionMap_MapsBlockLengthToVersion()
+        {
+            // Issue #146: each version's wire blockLength resolves to its version number.
+            Assert.True(V0.EvolvingOrderVersionMap.TryGetVersion(16, out var v0));
+            Assert.Equal(0, v0);
+
+            Assert.True(V0.EvolvingOrderVersionMap.TryGetVersion(24, out var v1));
+            Assert.Equal(1, v1);
+
+            Assert.True(V0.EvolvingOrderVersionMap.TryGetVersion(25, out var v2));
+            Assert.Equal(2, v2);
+
+            // Unknown blockLength returns false.
+            Assert.False(V0.EvolvingOrderVersionMap.TryGetVersion(99, out var unknown));
+            Assert.Equal(-1, unknown);
+
+            // Entries are exposed in declaration order.
+            Assert.Equal(3, V0.EvolvingOrderVersionMap.Entries.Length);
+        }
     }
 }

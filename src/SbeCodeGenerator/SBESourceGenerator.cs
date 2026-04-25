@@ -100,6 +100,7 @@ namespace SbeSourceGenerator
                         {
                             ("types", typesGenerator),
                             ("messages", messagesGenerator),
+                            ("dispatcher", new DispatcherGenerator()),
                             ("utilities", utilitiesGenerator),
                             ("validation", validationGenerator)
                         };

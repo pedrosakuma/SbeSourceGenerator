@@ -68,6 +68,128 @@ namespace SbeCodeGenerator.IntegrationTests
             Assert.Equal((ushort)0x3FF, (ushort)all); // 10 bits set = 1023
         }
 
+        [Fact]
+        public void TradingFlags_Extensions_IsXxx_Work()
+        {
+            // Issue #144: aggressively-inlined bit-test extension methods.
+            var flags = TradingFlags.OddLot | TradingFlags.OffExchange;
+            Assert.True(flags.IsOddLot());
+            Assert.True(flags.IsOffExchange());
+            Assert.False(flags.IsDarkPool());
+            Assert.False(flags.IsAuction());
+        }
+
+        [Fact]
+        public void TradingFlags_Extensions_Has_Composite()
+        {
+            // Has(flag) supports composite flags: every bit must be present.
+            var multi = TradingFlags.OddLot | TradingFlags.BlockTrade;
+            Assert.True(multi.Has(TradingFlags.OddLot));
+            Assert.True(multi.Has(TradingFlags.BlockTrade));
+            Assert.True(multi.Has(TradingFlags.OddLot | TradingFlags.BlockTrade));
+            Assert.False(multi.Has(TradingFlags.OddLot | TradingFlags.DarkPool));
+        }
+
+        // --- Issue #145: Derived constants on decimal composites ---
+
+        [Fact]
+        public void DecimalEncoding_DerivedConstants_AreCorrect()
+        {
+            // Schema: <type name="exponent" primitiveType="int8" presence="constant">-7</type>
+            Assert.Equal((sbyte)-7, DecimalEncoding.Exponent);
+            Assert.Equal(7, DecimalEncoding.Decimals);
+            Assert.Equal(1e-7, DecimalEncoding.Multiplier);
+            Assert.Equal(1e-7m, DecimalEncoding.MultiplierDecimal);
+            Assert.Equal(10_000_000L, DecimalEncoding.Divisor);
+        }
+
+        // --- Issue #147: SbeDispatcher zero-cost dispatch ---
+
+        private struct CountingHandler : ISbeMessageHandler
+        {
+            public int TradeCount;
+            public int TextCount;
+            public int MarketCount;
+            public int UnknownCount;
+            public long LastTradeId;
+            public int LastBlockLength;
+
+            public void OnTrade(in TradeDataReader reader, int blockLength, int version)
+            {
+                TradeCount++;
+                LastTradeId = reader.Data.TradeId;
+                LastBlockLength = blockLength;
+            }
+            public void OnTextMessage(in TextMessageDataReader reader, int blockLength, int version)
+            {
+                TextCount++;
+            }
+            public void OnMarketData(in MarketDataDataReader reader, int blockLength, int version)
+            {
+                MarketCount++;
+            }
+            public void OnUnknownMessage(int templateId, int blockLength, int version, ReadOnlySpan<byte> payload)
+            {
+                UnknownCount++;
+            }
+        }
+
+        [Fact]
+        public void SbeDispatcher_RoutesByTemplateId()
+        {
+            // Encode a Trade message with header into a buffer.
+            Span<byte> buffer = stackalloc byte[MessageHeader.MESSAGE_SIZE + TradeData.MESSAGE_SIZE];
+            ref var header = ref MemoryMarshal.AsRef<MessageHeader>(buffer);
+            header.BlockLength = (ushort)TradeData.BLOCK_LENGTH;
+            header.TemplateId = (ushort)TradeData.MESSAGE_ID;
+            header.SchemaId = 5;
+            header.Version = 0;
+
+            ref var trade = ref MemoryMarshal.AsRef<TradeData>(buffer.Slice(MessageHeader.MESSAGE_SIZE));
+            trade.TradeId = 4242;
+            trade.Quantity = 100;
+
+            var handler = new CountingHandler();
+            bool dispatched = SbeDispatcher.Dispatch(buffer, ref handler);
+
+            Assert.True(dispatched);
+            Assert.Equal(1, handler.TradeCount);
+            Assert.Equal(0, handler.TextCount);
+            Assert.Equal(0, handler.MarketCount);
+            Assert.Equal(0, handler.UnknownCount);
+            Assert.Equal(4242, handler.LastTradeId);
+            Assert.Equal(TradeData.BLOCK_LENGTH, handler.LastBlockLength);
+        }
+
+        [Fact]
+        public void SbeDispatcher_UnknownTemplateId_CallsOnUnknownMessage()
+        {
+            Span<byte> buffer = stackalloc byte[MessageHeader.MESSAGE_SIZE];
+            ref var header = ref MemoryMarshal.AsRef<MessageHeader>(buffer);
+            header.BlockLength = 0;
+            header.TemplateId = 9999; // unknown
+            header.SchemaId = 5;
+            header.Version = 0;
+
+            var handler = new CountingHandler();
+            bool dispatched = SbeDispatcher.Dispatch(buffer, ref handler);
+
+            Assert.False(dispatched);
+            Assert.Equal(0, handler.TradeCount);
+            Assert.Equal(1, handler.UnknownCount);
+        }
+
+        [Fact]
+        public void SbeDispatcher_BufferTooSmall_ReturnsFalse()
+        {
+            Span<byte> tiny = stackalloc byte[3]; // smaller than header
+            var handler = new CountingHandler();
+            bool dispatched = SbeDispatcher.Dispatch(tiny, ref handler);
+
+            Assert.False(dispatched);
+            Assert.Equal(0, handler.UnknownCount); // header parse failed before reaching switch
+        }
+
         // --- Composite with Ref Tests ---
 
         [Fact]

@@ -464,6 +464,9 @@ Before deployment, verify:
 - [ ] Early exits implemented where applicable
 - [ ] Benchmarks show acceptable performance
 - [ ] Profiling confirms no hotspots
+- [ ] When dispatching by `templateId`, use `SbeDispatcher.Dispatch<T>` with a **`struct`** handler — the JIT specializes per type and devirtualizes the call. Implementing `ISbeMessageHandler` on a `class` re-introduces a virtual dispatch and is materially slower.
+- [ ] When checking `[Flags]` bit fields, prefer the generated `flags.Is{Choice}()` / `flags.Has(flag)` extensions — they inline to the same `(v & X) != 0` codegen as a hand-written test.
+- [ ] When scaling decimal mantissas, use the generated `XxxEncoding.MultiplierDecimal` / `Divisor` constants instead of literal `1eN` — keeps formatter/scale in sync with the schema and remains compile-time folded.
 
 ## Recommended Tools
 

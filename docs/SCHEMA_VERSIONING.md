@@ -231,6 +231,31 @@ Schema V3 (version 2):
   Block Length = 25 bytes
 ```
 
+### `{Msg}VersionMap` (Issue #146)
+
+For any message that has more than one version, the generator emits a static `{Msg}VersionMap`
+class in the canonical V0 namespace. It exposes a small `(int BlockLength, int Version)[]`
+array in declaration order plus a `[AggressiveInlining]` `TryGetVersion(blockLength, out version)`
+helper. Use it on the receive path to pick the right `{Msg}V{N}Data.TryParse` overload from a
+header you just decoded:
+
+```csharp
+if (!EvolvingOrderVersionMap.TryGetVersion(header.BlockLength, out int version))
+{
+    // Unknown blockLength — log / drop / fall back to forward-compat parse.
+    return;
+}
+switch (version)
+{
+    case 0: EvolvingOrderData.TryParse(payload, header.BlockLength, out var v0); break;
+    case 1: V1.EvolvingOrderData.TryParse(payload, header.BlockLength, out var v1); break;
+    case 2: V2.EvolvingOrderData.TryParse(payload, header.BlockLength, out var v2); break;
+}
+```
+
+The lookup is allocation-free and a linear scan over a tiny array, so it is faster than a
+`Dictionary<int,int>` for the typical 2–5 version case.
+
 ## Wire Format Compatibility
 
 ### Message Format

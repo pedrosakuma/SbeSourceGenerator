@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using Benchmark.Messages;
+using Benchmark.Messages.V0;
 
 namespace SbeCodeGenerator.Benchmarks;
 
@@ -13,12 +13,12 @@ public class RepeatingGroupBenchmarks
 {
     private byte[] _buffer = null!;
     private MarketDataData _marketData;
-    private BidsData[] _smallBids = null!;
-    private AsksData[] _smallAsks = null!;
-    private BidsData[] _mediumBids = null!;
-    private AsksData[] _mediumAsks = null!;
-    private BidsData[] _largeBids = null!;
-    private AsksData[] _largeAsks = null!;
+    private MarketDataData.BidsData[] _smallBids = null!;
+    private MarketDataData.AsksData[] _smallAsks = null!;
+    private MarketDataData.BidsData[] _mediumBids = null!;
+    private MarketDataData.AsksData[] _mediumAsks = null!;
+    private MarketDataData.BidsData[] _largeBids = null!;
+    private MarketDataData.AsksData[] _largeAsks = null!;
     
     private const int BufferSize = 64 * 1024; // 64KB buffer
 
@@ -48,12 +48,12 @@ public class RepeatingGroupBenchmarks
         _largeAsks = CreateAsks(100);
     }
 
-    private BidsData[] CreateBids(int count)
+    private MarketDataData.BidsData[] CreateBids(int count)
     {
-        var bids = new BidsData[count];
+        var bids = new MarketDataData.BidsData[count];
         for (int i = 0; i < count; i++)
         {
-            bids[i] = new BidsData
+            bids[i] = new MarketDataData.BidsData
             {
                 Price = 1000000 - (i * 100),
                 Quantity = 100 + i
@@ -62,12 +62,12 @@ public class RepeatingGroupBenchmarks
         return bids;
     }
 
-    private AsksData[] CreateAsks(int count)
+    private MarketDataData.AsksData[] CreateAsks(int count)
     {
-        var asks = new AsksData[count];
+        var asks = new MarketDataData.AsksData[count];
         for (int i = 0; i < count; i++)
         {
-            asks[i] = new AsksData
+            asks[i] = new MarketDataData.AsksData
             {
                 Price = 1010000 + (i * 100),
                 Quantity = 50 + i
@@ -93,16 +93,12 @@ public class RepeatingGroupBenchmarks
             _ => _largeAsks
         };
 
-        _marketData.BeginEncoding(_buffer, out var writer);
-        MarketDataData.TryEncodeBids(ref writer, bids);
-        MarketDataData.TryEncodeAsks(ref writer, asks);
-        return true;
+        return MarketDataData.TryEncode(_marketData, _buffer, bids, asks, out _);
     }
 
     [Benchmark(Description = "Decode Message with Groups")]
     public int DecodeWithGroups()
     {
-        // First encode
         var bids = GroupSize switch
         {
             10 => _smallBids,
@@ -117,20 +113,16 @@ public class RepeatingGroupBenchmarks
             _ => _largeAsks
         };
 
-        _marketData.BeginEncoding(_buffer, out var writer);
-        MarketDataData.TryEncodeBids(ref writer, bids);
-        MarketDataData.TryEncodeAsks(ref writer, asks);
+        MarketDataData.TryEncode(_marketData, _buffer, bids, asks, out _);
 
-        // Then decode and count
         int bidCount = 0;
         int askCount = 0;
 
-        if (MarketDataData.TryParse(_buffer, out var decoded, out var variableData))
+        if (MarketDataData.TryParse(_buffer, out var reader))
         {
-            decoded.ConsumeVariableLengthSegments(
-                variableData,
-                bid => bidCount++,
-                ask => askCount++
+            reader.ReadGroups(
+                (in MarketDataData.BidsData _) => bidCount++,
+                (in MarketDataData.AsksData _) => askCount++
             );
         }
 

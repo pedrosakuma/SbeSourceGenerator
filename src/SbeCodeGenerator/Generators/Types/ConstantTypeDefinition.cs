@@ -16,7 +16,7 @@ namespace SbeSourceGenerator
             }
 
             sb.Append("namespace ").Append(Namespace).AppendLine(";");
-            sb.AppendSummary(Description, tabs, nameof(ConstantTypeDefinition));
+            sb.AppendSummary(Description, tabs);
             sb.Append("public readonly struct ").AppendLine(Name);
             sb.AppendLine("{", tabs++);
             sb.AppendTabs(tabs).Append("public const ").Append(primitiveType).Append(" Value = ").Append(value).AppendLine(";");
