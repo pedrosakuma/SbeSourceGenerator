@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-25
+
+### Added — DevEx P0 features
+
+- **`AsTrimmedSpan()` on InlineArray char types** (#155): Like `AsSpan()` but additionally strips trailing space (0x20) padding — matches the behavior of `ToString().Trim()` without the two allocations. Lets hot-path consumers compare/log FIX-style space-padded fields (`Symbol`, `Currency`, `IsinNumber`, …) zero-alloc.
+- **`ISpanFormattable` on InlineArray char types and decimal composites** (#153): Generated char and decimal-composite types now implement `ISpanFormattable` — `TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?)` plus `ToString(string?, IFormatProvider?)`. Char types delegate to the schema's `characterEncoding` and `AsTrimmedSpan()`. Decimal composites use the schema's `Decimals` constant for the default format (e.g. `F4` / `F8`), so `string.Create(...)` and `Utf8.TryWrite(...)` emit correctly-scaled strings without allocating.
+- **Static header read helpers on the message header composite** (#156): The composite designated by `headerType` (default `messageHeader`) now exposes `TryReadTemplateId(ReadOnlySpan<byte>, out ushort)` and `TryReadHeader(ReadOnlySpan<byte>, out blockLength, out templateId, out schemaId, out version)`. Single source of truth for header layout — consumers no longer hardcode `SbeHeaderSize = 8` or compute offsets manually.
+
+### Performance
+- All three additions are emit-time only with no allocation on the new code paths. `AsTrimmedSpan()` and `TryReadTemplateId` are aggressively inlined.
+
 ## [1.3.0] - 2026-04-25
 
 ### Added

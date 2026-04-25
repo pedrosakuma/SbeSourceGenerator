@@ -41,4 +41,35 @@ public partial struct MessageHeader
 	public ushort Version { readonly get => version; set => version = value; }
 	/// <summary>Returns a string representation of this struct for debugging.</summary>
 	public readonly override string ToString() => $"MessageHeader {{ BlockLength={BlockLength}, TemplateId={TemplateId}, SchemaId={SchemaId}, Version={Version} }}";
+	
+	/// <summary>
+	/// Reads the templateId from a buffer that starts with this header. Returns false if the buffer is too small.
+	/// </summary>
+	[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+	public static bool TryReadTemplateId(ReadOnlySpan<byte> buffer, out ushort templateId)
+	{
+		if (buffer.Length < MESSAGE_SIZE) { templateId = 0; return false; }
+		templateId = MemoryMarshal.AsRef<MessageHeader>(buffer).TemplateId;
+		return true;
+	}
+	
+	/// <summary>
+	/// Reads the four standard header fields (blockLength, templateId, schemaId, version)
+	/// in a single call. Returns false if the buffer is smaller than the header.
+	/// </summary>
+	[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+	public static bool TryReadHeader(ReadOnlySpan<byte> buffer, out ushort blockLength, out ushort templateId, out ushort schemaId, out ushort version)
+	{
+		if (buffer.Length < MESSAGE_SIZE)
+		{
+			blockLength = 0; templateId = 0; schemaId = 0; version = 0;
+			return false;
+		}
+		ref readonly var h = ref MemoryMarshal.AsRef<MessageHeader>(buffer);
+		blockLength = h.BlockLength;
+		templateId = h.TemplateId;
+		schemaId = h.SchemaId;
+		version = h.Version;
+		return true;
+	}
 }

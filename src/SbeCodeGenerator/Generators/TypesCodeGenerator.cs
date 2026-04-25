@@ -408,7 +408,8 @@ namespace SbeSourceGenerator.Generators
                 compositeDto.Description,
                 compositeDto.SemanticType,
                 fields,
-                context.EndianConversion
+                context.EndianConversion,
+                IsMessageHeader: string.Equals(compositeDto.Name, context.HeaderType, System.StringComparison.OrdinalIgnoreCase)
             );
             if (generator.Fields.All(f => f is IBlittable))
                 context.CustomTypeLengths[compositeDto.Name] = generator.Fields.SumFieldLength();
