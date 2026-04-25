@@ -56,6 +56,22 @@ Tests performance of repeating group encoding/decoding with varying group sizes 
 - `EncodeWithGroups` - Encoding messages with repeating groups
 - `DecodeWithGroups` - Decoding messages with repeating groups
 
+### GroupForeachVsCallbackBenchmarks
+Compares the v1.5.0 foreach-style group enumerator (#156) against the original `ReadGroups` callback API.
+- `Decode_Callback` - Baseline: `ReadGroups` with capturing lambdas (closure allocation per call)
+- `Decode_Foreach` - Zero-alloc ref struct enumerator
+- `Decode_Foreach_EarlyBreak` - Demonstrates break-out savings vs callbacks (which always run to completion)
+
+Reference results (AMD EPYC 7763, .NET 9, GroupSize=100):
+
+| Method            | Mean      | Allocated |
+|-------------------|----------:|----------:|
+| Callback          | 999 ns    | 152 B     |
+| Foreach           | 184 ns    | 0 B       |
+| Foreach + break   |   3.3 ns  | 0 B       |
+
+Foreach is ~5× faster on full iteration and eliminates the 152 B closure allocation. Early break is essentially free because each group property is an O(1) skip.
+
 ### ComplexMessageBenchmarks
 Tests performance of complex messages with multiple groups (bids, asks, trades).
 - `EncodeComplexMessage` - Encoding complex multi-group messages
