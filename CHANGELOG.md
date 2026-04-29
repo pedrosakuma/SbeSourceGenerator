@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-04-29
+
+### Added
+
+- **Direct properties for top-level `<data>` (varData) on `{Msg}DataReader`** (#162): Each top-level varData field now also exposes a property returning the variable-length composite (e.g. `VarStringEncoding`) computed directly from the buffer. Zero allocation, no callback, no closure capture:
+  ```csharp
+  if (NewOrderData.TryParse(buffer, out var reader))
+  {
+      foreach (ref readonly var leg in reader.Legs) { /* ... */ }
+      var coid = reader.ClientOrderId.VarData; // ReadOnlySpan<byte>, zero-alloc
+  }
+  ```
+  Each access is **stateless** — the start offset is recomputed from the buffer by chaining the existing `Skip{Group}` helpers (O(1) per group) plus `SkipData{Prev}` for any prior varData. Safe regardless of access order, before/after iterating groups, and across multiple reads. For repeated reads, cache the returned value locally.
+
+  **Gating**: emitted only when *all* top-level groups are simple (no nested groups, no group-level varData) — same gate as the foreach enumerators added in #156. Also valid for messages with only varData and no groups. When a varData name collides with a reserved member of the reader struct (e.g. `<data name="data">` clashing with the `Data` block accessor), the direct property is silently skipped for that field; it remains reachable via `ReadGroups`. `ReadGroups` continues to work unchanged for all cases.
+
 ## [1.5.0] - 2026-04-25
 
 ### Added — DevEx P0 features

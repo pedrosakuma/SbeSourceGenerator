@@ -91,5 +91,48 @@ namespace SbeCodeGenerator.IntegrationTests
                 cid => coid = Encoding.UTF8.GetString(cid.VarData));
             Assert.Equal("EMPTY-LEGS-OK", coid);
         }
+
+        [Fact]
+        public void DirectVarDataProperty_AfterSimpleGroups_ReturnsSameBytesAsCallback()
+        {
+            // Issue #162: zero-alloc direct access to top-level varData via property.
+            // Must yield identical bytes as the callback path, regardless of access order.
+            var order = new NO { OrderId = 99, Quantity = 50 };
+            var legs = new[]
+            {
+                new NO.LegsData { LegSymbol = 10, LegRatio = 1 },
+                new NO.LegsData { LegSymbol = 20, LegRatio = 2 },
+            };
+            var buffer = Encode(order, legs, "DIRECT-PROP-COID");
+
+            Assert.True(NO.TryParse(buffer, out var reader));
+
+            // Direct property — no closure, no callback, computed from buffer offsets.
+            var coidBytes = reader.ClientOrderId.VarData.ToArray();
+            Assert.Equal("DIRECT-PROP-COID", Encoding.UTF8.GetString(coidBytes));
+
+            // Property is stateless: accessing again (and even before iterating groups) is safe.
+            var coidBytes2 = reader.ClientOrderId.VarData.ToArray();
+            Assert.Equal(coidBytes, coidBytes2);
+
+            // Iterate groups afterwards — direct property must still resolve correctly.
+            int count = 0;
+            foreach (ref readonly var _ in reader.Legs) count++;
+            Assert.Equal(2, count);
+
+            var coidBytes3 = reader.ClientOrderId.VarData.ToArray();
+            Assert.Equal(coidBytes, coidBytes3);
+        }
+
+        [Fact]
+        public void DirectVarDataProperty_WithEmptyGroup_ResolvesCorrectly()
+        {
+            var order = new NO { OrderId = 1 };
+            var buffer = Encode(order, Array.Empty<NO.LegsData>(), "EMPTY-DIRECT");
+
+            Assert.True(NO.TryParse(buffer, out var reader));
+
+            Assert.Equal("EMPTY-DIRECT", Encoding.UTF8.GetString(reader.ClientOrderId.VarData));
+        }
     }
 }

@@ -671,14 +671,22 @@ namespace SbeSourceGenerator
                 AppendGroupEnumerators(sb, tabs);
             }
 
+            // Issue #162: direct properties for top-level varData (zero-alloc, no callback).
+            // Same gate as enumerators: requires that every top-level group be simple so the
+            // pre-varData offset is the cheap O(1) chain of Skip{Group} helpers.
+            // Also valid when there are no top-level groups (varData starts right at _blockLength).
+            if (CanExposeVarDataDirect)
+            {
+                AppendVarDataProperties(sb, tabs);
+            }
+
             sb.AppendLine("}", --tabs);
         }
 
-        private bool HasSimpleTopLevelGroupsForEnumerator
+        private bool AreAllTopLevelGroupsSimple
         {
             get
             {
-                if (TypedGroups.Count == 0) return false;
                 foreach (var g in TypedGroups)
                 {
                     if (g.HasGroupData || g.HasNestedGroups) return false;
@@ -686,6 +694,12 @@ namespace SbeSourceGenerator
                 return true;
             }
         }
+
+        private bool HasSimpleTopLevelGroupsForEnumerator
+            => TypedGroups.Count > 0 && AreAllTopLevelGroupsSimple;
+
+        private bool CanExposeVarDataDirect
+            => TypedDatas.Count > 0 && AreAllTopLevelGroupsSimple;
 
         private void AppendGroupEnumerators(StringBuilder sb, int tabs)
         {
@@ -805,8 +819,76 @@ namespace SbeSourceGenerator
             }
         }
 
-        private void AppendReadGroups(StringBuilder sb, int tabs)
+        private void AppendVarDataProperties(StringBuilder sb, int tabs)
         {
+            // Names already taken on the reader struct (excluding group enumerator props,
+            // which we add below). Colliding varData names skip the direct property and
+            // remain accessible through ReadGroups.
+            var reserved = new HashSet<string>(System.StringComparer.Ordinal)
+            {
+                "Data", "Buffer", "Block", "BlockLength", "BytesConsumed", "ReadGroups",
+                "GetEnumerator", "Equals", "GetHashCode", "ToString", "GetType",
+            };
+            foreach (var g in TypedGroups) reserved.Add(g.Name);
+
+            // Pre-build the offset expression that points just past all top-level groups.
+            // When there are no groups, the chain reduces to "_blockLength".
+            void AppendAfterGroupsOffset(StringBuilder dest)
+            {
+                for (int j = 0; j < TypedGroups.Count; j++)
+                    dest.Append("Skip").Append(TypedGroups[j].Name).Append("(_buffer, ");
+                dest.Append("_blockLength");
+                for (int j = 0; j < TypedGroups.Count; j++)
+                    dest.Append(")");
+            }
+
+            // Emit SkipData{Name} helpers for every varData except the last one.
+            // Always emitted (even when the property of that data is suppressed by a
+            // name collision) because subsequent varData offsets depend on it.
+            for (int i = 0; i < TypedDatas.Count - 1; i++)
+            {
+                var data = TypedDatas[i];
+                sb.AppendLine("", tabs);
+                sb.AppendLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]", tabs);
+                sb.AppendTabs(tabs).Append("private static int SkipData").Append(data.Name)
+                    .AppendLine("(ReadOnlySpan<byte> buffer, int offset)");
+                sb.AppendLine("{", tabs++);
+                sb.AppendTabs(tabs).Append("if ((uint)offset > (uint)(buffer.Length - sizeof(")
+                    .Append(data.LengthPrefixType).AppendLine("))) return buffer.Length;");
+                sb.AppendTabs(tabs).Append("var data = ").Append(data.Type)
+                    .AppendLine(".Create(buffer.Slice(offset));");
+                sb.AppendLine("return offset + data.TotalLength;", tabs);
+                sb.AppendLine("}", --tabs);
+            }
+
+            // Emit a direct property for each varData that doesn't clash with a reserved name.
+            // Each property recomputes the start offset from the buffer (stateless, safe regardless
+            // of access order). Properties are skipped when colliding with existing reader members
+            // (e.g. <data name="data">) — those varData remain reachable via ReadGroups.
+            for (int i = 0; i < TypedDatas.Count; i++)
+            {
+                var data = TypedDatas[i];
+                if (reserved.Contains(data.Name)) continue;
+
+                sb.AppendLine("", tabs);
+                sb.AppendLine("/// <summary>", tabs);
+                sb.AppendTabs(tabs).Append("/// Zero-allocation direct access to the <c>").Append(data.Name)
+                    .AppendLine("</c> variable-length data segment.");
+                sb.AppendLine("/// Each access recomputes the segment offset from the buffer (stateless and safe", tabs);
+                sb.AppendLine("/// regardless of access order). For repeated reads, cache the returned value locally.", tabs);
+                sb.AppendLine("/// </summary>", tabs);
+                sb.AppendTabs(tabs).Append("public ").Append(data.Type).Append(" ").Append(data.Name).Append(" => ")
+                    .Append(data.Type).Append(".Create(_buffer.Slice(");
+                for (int j = 0; j < i; j++)
+                    sb.Append("SkipData").Append(TypedDatas[j].Name).Append("(_buffer, ");
+                AppendAfterGroupsOffset(sb);
+                for (int j = 0; j < i; j++)
+                    sb.Append(")");
+                sb.AppendLine("));");
+            }
+        }
+
+        private void AppendReadGroups(StringBuilder sb, int tabs)        {
             var callbackParams = BuildCallbackParams($"{Name}Data.");
             sb.AppendLine("", tabs);
             sb.AppendLine("/// <summary>", tabs);
