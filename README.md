@@ -59,7 +59,7 @@ See the [v1.2.0 entry in CHANGELOG.md](./CHANGELOG.md) for the full list.
 
 ## What's New in v1.0.0
 
-**Zero-copy `MessageDataReader`** — `TryParse` returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`), iterate top-level groups via `foreach` (since v1.5.0, no closure alloc) or `reader.ReadGroups(...)`, and recover the raw wire bytes via `reader.Buffer` / `reader.Block` (since v1.3.0) for replay/forwarding scenarios.
+**Zero-copy `MessageDataReader`** — `TryParse` returns a lightweight ref struct that holds a reference directly into the buffer. Access fields via `reader.Data` (zero-copy `ref readonly`), iterate top-level groups via `foreach` (since v1.5.0, no closure alloc), read top-level varData via direct properties (since v1.6.0, zero alloc) or `reader.ReadGroups(...)`, and recover the raw wire bytes via `reader.Buffer` / `reader.Block` (since v1.3.0) for replay/forwarding scenarios.
 
 ```csharp
 if (CarData.TryParse(buffer, out var car))
@@ -68,6 +68,9 @@ if (CarData.TryParse(buffer, out var car))
 
     // v1.5.0: foreach-style enumerators on simple top-level groups (zero alloc, no closures).
     foreach (ref readonly var fuel in car.FuelFigures) { /* ... */ }
+
+    // v1.6.0: direct properties for top-level varData (zero alloc, no callback).
+    var manufacturer = car.Manufacturer.VarData; // ReadOnlySpan<byte>
 
     // For groups with nested groups or group-level varData, ReadGroups remains:
     car.ReadGroups(
