@@ -1,3 +1,13 @@
+## Release 1.6.1
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|------
+SBE013 | SbeSourceGenerator | Warning | Duplicate type name in schema.
+SBE014 | SbeSourceGenerator | Warning | sinceVersion exceeds schema version.
+SBE015 | SbeSourceGenerator | Warning | Duplicate generated source hintName suppressed.
+
 ## Release 0.8.0
 
 ### New Rules

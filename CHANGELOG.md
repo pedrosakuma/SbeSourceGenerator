@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-04-30
+
+### Fixed
+
+- **Aliased `encodingType` on `<enum>` and `<set>` (#164)**: Per SBE 1.0 spec the `encodingType` attribute is a `symbolicName_t` and may reference either a primitive type name or a user-declared `<type>` whose `primitiveType` supplies the underlying wire type (a common FIX pattern, e.g. B3 EntryPoint's `uint8EnumEncoding`). The generator now resolves such aliases to the underlying primitive instead of emitting the literal alias name (which produced `CS0246`/`CS1008`). Advisory `presence`, `semanticType`, and `nullValue` on the alias remain ignored for the enum's underlying type, as the spec intends.
+- **Pipeline robustness on duplicate generated source names (#164)**: A duplicate `hintName` from `AddSource` previously threw `ArgumentException` and aborted the entire generator phase, cascading into thousands of `CS0246` errors against partially-emitted files. The generator now suppresses duplicates with the new diagnostic `SBE015` (Warning) and continues emitting the rest of the schema. Per-item failures are also caught so one bad item does not derail the rest of its phase.
+
+### Added
+
+- **`SBE015` diagnostic** — *Duplicate generated source suppressed*: emitted when the generator produces two source files with the same `hintName`. The first occurrence is kept; the duplicate is dropped. Resolve the underlying schema duplication (e.g., two `<enum>` declarations sharing a name) or the upstream generator path that produced the second source.
+- **Regression coverage for B3-style schemas**: new unit tests for aliased `encodingType` resolution (uint8/uint16/char aliases, fixed-size char arrays excluded from alias registration), driver-level tests for `SBE015`, and an integration schema (`bcl-collision-schema.xml`) exercising an SBE enum named `Boolean` to validate generated code compiles cleanly under `ImplicitUsings=enable` and `TreatWarningsAsErrors=true`.
+- **End-to-end coverage of the B3 Binary EntryPoint v8.4.2 vendor schema**: the full schema is now included as an integration fixture (`tests/SbeCodeGenerator.IntegrationTests/TestSchemas/b3-entrypoint-messages-8.4.2.xml`, sourced from B3's public distribution) with a smoke test (`B3EntryPointTests`) that exercises the aliased-`encodingType` fix, the BCL `Boolean` collision workaround, and a full encode/decode round-trip on the `Sequence` message.
+
+### Notes
+
+- Issue #164 originally also reported `CS0117 'bool' does not contain a definition for 'TRUE_VALUE'` on schemas declaring `<enum name="Boolean">`. With the cascade in (#164/2) fixed, generated code itself compiles cleanly because C# name resolution prefers types in the enclosing namespace over those imported via `using` directives. Consumer code that imports the schema's namespace alongside `System` may still see `CS0104` (ambiguous reference) and should disambiguate via a `using` alias (e.g. `using Boolean = MySchema.Boolean;`) or fully qualified names — this is C# language semantics, not a generator bug.
+
 ## [1.6.0] - 2026-04-29
 
 ### Added

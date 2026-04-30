@@ -89,6 +89,24 @@ Provides compile-time diagnostics for:
 **Example**: `<SbeAssumeHostEndianness>Invalid</SbeAssumeHostEndianness>`  
 **Resolution**: Set the value to `LittleEndian` or `BigEndian`, or remove the property entirely for automatic detection.
 
+### SBE013: Duplicate Type Name
+**Severity**: Warning  
+**Triggered when**: Two `<type>`, `<enum>`, `<set>`, or `<composite>` declarations share the same name within a single schema  
+**Example**: Two `<enum name="Side">` blocks in the same `<types>` section  
+**Resolution**: Rename one of the duplicates so each generated identifier is unique. The generator uses the last definition encountered.
+
+### SBE014: sinceVersion Exceeds Schema Version
+**Severity**: Warning  
+**Triggered when**: A field's `sinceVersion` attribute is greater than the schema's `version` attribute  
+**Example**: `<field sinceVersion="3"/>` in a schema declared as `version="1"`  
+**Resolution**: Either bump the schema version, or correct the field's `sinceVersion`. Such fields are unreachable in any generated message version.
+
+### SBE015: Duplicate Generated Source Suppressed
+**Severity**: Warning  
+**Triggered when**: The generator produces two source files with the same `hintName` (Roslyn requires uniqueness). The first is kept; the duplicate is suppressed and generation continues.  
+**Example**: A schema declares two `<enum name="Side">` blocks; the second pass attempts `AddSource("…/Enums/Side.cs", …)` again. Without the suppression, Roslyn would throw `ArgumentException`, abort the generator phase, and produce a cascade of `CS0246` errors against partially-emitted files.  
+**Resolution**: Resolve the underlying duplication in the schema (commonly a duplicate type name — see also `SBE013`) or fix the upstream code path that emitted the second source.
+
 ## Usage
 
 Diagnostics are automatically reported during source generation. When you build a project that includes an invalid SBE schema as an additional file, you'll see these diagnostics in:

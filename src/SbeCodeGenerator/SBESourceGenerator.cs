@@ -61,6 +61,7 @@ namespace SbeSourceGenerator
                 }
 
                 var emittedRuntimeNamespaces = new HashSet<string>(StringComparer.Ordinal);
+                var emittedHintNames = new HashSet<string>(StringComparer.Ordinal);
 
                 foreach (var additionalText in text)
                 {
@@ -110,7 +111,37 @@ namespace SbeSourceGenerator
                             try
                             {
                                 foreach (var item in gen.Generate(ns, schema, context, sourceContext))
-                                    sourceContext.AddSource(item.name, item.content);
+                                {
+                                    try
+                                    {
+                                        if (!emittedHintNames.Add(item.name))
+                                        {
+                                            // Roslyn would throw ArgumentException on duplicate hintName,
+                                            // aborting the rest of the phase. Suppress and continue so a
+                                            // single duplicate doesn't cascade into thousands of CS0246s
+                                            // against partially-emitted files.
+                                            if (!sourceContext.CancellationToken.IsCancellationRequested)
+                                            {
+                                                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                                    SbeDiagnostics.DuplicateGeneratedSource,
+                                                    Location.None,
+                                                    item.name,
+                                                    phase));
+                                            }
+                                            continue;
+                                        }
+                                        sourceContext.AddSource(item.name, item.content);
+                                    }
+                                    catch (Exception itemEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
+                                    {
+                                        // Per-item failure must not derail subsequent items in the same phase.
+                                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                            SbeDiagnostics.MalformedSchema,
+                                            Location.None,
+                                            path,
+                                            $"[{phase}] {item.name}: {itemEx.Message}"));
+                                    }
+                                }
                             }
                             catch (Exception genEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
                             {

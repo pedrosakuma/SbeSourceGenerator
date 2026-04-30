@@ -56,6 +56,16 @@ namespace SbeSourceGenerator
         public Dictionary<string, (string PrimitiveType, string NullValue)> OptionalTypes { get; } = new Dictionary<string, (string, string)>(8);
 
         /// <summary>
+        /// Maps user-declared simple type names (from &lt;type&gt; elements) to their
+        /// underlying SBE primitive type name (e.g., "uint8EnumEncoding" -&gt; "uint8").
+        /// Used to resolve enum/set <c>encodingType</c> attributes that reference a
+        /// schema-declared alias rather than a primitive directly.
+        /// Per SBE 1.0 spec, <c>encodingType</c> is a <c>symbolicName_t</c> and may
+        /// point to either a primitive name or any user-declared &lt;type&gt;.
+        /// </summary>
+        public Dictionary<string, string> EncodingTypeAliases { get; } = new Dictionary<string, string>(16);
+
+        /// <summary>
         /// Tracks composite types and their field types.
         /// Maps "CompositeName.FieldName" -> native type (e.g., "GroupSizeEncoding.numInGroup" -> "ushort").
         /// </summary>
