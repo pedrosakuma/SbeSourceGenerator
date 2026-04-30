@@ -157,5 +157,35 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "Roslyn requires every generated source hintName to be unique. The generator now suppresses duplicates and continues, instead of aborting the entire generation phase. Resolve the underlying schema duplication or fix the upstream generator path that produced the second source.");
+
+        // SBE016: Semantic converter wire-type mismatch
+        public static readonly DiagnosticDescriptor SemanticConverterWireMismatch = new DiagnosticDescriptor(
+            id: "SBE016",
+            title: "Semantic converter wire-type mismatch",
+            messageFormat: "Semantic converter '{0}' for semanticType '{1}' expects wire type '{2}', but field '{3}.{4}' has wire type '{5}'. The {6}Value accessor will not be emitted.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: "A converter registered via [assembly: SbeSemanticType(...)] (or a built-in) declares a TWire generic argument that does not match the field's actual wire primitive. Fix the registration so TWire matches the field's primitive type, or pick a different converter.");
+
+        // SBE017: Semantic converter does not implement ISbeSemanticConverter<,>
+        public static readonly DiagnosticDescriptor SemanticConverterMissingInterface = new DiagnosticDescriptor(
+            id: "SBE017",
+            title: "Semantic converter must implement ISbeSemanticConverter<TWire, TSemantic>",
+            messageFormat: "Type '{0}' is registered for semanticType '{1}' but does not implement 'SbeSourceGenerator.Runtime.ISbeSemanticConverter<TWire, TSemantic>'. The registration is ignored.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: "Converters registered via [assembly: SbeSemanticType(...)] must implement ISbeSemanticConverter<TWire, TSemantic> with static abstract members so the generator can validate the wire/semantic types and emit the typed accessor.");
+
+        // SBE018: Semantic accessor name collision
+        public static readonly DiagnosticDescriptor SemanticAccessorNameCollision = new DiagnosticDescriptor(
+            id: "SBE018",
+            title: "Semantic accessor name collides with an existing field",
+            messageFormat: "Cannot emit semantic accessor '{0}Value' on message '{1}' because another field with the same name already exists. The semantic accessor for semanticType '{2}' is skipped.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "The convention is to emit a typed accessor named '{Field}Value'. If a field literally named '{Field}Value' already exists in the same message, the semantic accessor would collide with it and is skipped to keep the generated code compilable.");
     }
 }

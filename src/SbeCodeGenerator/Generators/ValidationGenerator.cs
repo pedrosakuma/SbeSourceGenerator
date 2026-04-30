@@ -88,7 +88,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// <summary>");
             sb.Append("/// Validation extension methods for ").Append(messageDto.Name).AppendLine(".");
             sb.AppendLine($"/// </summary>");
-            sb.Append("public static class ").Append(messageDto.Name.FirstCharToUpper()).AppendLine("Validation");
+            sb.Append("public static partial class ").Append(messageDto.Name.FirstCharToUpper()).AppendLine("Validation");
             sb.AppendLine("{");
 
             // Generate TryValidate method first (contains the core logic)
@@ -181,7 +181,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine($"/// <summary>");
             sb.Append("/// Validation extension methods for ").Append(typeDto.Name).AppendLine(".");
             sb.AppendLine($"/// </summary>");
-            sb.Append("public static class ").Append(typeDto.Name).AppendLine("Validation");
+            sb.Append("public static partial class ").Append(typeDto.Name).AppendLine("Validation");
             sb.AppendLine("{");
 
             // Generate TryValidate method first (contains the core logic)

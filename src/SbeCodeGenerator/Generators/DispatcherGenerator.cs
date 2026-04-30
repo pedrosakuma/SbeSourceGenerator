@@ -45,7 +45,7 @@ namespace SbeSourceGenerator.Generators
             sb.Append("namespace ").Append(baseNs).AppendLine(";");
             sb.AppendLine();
             sb.AppendLine("/// <summary>Handler interface dispatched to by <see cref=\"SbeDispatcher\"/>. Implement as a <c>struct</c> for zero-cost devirtualized dispatch.</summary>");
-            sb.AppendLine("public interface ISbeMessageHandler");
+            sb.AppendLine("public partial interface ISbeMessageHandler");
             sb.AppendLine("{");
             foreach (var (name, _) in messages)
             {
@@ -70,7 +70,7 @@ namespace SbeSourceGenerator.Generators
             sb.AppendLine("/// Because <typeparamref name=\"T\"/> is constrained to <c>struct, ISbeMessageHandler</c>, the JIT");
             sb.AppendLine("/// generates a specialized version per handler type and devirtualizes every dispatch call.");
             sb.AppendLine("/// </summary>");
-            sb.AppendLine("public static class SbeDispatcher");
+            sb.AppendLine("public static partial class SbeDispatcher");
             sb.AppendLine("{");
             sb.AppendLine("\t/// <summary>Decodes the header at the start of <paramref name=\"buffer\"/> and dispatches to the matching handler method.</summary>");
             sb.AppendLine("\t/// <returns><c>true</c> if a known message was dispatched; <c>false</c> if the header could not be read or the templateId is unknown (in which case <c>OnUnknownMessage</c> is called).</returns>");

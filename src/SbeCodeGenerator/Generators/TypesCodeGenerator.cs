@@ -113,6 +113,13 @@ namespace SbeSourceGenerator.Generators
                 context.EncodingTypeAliases[typeDto.Name] = typeDto.PrimitiveType;
             }
 
+            // Issue #166: track type-level semanticType so message fields referencing this type
+            // (without their own semanticType attribute) inherit the registration.
+            if (!string.IsNullOrEmpty(typeDto.Name) && !string.IsNullOrEmpty(typeDto.SemanticType))
+            {
+                context.TypeSemanticTypes[typeDto.Name] = typeDto.SemanticType;
+            }
+
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
             {
                 var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, typeDto.Name, sourceContext);
@@ -209,6 +216,7 @@ namespace SbeSourceGenerator.Generators
                     sb.Clear();
                     dateHelper.AppendFileContent(sb);
                     yield return (context.CreateHintName(ns, "Types", generatedName + ".ToDateOnly"), sb.ToString());
+                    context.TypesWithCustomHelper.Add(typeDto.Name);
                 }
             }
         }

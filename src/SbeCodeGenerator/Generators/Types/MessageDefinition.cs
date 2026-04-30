@@ -607,7 +607,7 @@ namespace SbeSourceGenerator
             sb.AppendTabs(tabs).Append("/// Zero-copy reader for ").Append(Name).AppendLine("Data messages.");
             sb.AppendLine("/// Provides direct access to the message data in the underlying buffer without copying.", tabs);
             sb.AppendLine("/// </summary>", tabs);
-            sb.AppendTabs(tabs).Append("public ref struct ").Append(Name).AppendLine("DataReader");
+            sb.AppendTabs(tabs).Append("public ref partial struct ").Append(Name).AppendLine("DataReader");
             sb.AppendLine("{", tabs++);
 
             sb.AppendLine("private readonly ReadOnlySpan<byte> _buffer;", tabs);

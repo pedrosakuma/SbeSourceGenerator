@@ -30,7 +30,9 @@ A Roslyn-based source generator that converts FIX Simple Binary Encoding (SBE) X
 - Explicit `blockLength` on messages
 - Validation constraints (min/max ranges)
 - Zero-cost `SbeDispatcher` + `ISbeMessageHandler` for devirtualized message routing
-- Comprehensive build-time diagnostics (SBE001–SBE015)
+- Declarative semantic-type registry mapping `semanticType="…"` → typed `{Field}Value` accessors (built-in FIX converters: `UTCTimestamp{Nanos,Micros,Millis}`, `UTCDateOnly`, `LocalMktDate`, `MonthYear`, `Boolean`; user-extensible via `[assembly: SbeSemanticType(...)]`)
+- Generated dispatcher, handler interface, version maps, data readers, and validation classes are emitted as `partial` for safe consumer extension (typed accessors should prefer the semantic registry)
+- Comprehensive build-time diagnostics (SBE001–SBE018)
 
 ## What's New in v1.5.0
 
@@ -370,6 +372,9 @@ The generator provides comprehensive diagnostics:
 | SBE013 | Warning | Duplicate type name |
 | SBE014 | Warning | sinceVersion exceeds schema version |
 | SBE015 | Warning | Duplicate generated source hintName suppressed |
+| SBE016 | Error | Semantic converter wire-type mismatch |
+| SBE017 | Error | Semantic converter does not implement `ISbeSemanticConverter<,>` |
+| SBE018 | Warning | Semantic accessor name collision |
 
 See [Diagnostics README](./src/SbeCodeGenerator/Diagnostics/README.md) for details.
 

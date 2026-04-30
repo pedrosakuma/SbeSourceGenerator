@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.7.0] - 2026-04-30
+
+### Added
+
+- **Declarative semantic-type registry (#166)**: Schemas can now annotate fields with `semanticType` (e.g. `UTCTimestampNanos`, `LocalMktDate`, `MonthYear`) and the generator emits a sibling typed accessor `{Field}Value` next to the raw wire field — without changing the wire layout. Eight FIX/SBE built-in converters ship out of the box (`UTCTimestamp`, `UTCTimestampNanos`, `UTCTimestampMicros`, `UTCTimestampMillis`, `UTCDateOnly`, `LocalMktDate`, `MonthYear`, `Boolean`) producing strongly typed `DateTime` / `DateOnly` / `(int Year, int Month)` / `bool` results from the underlying primitive. Optional fields produce a nullable accessor that returns `null` on the SBE null sentinel. Field-level `semanticType` wins; otherwise the field inherits its referenced type's `semanticType` (the common FIX/B3 pattern of declaring `<type semanticType="..."/>`). Fields whose type already produces a typed helper struct (e.g. `LocalMktDate` → `DateOnly` via `DateHelper`) are left untouched to avoid double conversion. The raw wire accessor is **never** replaced — the typed accessor is always additive.
+- **User-extensible converters via `[assembly: SbeSemanticType("Name", typeof(MyConverter))]`**: Any user type implementing `ISbeSemanticConverter<TWire, TSemantic>` (a static-abstract interface emitted into every consuming compilation as `SbeSourceGenerator.Runtime.ISbeSemanticConverter`) can be registered against any `semanticType` string and overrides the built-in. The generator scans assembly attributes via a syntax-first incremental pipeline, validates that the converter's `TWire` matches the schema field's wire `SpecialType`, and reports diagnostics on misregistration. Built-ins are seeded automatically; users only declare what they want to override or add.
+- **`partial` on non-blittable generated types (#167)**: The dispatcher (`SbeDispatcher`), handler interface (`ISbeMessageHandler`), per-message version maps (`{Msg}VersionMap`), zero-copy readers (`{Msg}DataReader`), and validation extension classes (`{X}Validation`) are now emitted as `partial`. Consumers can extend them in user code without forking the generator — for example, adding instrumentation hooks to the dispatcher, default methods to the handler interface, custom lookups to a version map, or domain-specific helpers to a `DataReader`. Layout-bearing blittable structs were already `partial`; this fills in the remaining surface intentionally, while the semantic-type registry (#166) provides the safe path for adding typed accessors without touching wire layout.
+- **`SBE016` diagnostic** — *Semantic converter wire-type mismatch*: emitted when a user-registered converter declares a `TWire` that does not match the schema field's wire primitive. The accessor is suppressed for that field; raw access is unaffected.
+- **`SBE017` diagnostic** — *Semantic converter does not implement `ISbeSemanticConverter<,>`*: emitted when a `[SbeSemanticType]` registration points at a type that does not implement the runtime interface (or implements it with non-static members). The registration is ignored.
+- **`SBE018` diagnostic** — *Semantic accessor name collision*: emitted (Warning) when the generated `{Field}Value` name would collide with an existing member; the semantic accessor is dropped to keep the surface compiling.
+
 ## [1.6.1] - 2026-04-30
 
 ### Fixed
