@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="bcl_collision_test"
+                   id="42"
+                   version="0"
+                   description="Schema exercising user-declared types whose names collide with .NET BCL types (Boolean, Decimal, String, Object). Validates that generated references qualify or otherwise resolve correctly under ImplicitUsings=enable.">
+    <types>
+        <composite name="MessageHeader">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+        <composite name="GroupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint8"/>
+        </composite>
+
+        <!-- BCL-colliding enum name -->
+        <enum name="Boolean" encodingType="uint8">
+            <validValue name="FALSE_VALUE">0</validValue>
+            <validValue name="TRUE_VALUE">1</validValue>
+        </enum>
+    </types>
+
+    <sbe:message name="QuoteRequest" id="1" description="Uses Boolean enum as a regular field type and as constant valueRef.">
+        <field name="isPrivate" id="1" type="Boolean"/>
+        <field name="defaultPrivate" id="2" type="Boolean" presence="constant" valueRef="Boolean.TRUE_VALUE"/>
+        <field name="defaultPublic" id="3" type="Boolean" presence="constant" valueRef="Boolean.FALSE_VALUE"/>
+    </sbe:message>
+</sbe:messageSchema>

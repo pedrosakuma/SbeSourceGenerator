@@ -30,6 +30,30 @@ namespace SbeSourceGenerator.Generators
 
         public static bool IsDotNetPrimitive(string typeName) => DotNetPrimitiveTypes.Contains(typeName);
 
+        /// <summary>
+        /// Resolves an <c>encodingType</c> attribute (from &lt;enum&gt; or &lt;set&gt;) to the
+        /// underlying SBE primitive type name (e.g., "uint8", "char").
+        /// Per SBE 1.0 spec, <c>encodingType</c> is a <c>symbolicName_t</c> and may
+        /// reference either a primitive type name or a user-declared &lt;type&gt; alias
+        /// such as <c>&lt;type name="uint8EnumEncoding" primitiveType="uint8"/&gt;</c>.
+        /// Falls back to the original value when no alias is registered, preserving
+        /// downstream behavior for primitive encoding types and surfacing diagnostics
+        /// for unknown identifiers.
+        /// </summary>
+        public static string ResolveEncodingType(string encodingType, SchemaContext context)
+        {
+            if (string.IsNullOrEmpty(encodingType))
+                return encodingType;
+
+            if (context.EncodingTypeAliases.TryGetValue(encodingType, out var primitive)
+                && !string.IsNullOrEmpty(primitive))
+            {
+                return primitive;
+            }
+
+            return encodingType;
+        }
+
         public static string ResolveTypeName(string typeName, SchemaContext context)
         {
             if (string.IsNullOrEmpty(typeName))

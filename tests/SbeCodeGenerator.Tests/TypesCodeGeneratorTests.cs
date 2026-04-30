@@ -1261,5 +1261,116 @@ namespace SbeCodeGenerator.Tests
             Assert.Contains("(ushort?)Year is { } y", toDateOnlyResult.content);
             Assert.Contains("(byte?)Month is { } m", toDateOnlyResult.content);
         }
+
+        [Fact]
+        public void Generate_EnumWithAliasedEncodingType_ResolvesUnderlyingPrimitive()
+        {
+            // SBE 1.0 spec: <enum encodingType="..."> is symbolicName_t and may
+            // reference a user-declared <type> alias whose primitiveType supplies
+            // the underlying wire type. The advisory presence/semanticType/nullValue
+            // on the alias must NOT leak into the generated enum.
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='uint8EnumEncoding' primitiveType='uint8' presence='required' semanticType='Boolean'/>
+                        <type name='uint16EnumEncoding' primitiveType='uint16' presence='required'/>
+                        <enum name='Side' encodingType='uint8EnumEncoding'>
+                            <validValue name='BUY'>1</validValue>
+                            <validValue name='SELL'>2</validValue>
+                        </enum>
+                        <enum name='ExecType' encodingType='uint16EnumEncoding'>
+                            <validValue name='NEW'>1</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            var sideEnum = results.First(r => r.name.Contains("Side")).content;
+            Assert.Contains("public enum Side : byte", sideEnum);
+            Assert.DoesNotContain("uint8EnumEncoding", sideEnum);
+
+            var execEnum = results.First(r => r.name.Contains("ExecType")).content;
+            Assert.Contains("public enum ExecType : ushort", execEnum);
+            Assert.DoesNotContain("uint16EnumEncoding", execEnum);
+        }
+
+        [Fact]
+        public void Generate_SetWithAliasedEncodingType_ResolvesUnderlyingPrimitive()
+        {
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='uint8SetEncoding' primitiveType='uint8'/>
+                        <set name='Flags' encodingType='uint8SetEncoding'>
+                            <choice name='A'>0</choice>
+                            <choice name='B'>1</choice>
+                        </set>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var setResult = results.First(r => r.name.Contains("Flags")).content;
+            Assert.Contains("public enum Flags : byte", setResult);
+            Assert.DoesNotContain("uint8SetEncoding", setResult);
+        }
+
+        [Fact]
+        public void Generate_EnumWithCharAliasedEncodingType_ResolvesToChar()
+        {
+            // Char enum encoding via alias must still produce a byte-backed enum
+            // (consistent with non-aliased char encoding) and emit (byte)'X' literals.
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='charEncoding' primitiveType='char'/>
+                        <enum name='OrdStatus' encodingType='charEncoding'>
+                            <validValue name='NEW'>0</validValue>
+                            <validValue name='FILLED'>2</validValue>
+                        </enum>
+                    </types>
+                </messageSchema>");
+
+            var results = generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+            var enumContent = results.First(r => r.name.Contains("OrdStatus")).content;
+            Assert.Contains("public enum OrdStatus : byte", enumContent);
+            Assert.DoesNotContain("charEncoding", enumContent);
+            Assert.Contains("(byte)'0'", enumContent);
+            Assert.Contains("(byte)'2'", enumContent);
+        }
+
+        [Fact]
+        public void Generate_EnumWithFixedSizeCharAlias_DoesNotResolveAsEncoding()
+        {
+            // length>1 makes the alias a char array (FixedSizeCharType), not a scalar
+            // encoding alias. We must not register it as an enum encoding alias —
+            // otherwise an enum referencing it would silently emit invalid code.
+            var generator = new TypesCodeGenerator();
+            var context = new SchemaContext("test-schema");
+            SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='Symbol8' primitiveType='char' length='8'/>
+                    </types>
+                </messageSchema>");
+
+            // Generate to populate the context
+            var schema = SchemaReader.Parse(@"
+                <messageSchema>
+                    <types>
+                        <type name='Symbol8' primitiveType='char' length='8'/>
+                    </types>
+                </messageSchema>");
+            generator.Generate("TestNamespace", schema, context, default(SourceProductionContext)).ToList();
+
+            Assert.False(context.EncodingTypeAliases.ContainsKey("Symbol8"),
+                "Fixed-size char arrays must not be registered as encoding-type aliases.");
+        }
     }
 }

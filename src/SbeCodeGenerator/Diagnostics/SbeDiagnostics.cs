@@ -147,5 +147,15 @@ namespace SbeSourceGenerator.Diagnostics
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "A field's sinceVersion attribute should not exceed the schema's version attribute. Such fields are unreachable and may indicate a schema authoring error.");
+
+        // SBE015: Duplicate generated source hintName suppressed
+        public static readonly DiagnosticDescriptor DuplicateGeneratedSource = new DiagnosticDescriptor(
+            id: "SBE015",
+            title: "Duplicate generated source suppressed",
+            messageFormat: "Duplicate generated source hintName '{0}' produced by phase '{1}' was suppressed; the first occurrence is kept. This usually indicates a duplicate type definition in the schema or an upstream generator bug.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "Roslyn requires every generated source hintName to be unique. The generator now suppresses duplicates and continues, instead of aborting the entire generation phase. Resolve the underlying schema duplication or fix the upstream generator path that produced the second source.");
     }
 }

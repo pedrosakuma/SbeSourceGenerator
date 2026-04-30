@@ -42,7 +42,8 @@ namespace SbeSourceGenerator.Generators
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
             var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
-            var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+            var resolvedEncoding = TypeResolverHelper.ResolveEncodingType(enumDto.EncodingType, context);
+            var encodingTranslated = TypeTranslator.Translate(resolvedEncoding);
             int maxBitPosition = TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType) * 8 - 1;
 
             var validChoices = enumDto.Choices
@@ -97,6 +98,20 @@ namespace SbeSourceGenerator.Generators
         private static IEnumerable<(string name, string content)> GenerateType(string ns, SchemaTypeDto typeDto, SchemaContext context, SourceProductionContext sourceContext)
         {
             var primitiveTranslated = TypeTranslator.Translate(typeDto.PrimitiveType);
+
+            // Register encoding-type alias so that <enum>/<set> referencing this <type> via
+            // encodingType="<typeDto.Name>" can resolve to the underlying SBE primitive
+            // (e.g., "uint8EnumEncoding" -> "uint8"). Per SBE 1.0 spec, encodingType is a
+            // symbolicName_t and may reference any user-declared simple type.
+            // Only single-element, non-constant aliases qualify: char arrays, constants, and
+            // composites have non-scalar layouts and are never valid enum/set encodings.
+            if (!string.IsNullOrEmpty(typeDto.Name)
+                && !string.IsNullOrEmpty(typeDto.PrimitiveType)
+                && !string.Equals(typeDto.Presence, "constant", System.StringComparison.Ordinal)
+                && (string.IsNullOrEmpty(typeDto.Length) || typeDto.Length == "1"))
+            {
+                context.EncodingTypeAliases[typeDto.Name] = typeDto.PrimitiveType;
+            }
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
             {
@@ -201,7 +216,8 @@ namespace SbeSourceGenerator.Generators
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
             var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
-            var encodingTranslated = TypeTranslator.Translate(enumDto.EncodingType);
+            var resolvedEncoding = TypeResolverHelper.ResolveEncodingType(enumDto.EncodingType, context);
+            var encodingTranslated = TypeTranslator.Translate(resolvedEncoding);
 
             if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CancellationToken != default)
             {
