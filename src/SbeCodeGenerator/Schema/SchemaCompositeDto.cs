@@ -12,5 +12,8 @@ namespace SbeSourceGenerator.Schema
         List<SchemaFieldDto> Fields,
         List<SchemaCompositeDto>? NestedComposites = null,
         List<SchemaEnumDto>? NestedEnums = null
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

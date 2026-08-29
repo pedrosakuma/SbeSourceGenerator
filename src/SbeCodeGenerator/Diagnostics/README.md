@@ -133,7 +133,8 @@ Diagnostics are automatically reported during source generation. When you build 
 
 ## Implementation Notes
 
-- Diagnostics use `Location.None` as source generators don't have access to the original XML file locations
+- Diagnostics now use `Location.Create(path, textSpan, lineSpan)` for XML additional files whenever the generator can determine the offending schema node or attribute position from the parsed `XmlReader` line info and the `AdditionalText` source text
+- Diagnostics still fall back to `Location.None` when no reliable source position exists (for example, some malformed-schema failures or diagnostics originating from non-XML inputs such as invalid MSBuild properties)
 - The generator gracefully handles errors by using fallback values and continuing generation
 - Each generator phase (Types, Messages, Utilities, Validation) runs in isolation — a failure in one phase does not block the others
 - Test code uses `default(SourceProductionContext)` which has special handling to skip diagnostic reporting

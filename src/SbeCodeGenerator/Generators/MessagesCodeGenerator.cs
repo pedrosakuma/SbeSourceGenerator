@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Fields;
+using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using SbeSourceGenerator.SemanticTypes;
 using System.Collections.Generic;
@@ -21,7 +22,11 @@ namespace SbeSourceGenerator.Generators
 
             foreach (var messageDto in schema.Messages)
             {
-                var generatedMessageName = TypeResolverHelper.RegisterGeneratedTypeName(context, messageDto.Name, sourceContext);
+                var generatedMessageName = TypeResolverHelper.RegisterGeneratedTypeName(
+                    context,
+                    messageDto.Name,
+                    sourceContext,
+                    messageDto.Source.GetAttributeOrElement("name"));
 
                 var versions = GetMessageVersions(messageDto, schemaVersion, sourceContext);
                 var baseNamespace = StripSchemaVersion(ns);
@@ -162,11 +167,11 @@ namespace SbeSourceGenerator.Generators
                 {
                     if (int.TryParse(field.SinceVersion, out int sinceVersion))
                     {
-                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CancellationToken != default)
+                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CanReportDiagnostics())
                         {
                             sourceContext.ReportDiagnostic(Diagnostic.Create(
                                 SbeDiagnostics.SinceVersionExceedsSchemaVersion,
-                                Location.None,
+                                field.Source.GetAttributeOrElement("sinceVersion"),
                                 field.Name,
                                 sinceVersion.ToString(),
                                 schemaVersion.ToString()));
@@ -177,11 +182,11 @@ namespace SbeSourceGenerator.Generators
                             versions.Add(v);
                         }
                     }
-                    else if (sourceContext.CancellationToken != default)
+                    else if (sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.InvalidIntegerAttribute,
-                            Location.None,
+                            field.Source.GetAttributeOrElement("sinceVersion"),
                             "sinceVersion",
                             field.SinceVersion,
                             field.Name));
@@ -195,11 +200,11 @@ namespace SbeSourceGenerator.Generators
                 {
                     if (int.TryParse(data.SinceVersion, out int sinceVersion))
                     {
-                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CancellationToken != default)
+                        if (schemaVersion >= 0 && sinceVersion > schemaVersion && sourceContext.CanReportDiagnostics())
                         {
                             sourceContext.ReportDiagnostic(Diagnostic.Create(
                                 SbeDiagnostics.SinceVersionExceedsSchemaVersion,
-                                Location.None,
+                                data.Source.GetAttributeOrElement("sinceVersion"),
                                 data.Name,
                                 sinceVersion.ToString(),
                                 schemaVersion.ToString()));
@@ -208,11 +213,11 @@ namespace SbeSourceGenerator.Generators
                         for (int v = 0; v <= sinceVersion; v++)
                             versions.Add(v);
                     }
-                    else if (sourceContext.CancellationToken != default)
+                    else if (sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.InvalidIntegerAttribute,
-                            Location.None,
+                            data.Source.GetAttributeOrElement("sinceVersion"),
                             "sinceVersion",
                             data.SinceVersion,
                             data.Name));
@@ -318,7 +323,7 @@ namespace SbeSourceGenerator.Generators
                             field.Id,
                             resolvedType,
                             field.Description,
-                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            ParseOffset(field.Offset, field.Name, sourceContext, field.Source.GetAttributeOrElement("offset")),
                             TypeResolverHelper.GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated,
@@ -354,7 +359,7 @@ namespace SbeSourceGenerator.Generators
                             fieldType,
                             effectivePrimitiveType,
                             field.Description,
-                            ParseOffset(field.Offset, field.Name, sourceContext),
+                            ParseOffset(field.Offset, field.Name, sourceContext, field.Source.GetAttributeOrElement("offset")),
                             TypeResolverHelper.GetTypeLength(field.Type, context),
                             field.SinceVersion,
                             field.Deprecated,
@@ -372,7 +377,7 @@ namespace SbeSourceGenerator.Generators
                         field.Id,
                         resolvedType,
                         field.Description,
-                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        ParseOffset(field.Offset, field.Name, sourceContext, field.Source.GetAttributeOrElement("offset")),
                         TypeResolverHelper.GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
@@ -429,7 +434,7 @@ namespace SbeSourceGenerator.Generators
             {
                 sourceContext.ReportDiagnostic(Diagnostic.Create(
                     SbeDiagnostics.SemanticConverterWireMismatch,
-                    registration.Location ?? Location.None,
+                    field.Source.GetAttributeOrElement("semanticType"),
                     registration.ConverterFullyQualifiedName,
                     registration.SemanticType,
                     PrimitiveSpecialTypeMap.ToCSharpKeyword(registration.WireSpecialType),
@@ -454,7 +459,7 @@ namespace SbeSourceGenerator.Generators
                 {
                     sourceContext.ReportDiagnostic(Diagnostic.Create(
                         SbeDiagnostics.SemanticAccessorNameCollision,
-                        registration.Location ?? Location.None,
+                        field.Source.GetAttributeOrElement("semanticType"),
                         generatedFieldName,
                         "<message>",
                         registration.SemanticType));
@@ -508,7 +513,11 @@ namespace SbeSourceGenerator.Generators
             var result = new List<IFileContentGenerator>(groups.Count);
             foreach (var group in groups)
             {
-                var groupName = TypeResolverHelper.RegisterGeneratedTypeName(context, group.Name, sourceContext);
+                var groupName = TypeResolverHelper.RegisterGeneratedTypeName(
+                    context,
+                    group.Name,
+                    sourceContext,
+                    group.Source.GetAttributeOrElement("name"));
 
                 var groupFields = new List<IFileContentGenerator>(group.Fields.Count);
                 foreach (var field in group.Fields)
@@ -522,7 +531,7 @@ namespace SbeSourceGenerator.Generators
                         field.Id,
                         resolvedFieldType,
                         field.Description,
-                        ParseOffset(field.Offset, field.Name, sourceContext),
+                        ParseOffset(field.Offset, field.Name, sourceContext, field.Source.GetAttributeOrElement("offset")),
                         TypeResolverHelper.GetTypeLength(field.Type, context),
                         field.SinceVersion,
                         field.Deprecated,
@@ -533,7 +542,9 @@ namespace SbeSourceGenerator.Generators
                 }
 
                 var groupConstants = BuildConstants(group.Constants, context);
-                var numInGroupType = TypeResolverHelper.ResolveTypeName(GetNumInGroupType(group.DimensionType, context, sourceContext), context);
+                var numInGroupType = TypeResolverHelper.ResolveTypeName(
+                    GetNumInGroupType(group.DimensionType, group.Source, context, sourceContext),
+                    context);
 
                 result.Add(new GroupDefinition(
                     versionNamespace,
@@ -600,7 +611,7 @@ namespace SbeSourceGenerator.Generators
             return null;
         }
 
-        private static string GetNumInGroupType(string dimensionType, SchemaContext context, SourceProductionContext sourceContext = default)
+        private static string GetNumInGroupType(string dimensionType, SchemaSourceInfo source, SchemaContext context, SourceProductionContext sourceContext = default)
         {
             var key = $"{dimensionType}.numInGroup";
             if (context.CompositeFieldTypes.TryGetValue(key, out string? numInGroupType))
@@ -611,7 +622,7 @@ namespace SbeSourceGenerator.Generators
             {
                 sourceContext.ReportDiagnostic(Diagnostic.Create(
                     SbeDiagnostics.UnsupportedConstruct,
-                    Location.None,
+                    source.GetAttributeOrElement("dimensionType"),
                     "dimensionType",
                     dimensionType,
                     $"Composite type '{dimensionType}' not found. Falling back to ushort for numInGroup."));
@@ -619,7 +630,7 @@ namespace SbeSourceGenerator.Generators
             return "ushort";
         }
 
-        private static int? ParseOffset(string offset, string fieldName, SourceProductionContext sourceContext)
+        private static int? ParseOffset(string offset, string fieldName, SourceProductionContext sourceContext, Location location)
         {
             if (string.IsNullOrEmpty(offset))
                 return null;
@@ -628,12 +639,12 @@ namespace SbeSourceGenerator.Generators
                 return result;
 
             // Only report diagnostic if context has a valid CancellationToken (not default)
-            if (sourceContext.CancellationToken != default)
+            if (sourceContext.CanReportDiagnostics())
             {
                 // Report diagnostic for invalid offset
                 sourceContext.ReportDiagnostic(Diagnostic.Create(
                     SbeDiagnostics.InvalidIntegerAttribute,
-                    Location.None,
+                    location,
                     "offset",
                     offset,
                     fieldName));

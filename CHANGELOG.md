@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Per-schema incremental invalidation for XML AdditionalFiles (#170)**: `SBESourceGenerator` no longer `.Collect()`s the entire schema set before generation. Each schema now flows through its own `RegisterSourceOutput` path, so editing one XML file only re-runs the generators for that schema. Runtime helpers (`SpanReader` / `SpanWriter`) are emitted in a separate namespace-deduplicated step to preserve shared helper generation without reintroducing whole-project schema invalidation.
 
+### Fixed
+
+- **Accurate XML locations for schema diagnostics (#171)**: schema diagnostics now point at the offending XML element or attribute when line/column information is available from the additional-file source text, instead of reporting `Location.None`. Diagnostics still fall back to `Location.None` for cases where a reliable XML location cannot be determined.
+
 ## [1.7.0] - 2026-04-30
 
 ### Added

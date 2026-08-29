@@ -96,7 +96,12 @@ namespace SbeSourceGenerator.Generators
             return string.Concat(normalizedType, separator, remainder);
         }
 
-        public static int GetTypeLength(string type, SchemaContext context, SourceProductionContext sourceContext = default, string elementName = "")
+        public static int GetTypeLength(
+            string type,
+            SchemaContext context,
+            SourceProductionContext sourceContext = default,
+            string elementName = "",
+            Location? location = null)
         {
             if (TypesCatalog.PrimitiveTypeLengths.TryGetValue(type, out int length))
                 return length;
@@ -112,14 +117,18 @@ namespace SbeSourceGenerator.Generators
             {
                 sourceContext.ReportDiagnostic(Diagnostic.Create(
                     SbeDiagnostics.UnresolvedTypeReference,
-                    Location.None,
+                    location ?? Location.None,
                     type,
                     elementName));
             }
             return 0;
         }
 
-        public static string RegisterGeneratedTypeName(SchemaContext context, string originalName, SourceProductionContext sourceContext = default)
+        public static string RegisterGeneratedTypeName(
+            SchemaContext context,
+            string originalName,
+            SourceProductionContext sourceContext = default,
+            Location? location = null)
         {
             if (string.IsNullOrEmpty(originalName))
                 return originalName;
@@ -132,7 +141,7 @@ namespace SbeSourceGenerator.Generators
                 {
                     sourceContext.ReportDiagnostic(Diagnostic.Create(
                         SbeDiagnostics.DuplicateTypeName,
-                        Location.None,
+                        location ?? Location.None,
                         originalName));
                 }
             }

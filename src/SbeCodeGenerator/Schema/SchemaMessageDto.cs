@@ -16,5 +16,8 @@ namespace SbeSourceGenerator.Schema
         List<SchemaGroupDto> Groups,
         List<SchemaDataDto> Data,
         string BlockLength = ""
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

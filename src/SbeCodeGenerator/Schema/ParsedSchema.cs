@@ -20,5 +20,8 @@ namespace SbeSourceGenerator.Schema
         List<SchemaEnumDto> Sets,
         List<SchemaMessageDto> Messages,
         string HeaderType = "messageHeader"
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }
