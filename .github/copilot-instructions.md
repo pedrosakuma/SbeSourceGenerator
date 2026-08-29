@@ -32,14 +32,16 @@ This is a **Roslyn incremental source generator** (`IIncrementalGenerator`) that
 
 ```
 XML schema (*.xml via AdditionalFiles)
-  → SBESourceGenerator (entry point, namespace derivation, SchemaContext creation)
+  → SBESourceGenerator (entry point, per-schema incremental pipeline, namespace derivation, SchemaContext creation)
     → TypesCodeGenerator   (enums, types, composites, sets, derived constants on decimal composites)
     → MessagesCodeGenerator (messages, fields, groups, varData, per-message {Msg}VersionMap when multi-version)
     → DispatcherGenerator   (per-schema ISbeMessageHandler + zero-cost SbeDispatcher.Dispatch<T>)
-    → UtilitiesCodeGenerator (SpanReader, SpanWriter, endian helpers)
+    → UtilitiesCodeGenerator (SpanReader, SpanWriter, endian helpers; emitted once per runtime namespace in a separate incremental step)
     → ValidationGenerator   (optional validation)
   → sourceContext.AddSource() per generated file
 ```
+
+Incremental behavior matters: keep schema `AdditionalText` inputs as per-item `IncrementalValuesProvider`s through to `RegisterSourceOutput`. Only collect genuinely shared/project-wide data (for example semantic-type registrations, or runtime-namespace dedup when emitting shared helpers).
 
 Each generator implements `ICodeGenerator` and returns `IEnumerable<(string name, string content)>`.
 
