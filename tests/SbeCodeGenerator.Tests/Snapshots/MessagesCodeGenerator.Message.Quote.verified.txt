@@ -145,7 +145,7 @@ public partial struct QuoteData
 /// Zero-copy reader for QuoteData messages.
 /// Provides direct access to the message data in the underlying buffer without copying.
 /// </summary>
-public ref struct QuoteDataReader
+public ref partial struct QuoteDataReader
 {
 	private readonly ReadOnlySpan<byte> _buffer;
 	private readonly int _blockLength;

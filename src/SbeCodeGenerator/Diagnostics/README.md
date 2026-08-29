@@ -107,6 +107,21 @@ Provides compile-time diagnostics for:
 **Example**: A schema declares two `<enum name="Side">` blocks; the second pass attempts `AddSource("…/Enums/Side.cs", …)` again. Without the suppression, Roslyn would throw `ArgumentException`, abort the generator phase, and produce a cascade of `CS0246` errors against partially-emitted files.  
 **Resolution**: Resolve the underlying duplication in the schema (commonly a duplicate type name — see also `SBE013`) or fix the upstream code path that emitted the second source.
 
+### SBE016: Semantic Converter Wire-Type Mismatch
+**Severity**: Error  
+**Triggered when**: A user-registered semantic converter (`[assembly: SbeSemanticType("Name", typeof(MyConv))]`) declares a `TWire` (the first type argument of `ISbeSemanticConverter<TWire, TSemantic>`) that does not match the schema field's underlying primitive (e.g., a `ulong`-wired converter applied to a `uint16` field).  
+**Resolution**: Either change the converter's `TWire` to match the schema's primitive, or register a different converter for that `semanticType`. The accessor is suppressed for that field; raw access remains available.
+
+### SBE017: Semantic Converter Does Not Implement ISbeSemanticConverter
+**Severity**: Error  
+**Triggered when**: A type referenced in `[assembly: SbeSemanticType(..., typeof(X))]` does not implement `SbeSourceGenerator.Runtime.ISbeSemanticConverter<TWire, TSemantic>` (the static-abstract interface emitted by the generator).  
+**Resolution**: Make the converter type implement `ISbeSemanticConverter<TWire, TSemantic>` with `static abstract FromWire`/`ToWire` members. The registration is ignored.
+
+### SBE018: Semantic Accessor Name Collision
+**Severity**: Warning  
+**Triggered when**: The generated `{Field}Value` semantic accessor name collides with an existing member on the same struct (e.g. a sibling field literally named `XxxValue`).  
+**Resolution**: Rename either the conflicting field in the schema or refactor your field naming to avoid the suffix collision. The semantic accessor is dropped for that field; raw access is unaffected.
+
 ## Usage
 
 Diagnostics are automatically reported during source generation. When you build a project that includes an invalid SBE schema as an additional file, you'll see these diagnostics in:

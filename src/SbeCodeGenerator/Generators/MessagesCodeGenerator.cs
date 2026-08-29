@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators.Fields;
 using SbeSourceGenerator.Schema;
+using SbeSourceGenerator.SemanticTypes;
 using System.Collections.Generic;
 using System.Text;
 
@@ -118,7 +119,7 @@ namespace SbeSourceGenerator.Generators
               .Append(messageName).AppendLine("\"/>.</summary>");
             sb.Append("/// <remarks>Issue #146: zero-allocation lookup. The array is small (one entry per version) so a linear scan is faster than a dictionary.</remarks>");
             sb.AppendLine();
-            sb.Append("public static class ").Append(messageName).AppendLine("VersionMap");
+            sb.Append("public static partial class ").Append(messageName).AppendLine("VersionMap");
             sb.AppendLine("{");
             sb.AppendLine("\t/// <summary>(BlockLength, Version) tuples in declaration order.</summary>");
             sb.AppendLine("\tpublic static readonly (int BlockLength, int Version)[] Entries = new (int, int)[]");
@@ -380,8 +381,94 @@ namespace SbeSourceGenerator.Generators
                         context.StructTypeNames.Contains(field.Type)
                     ));
                 }
+
+                // Issue #166: emit a typed {Field}Value accessor when the field's semanticType
+                // is registered. Done after raw-field emission so SumFieldLength sees only the
+                // wire layout (SemanticAccessorDefinition is not IBlittable).
+                TryAppendSemanticAccessor(result, field, generatedFieldName, isOptional, context, sourceContext);
             }
             return result;
+        }
+
+        private static void TryAppendSemanticAccessor(
+            List<IFileContentGenerator> result,
+            SchemaFieldDto field,
+            string generatedFieldName,
+            bool isOptional,
+            SchemaContext context,
+            SourceProductionContext sourceContext)
+        {
+            // Resolve effective semanticType: field-level wins, otherwise inherit from the
+            // referenced named type (FIX/B3 commonly puts semanticType on <type> declarations).
+            string effectiveSemantic = !string.IsNullOrEmpty(field.SemanticType)
+                ? field.SemanticType
+                : (context.TypeSemanticTypes.TryGetValue(field.Type, out var inherited) ? inherited : "");
+            if (string.IsNullOrEmpty(effectiveSemantic)) return;
+            if (context.TypesWithCustomHelper.Contains(field.Type)) return; // helper already provides typed conversion
+            if (!context.SemanticConverters.TryGet(effectiveSemantic, out var registration)) return;
+
+            // Determine the field's wire SpecialType. Try (in order): inline SBE primitive on field.Type,
+            // explicit primitiveType, or the resolved C# underlying primitive of a named type.
+            SpecialType wire = PrimitiveSpecialTypeMap.FromSbePrimitive(field.Type);
+            if (wire == SpecialType.None && !string.IsNullOrEmpty(field.PrimitiveType))
+                wire = PrimitiveSpecialTypeMap.FromSbePrimitive(field.PrimitiveType);
+            if (wire == SpecialType.None)
+            {
+                var underlying = GetUnderlyingType(field.Type, context);
+                if (!string.IsNullOrEmpty(underlying))
+                    wire = PrimitiveSpecialTypeMap.FromCSharpPrimitive(underlying!);
+            }
+
+            if (wire == SpecialType.None)
+            {
+                // Field doesn't resolve to a scalar primitive (composite, char[], etc.) — v1 scope is scalar only.
+                return;
+            }
+
+            if (wire != registration.WireSpecialType)
+            {
+                sourceContext.ReportDiagnostic(Diagnostic.Create(
+                    SbeDiagnostics.SemanticConverterWireMismatch,
+                    registration.Location ?? Location.None,
+                    registration.ConverterFullyQualifiedName,
+                    registration.SemanticType,
+                    PrimitiveSpecialTypeMap.ToCSharpKeyword(registration.WireSpecialType),
+                    /* message context: */ "<message>",
+                    field.Name,
+                    PrimitiveSpecialTypeMap.ToCSharpKeyword(wire),
+                    generatedFieldName));
+                return;
+            }
+
+            // Name-collision guard: another field literally named "{Field}Value" already in result.
+            string accessorName = generatedFieldName + "Value";
+            foreach (var existing in result)
+            {
+                string? existingName = existing switch
+                {
+                    MessageFieldDefinition mfd => mfd.Name,
+                    OptionalMessageFieldDefinition omfd => omfd.Name,
+                    _ => null,
+                };
+                if (existingName == accessorName)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        SbeDiagnostics.SemanticAccessorNameCollision,
+                        registration.Location ?? Location.None,
+                        generatedFieldName,
+                        "<message>",
+                        registration.SemanticType));
+                    return;
+                }
+            }
+
+            result.Add(new SemanticAccessorDefinition(
+                fieldName: generatedFieldName,
+                converterFullyQualifiedName: registration.ConverterFullyQualifiedName,
+                semanticTypeDisplay: registration.SemanticTypeDisplay,
+                isOptional: isOptional,
+                semanticTypeKey: registration.SemanticType,
+                isBuiltIn: registration.IsBuiltIn));
         }
 
         private static List<IFileContentGenerator> BuildConstants(List<SchemaFieldDto> constants, SchemaContext context)

@@ -1,3 +1,13 @@
+## Release 1.7.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|------
+SBE016 | SbeSourceGenerator | Error | Semantic converter wire-type mismatch (#166)
+SBE017 | SbeSourceGenerator | Error | Semantic converter does not implement ISbeSemanticConverter<,> (#166)
+SBE018 | SbeSourceGenerator | Warning | Semantic accessor name collides with an existing field (#166)
+
 ## Release 1.6.1
 
 ### New Rules

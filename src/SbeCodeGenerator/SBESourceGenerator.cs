@@ -1,8 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Schema;
+using SbeSourceGenerator.SemanticTypes;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -21,11 +23,35 @@ namespace SbeSourceGenerator
         /// </summary>
         public void Initialize(IncrementalGeneratorInitializationContext initContext)
         {
+            // Issue #166: emit the runtime types (SbeSemanticTypeAttribute, ISbeSemanticConverter,
+            // built-in converters) into every consumer compilation BEFORE any user attribute can
+            // reference them. RegisterPostInitializationOutput is the supported channel for this.
+            initContext.RegisterPostInitializationOutput(ctx =>
+                ctx.AddSource(SemanticTypesRuntimeSource.HintName, SemanticTypesRuntimeSource.Source));
+
             // Stage 1: Collect XML schema files from additional files
             IncrementalValuesProvider<AdditionalText> xmlSchemaFiles = CollectXmlSchemaFiles(initContext);
 
-            // Stage 2: Combine with analyzer config options (for SbeAssumeHostEndianness hint)
-            var combined = xmlSchemaFiles.Collect().Combine(initContext.AnalyzerConfigOptionsProvider);
+            // Issue #166: collect user [assembly: SbeSemanticType(...)] declarations syntax-first.
+            var userAttributeResults = initContext.SyntaxProvider
+                .CreateSyntaxProvider(SemanticTypesAttributeScanner.IsCandidate, SemanticTypesAttributeScanner.Transform)
+                .SelectMany((arr, _) => arr)
+                .Collect();
+
+            // Surface SBE017 diagnostics from attribute parsing.
+            initContext.RegisterSourceOutput(userAttributeResults, (ctx, results) =>
+            {
+                foreach (var r in results)
+                {
+                    if (r.Diagnostic != null)
+                        ctx.ReportDiagnostic(r.Diagnostic);
+                }
+            });
+
+            // Stage 2: Combine with analyzer config options (for SbeAssumeHostEndianness hint) and the registry.
+            var combined = xmlSchemaFiles.Collect()
+                .Combine(initContext.AnalyzerConfigOptionsProvider)
+                .Combine(userAttributeResults);
 
             // Stage 3: Register source generation with diagnostic support
             RegisterSourceGeneration(initContext, combined);
@@ -43,14 +69,20 @@ namespace SbeSourceGenerator
         /// Registers source output for each XML schema with diagnostic reporting.
         /// </summary>
         private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext,
-            IncrementalValueProvider<(ImmutableArray<AdditionalText> Left, AnalyzerConfigOptionsProvider Right)> combined)
+            IncrementalValueProvider<((ImmutableArray<AdditionalText> Schemas, AnalyzerConfigOptionsProvider Options) Left, ImmutableArray<UserAttributeResult> UserRegs)> combined)
         {
             initContext.RegisterSourceOutput(combined, (sourceContext, input) =>
             {
-                var (text, configOptions) = input;
+                var ((text, configOptions), userRegs) = input;
 
                 if (text.IsDefaultOrEmpty)
                     return;
+
+                // Build the semantic registry once per generation pass.
+                var userRegistrations = userRegs.IsDefaultOrEmpty
+                    ? ImmutableArray<SemanticConverterRegistration>.Empty
+                    : userRegs.Where(r => r.Registration != null).Select(r => r.Registration!).ToImmutableArray();
+                var semanticRegistry = SemanticConverterRegistry.Build(userRegistrations);
 
                 // Read the optional SbeAssumeHostEndianness MSBuild property
                 string? hostHint = null;
@@ -79,6 +111,7 @@ namespace SbeSourceGenerator
 
                         // Create a per-schema context to hold mutable state (sharing runtime tracking)
                         var context = new SchemaContext(schemaKey, emittedRuntimeNamespaces);
+                        context.SemanticConverters = semanticRegistry;
 
                         if (!string.IsNullOrEmpty(schema.ByteOrder))
                         {

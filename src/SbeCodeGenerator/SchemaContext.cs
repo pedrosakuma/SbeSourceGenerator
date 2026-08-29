@@ -56,6 +56,21 @@ namespace SbeSourceGenerator
         public Dictionary<string, (string PrimitiveType, string NullValue)> OptionalTypes { get; } = new Dictionary<string, (string, string)>(8);
 
         /// <summary>
+        /// Issue #166: maps a named type's <c>semanticType</c> attribute to its key, so that
+        /// fields referencing the type via <c>type="..."</c> (rather than carrying their own
+        /// <c>semanticType</c> attribute) inherit the type's semantic registration.
+        /// </summary>
+        public Dictionary<string, string> TypeSemanticTypes { get; } = new Dictionary<string, string>(16);
+
+        /// <summary>
+        /// Issue #166: types whose generated C# representation already provides a typed
+        /// conversion (e.g. <c>LocalMktDate</c> → <c>DateOnly</c> via DateHelper). The
+        /// semantic-type registry skips inherited registrations for these so it does not
+        /// double-emit a converter call against an already-typed field.
+        /// </summary>
+        public HashSet<string> TypesWithCustomHelper { get; } = new HashSet<string>(System.StringComparer.Ordinal);
+
+        /// <summary>
         /// Maps user-declared simple type names (from &lt;type&gt; elements) to their
         /// underlying SBE primitive type name (e.g., "uint8EnumEncoding" -&gt; "uint8").
         /// Used to resolve enum/set <c>encodingType</c> attributes that reference a
@@ -94,6 +109,15 @@ namespace SbeSourceGenerator
         /// Computed from schema byteOrder and optional SbeAssumeHostEndianness hint.
         /// </summary>
         public EndianConversion EndianConversion { get; set; } = EndianConversion.None;
+
+        /// <summary>
+        /// Issue #166: registry of <c>semanticType</c> → converter bindings used to emit
+        /// typed <c>{Field}Value</c> accessors alongside raw wire fields. Built-in registrations
+        /// are seeded by <see cref="SemanticTypes.SemanticConverterRegistry.Build"/>; user
+        /// registrations from <c>[assembly: SbeSemanticType(...)]</c> override built-ins.
+        /// </summary>
+        public SemanticTypes.SemanticConverterRegistry SemanticConverters { get; set; } =
+            SemanticTypes.SemanticConverterRegistry.Empty;
 
         public string CreateHintName(params string[] segments)
         {

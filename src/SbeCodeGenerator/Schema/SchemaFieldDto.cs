@@ -20,6 +20,7 @@ namespace SbeSourceGenerator.Schema
         string MinValue,
         string MaxValue,
         string Deprecated,
-        string CharacterEncoding = ""
+        string CharacterEncoding = "",
+        string SemanticType = ""
     );
 }

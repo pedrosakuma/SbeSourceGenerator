@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+                   package="semantic.types.test"
+                   id="990"
+                   version="0"
+                   semanticVersion="1"
+                   description="Issue #166: schema exercising semanticType -> typed accessor mapping"
+                   byteOrder="littleEndian">
+
+  <types>
+    <type name="OptionalNanos" primitiveType="uint64" presence="optional" semanticType="UTCTimestampNanos" />
+
+    <composite name="messageHeader" description="Standard SBE header">
+      <type name="blockLength" primitiveType="uint16"/>
+      <type name="templateId"  primitiveType="uint16"/>
+      <type name="schemaId"    primitiveType="uint16"/>
+      <type name="version"     primitiveType="uint16"/>
+    </composite>
+  </types>
+
+  <sbe:message name="TimedEvent" id="1" description="Event with semantic timestamps">
+    <field name="transactTime"  id="1" type="uint64" semanticType="UTCTimestampNanos"/>
+    <field name="exchangeTime"  id="2" type="uint64" semanticType="UTCTimestampMicros"/>
+    <field name="bookingDate"   id="3" type="uint16" semanticType="UTCDateOnly"/>
+    <field name="settlementDate" id="4" type="uint16" semanticType="LocalMktDate"/>
+    <field name="contractMonth" id="5" type="uint32" semanticType="MonthYear"/>
+    <field name="optionalNanos" id="6" type="OptionalNanos"/>
+    <!-- Field with no registered semanticType: no extra accessor expected. -->
+    <field name="payloadSize"   id="7" type="uint16"/>
+    <!-- Custom semanticType registered via assembly attribute in the test project. -->
+    <field name="customStatus"  id="8" type="uint8"  semanticType="MyCustomStatus"/>
+  </sbe:message>
+</sbe:messageSchema>

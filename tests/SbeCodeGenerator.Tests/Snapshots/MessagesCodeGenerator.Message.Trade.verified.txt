@@ -145,7 +145,7 @@ public partial struct TradeData
 /// Zero-copy reader for TradeData messages.
 /// Provides direct access to the message data in the underlying buffer without copying.
 /// </summary>
-public ref struct TradeDataReader
+public ref partial struct TradeDataReader
 {
 	private readonly ReadOnlySpan<byte> _buffer;
 	private readonly int _blockLength;
