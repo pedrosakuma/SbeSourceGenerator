@@ -17,16 +17,28 @@ namespace SbeSourceGenerator.Generators
 
             if (context.GeneratedRuntimeNamespaces.Add(runtimeNamespace))
             {
-                // Generate SpanReader once per runtime namespace
-                StringBuilder sb = new StringBuilder();
-                new SpanReaderGenerator(runtimeNamespace).AppendFileContent(sb);
-                yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanReader"), sb.ToString());
-
-                // Generate SpanWriter once per runtime namespace
-                sb = new StringBuilder();
-                new SpanWriterGenerator(runtimeNamespace).AppendFileContent(sb);
-                yield return (context.CreateHintName(runtimeNamespace, "Runtime", "SpanWriter"), sb.ToString());
+                foreach (var item in GenerateRuntimeSources(
+                    runtimeNamespace,
+                    typeName => context.CreateHintName(runtimeNamespace, "Runtime", typeName)))
+                {
+                    yield return item;
+                }
             }
+        }
+
+        internal static IEnumerable<(string name, string content)> GenerateRuntimeSources(
+            string runtimeNamespace,
+            Func<string, string> createHintName)
+        {
+            // Generate SpanReader once per runtime namespace
+            StringBuilder sb = new StringBuilder();
+            new SpanReaderGenerator(runtimeNamespace).AppendFileContent(sb);
+            yield return (createHintName("SpanReader"), sb.ToString());
+
+            // Generate SpanWriter once per runtime namespace
+            sb = new StringBuilder();
+            new SpanWriterGenerator(runtimeNamespace).AppendFileContent(sb);
+            yield return (createHintName("SpanWriter"), sb.ToString());
         }
     }
 }

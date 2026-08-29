@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace SbeSourceGenerator
 {
@@ -48,13 +49,28 @@ namespace SbeSourceGenerator
                 }
             });
 
+            var semanticRegistry = userAttributeResults
+                .Select(static (results, _) => BuildSemanticRegistry(results));
+
             // Stage 2: Combine with analyzer config options (for SbeAssumeHostEndianness hint) and the registry.
-            var combined = xmlSchemaFiles.Collect()
+            var combined = xmlSchemaFiles
                 .Combine(initContext.AnalyzerConfigOptionsProvider)
-                .Combine(userAttributeResults);
+                .Combine(semanticRegistry)
+                .Select(static (input, _) => (
+                    Path: input.Left.Left.Path,
+                    Schema: input.Left.Left,
+                    Options: input.Left.Right,
+                    SemanticRegistry: input.Right))
+                .WithTrackingName("PerSchemaGeneration");
+
+            var runtimeNamespaces = xmlSchemaFiles
+                .Select(static (schemaFile, cancellationToken) => TryGetRuntimeNamespace(schemaFile, cancellationToken))
+                .Collect()
+                .WithTrackingName("RuntimeNamespaceCollection");
 
             // Stage 3: Register source generation with diagnostic support
             RegisterSourceGeneration(initContext, combined);
+            RegisterRuntimeGeneration(initContext, runtimeNamespaces);
         }
 
         /// <summary>
@@ -69,20 +85,11 @@ namespace SbeSourceGenerator
         /// Registers source output for each XML schema with diagnostic reporting.
         /// </summary>
         private static void RegisterSourceGeneration(IncrementalGeneratorInitializationContext initContext,
-            IncrementalValueProvider<((ImmutableArray<AdditionalText> Schemas, AnalyzerConfigOptionsProvider Options) Left, ImmutableArray<UserAttributeResult> UserRegs)> combined)
+            IncrementalValuesProvider<(string Path, AdditionalText Schema, AnalyzerConfigOptionsProvider Options, SemanticConverterRegistry SemanticRegistry)> combined)
         {
             initContext.RegisterSourceOutput(combined, (sourceContext, input) =>
             {
-                var ((text, configOptions), userRegs) = input;
-
-                if (text.IsDefaultOrEmpty)
-                    return;
-
-                // Build the semantic registry once per generation pass.
-                var userRegistrations = userRegs.IsDefaultOrEmpty
-                    ? ImmutableArray<SemanticConverterRegistration>.Empty
-                    : userRegs.Where(r => r.Registration != null).Select(r => r.Registration!).ToImmutableArray();
-                var semanticRegistry = SemanticConverterRegistry.Build(userRegistrations);
+                var (path, additionalText, configOptions, semanticRegistry) = input;
 
                 // Read the optional SbeAssumeHostEndianness MSBuild property
                 string? hostHint = null;
@@ -92,113 +99,166 @@ namespace SbeSourceGenerator
                     hostHint = hintValue;
                 }
 
-                var emittedRuntimeNamespaces = new HashSet<string>(StringComparer.Ordinal);
                 var emittedHintNames = new HashSet<string>(StringComparer.Ordinal);
 
-                foreach (var additionalText in text)
+                try
                 {
-                    try
+                    var xmlContent = additionalText.GetText(sourceContext.CancellationToken)?.ToString();
+                    if (string.IsNullOrEmpty(xmlContent))
+                        return;
+
+                    var schema = SchemaReader.Parse(xmlContent!, sourceContext);
+
+                    string ns = GetNamespaceFromSchema(schema, path);
+                    string schemaKey = CreateSchemaKey(path);
+
+                    // Create a per-schema context to hold mutable state.
+                    var context = new SchemaContext(schemaKey);
+                    context.SemanticConverters = semanticRegistry;
+
+                    if (!string.IsNullOrEmpty(schema.ByteOrder))
                     {
-                        string path = additionalText.Path;
-                        var xmlContent = additionalText.GetText(sourceContext.CancellationToken)?.ToString();
-                        if (string.IsNullOrEmpty(xmlContent))
-                            continue;
+                        context.ByteOrder = schema.ByteOrder;
+                    }
 
-                        var schema = SchemaReader.Parse(xmlContent!, sourceContext);
+                    context.EndianConversion = ComputeEndianConversion(
+                        context.ByteOrder, hostHint, sourceContext, path);
 
-                        string ns = GetNamespaceFromSchema(schema, path);
-                        string schemaKey = CreateSchemaKey(path);
+                    if (!string.IsNullOrEmpty(schema.HeaderType))
+                        context.HeaderType = schema.HeaderType;
 
-                        // Create a per-schema context to hold mutable state (sharing runtime tracking)
-                        var context = new SchemaContext(schemaKey, emittedRuntimeNamespaces);
-                        context.SemanticConverters = semanticRegistry;
+                    // Use specialized generators to handle different categories
+                    var typesGenerator = new TypesCodeGenerator();
+                    var messagesGenerator = new MessagesCodeGenerator();
+                    var validationGenerator = new ValidationGenerator();
 
-                        if (!string.IsNullOrEmpty(schema.ByteOrder))
+                    var generators = new (string phase, ICodeGenerator gen)[]
+                    {
+                        ("types", typesGenerator),
+                        ("messages", messagesGenerator),
+                        ("dispatcher", new DispatcherGenerator()),
+                        ("validation", validationGenerator)
+                    };
+
+                    foreach (var (phase, gen) in generators)
+                    {
+                        try
                         {
-                            context.ByteOrder = schema.ByteOrder;
-                        }
-
-                        context.EndianConversion = ComputeEndianConversion(
-                            context.ByteOrder, hostHint, sourceContext, path);
-
-                        if (!string.IsNullOrEmpty(schema.HeaderType))
-                            context.HeaderType = schema.HeaderType;
-
-                        // Use specialized generators to handle different categories
-                        var typesGenerator = new TypesCodeGenerator();
-                        var messagesGenerator = new MessagesCodeGenerator();
-                        var utilitiesGenerator = new UtilitiesCodeGenerator();
-                        var validationGenerator = new ValidationGenerator();
-
-                        var generators = new (string phase, ICodeGenerator gen)[]
-                        {
-                            ("types", typesGenerator),
-                            ("messages", messagesGenerator),
-                            ("dispatcher", new DispatcherGenerator()),
-                            ("utilities", utilitiesGenerator),
-                            ("validation", validationGenerator)
-                        };
-
-                        foreach (var (phase, gen) in generators)
-                        {
-                            try
+                            foreach (var item in gen.Generate(ns, schema, context, sourceContext))
                             {
-                                foreach (var item in gen.Generate(ns, schema, context, sourceContext))
+                                try
                                 {
-                                    try
+                                    if (!emittedHintNames.Add(item.name))
                                     {
-                                        if (!emittedHintNames.Add(item.name))
+                                        // Roslyn would throw ArgumentException on duplicate hintName,
+                                        // aborting the rest of the phase. Suppress and continue so a
+                                        // single duplicate doesn't cascade into thousands of CS0246s
+                                        // against partially-emitted files.
+                                        if (!sourceContext.CancellationToken.IsCancellationRequested)
                                         {
-                                            // Roslyn would throw ArgumentException on duplicate hintName,
-                                            // aborting the rest of the phase. Suppress and continue so a
-                                            // single duplicate doesn't cascade into thousands of CS0246s
-                                            // against partially-emitted files.
-                                            if (!sourceContext.CancellationToken.IsCancellationRequested)
-                                            {
-                                                sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                                    SbeDiagnostics.DuplicateGeneratedSource,
-                                                    Location.None,
-                                                    item.name,
-                                                    phase));
-                                            }
-                                            continue;
+                                            sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                                SbeDiagnostics.DuplicateGeneratedSource,
+                                                Location.None,
+                                                item.name,
+                                                phase));
                                         }
-                                        sourceContext.AddSource(item.name, item.content);
+                                        continue;
                                     }
-                                    catch (Exception itemEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
-                                    {
-                                        // Per-item failure must not derail subsequent items in the same phase.
-                                        sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                            SbeDiagnostics.MalformedSchema,
-                                            Location.None,
-                                            path,
-                                            $"[{phase}] {item.name}: {itemEx.Message}"));
-                                    }
+                                    sourceContext.AddSource(item.name, item.content);
+                                }
+                                catch (Exception itemEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
+                                {
+                                    // Per-item failure must not derail subsequent items in the same phase.
+                                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                                        SbeDiagnostics.MalformedSchema,
+                                        Location.None,
+                                        path,
+                                        $"[{phase}] {item.name}: {itemEx.Message}"));
                                 }
                             }
-                            catch (Exception genEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
-                            {
-                                sourceContext.ReportDiagnostic(Diagnostic.Create(
-                                    SbeDiagnostics.MalformedSchema,
-                                    Location.None,
-                                    path,
-                                    $"[{phase}] {genEx.Message}"));
-                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!sourceContext.CancellationToken.IsCancellationRequested)
+                        catch (Exception genEx) when (!sourceContext.CancellationToken.IsCancellationRequested)
                         {
                             sourceContext.ReportDiagnostic(Diagnostic.Create(
                                 SbeDiagnostics.MalformedSchema,
                                 Location.None,
-                                additionalText.Path,
-                                ex.Message));
+                                path,
+                                $"[{phase}] {genEx.Message}"));
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    if (!sourceContext.CancellationToken.IsCancellationRequested)
+                    {
+                        sourceContext.ReportDiagnostic(Diagnostic.Create(
+                            SbeDiagnostics.MalformedSchema,
+                            Location.None,
+                            additionalText.Path,
+                            ex.Message));
+                    }
+                }
             });
+        }
+
+        private static void RegisterRuntimeGeneration(
+            IncrementalGeneratorInitializationContext initContext,
+            IncrementalValueProvider<ImmutableArray<string?>> runtimeNamespaces)
+        {
+            initContext.RegisterSourceOutput(runtimeNamespaces, (sourceContext, namespaces) =>
+            {
+                if (namespaces.IsDefaultOrEmpty)
+                    return;
+
+                var emittedRuntimeNamespaces = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var runtimeNamespace in namespaces)
+                {
+                    if (string.IsNullOrWhiteSpace(runtimeNamespace))
+                        continue;
+
+                    var resolvedRuntimeNamespace = runtimeNamespace!;
+                    if (!emittedRuntimeNamespaces.Add(resolvedRuntimeNamespace))
+                        continue;
+
+                    foreach (var item in UtilitiesCodeGenerator.GenerateRuntimeSources(
+                        resolvedRuntimeNamespace,
+                        typeName => CreateRuntimeHintName(resolvedRuntimeNamespace, typeName)))
+                    {
+                        sourceContext.AddSource(item.name, item.content);
+                    }
+                }
+            });
+        }
+
+        private static SemanticConverterRegistry BuildSemanticRegistry(ImmutableArray<UserAttributeResult> userRegs)
+        {
+            var userRegistrations = userRegs.IsDefaultOrEmpty
+                ? ImmutableArray<SemanticConverterRegistration>.Empty
+                : userRegs.Where(r => r.Registration != null).Select(r => r.Registration!).ToImmutableArray();
+
+            return SemanticConverterRegistry.Build(userRegistrations);
+        }
+
+        private static string? TryGetRuntimeNamespace(AdditionalText additionalText, CancellationToken cancellationToken)
+        {
+            var xmlContent = additionalText.GetText(cancellationToken)?.ToString();
+            if (string.IsNullOrEmpty(xmlContent))
+                return null;
+
+            try
+            {
+                var schema = SchemaReader.Parse(xmlContent!);
+                return GetNamespaceFromSchema(schema, additionalText.Path);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string CreateRuntimeHintName(string runtimeNamespace, string typeName)
+        {
+            return string.Concat(runtimeNamespace, "\\Runtime\\", typeName);
         }
 
         private static string CreateSchemaKey(string path)
