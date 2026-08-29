@@ -9,5 +9,8 @@ namespace SbeSourceGenerator.Schema
         string Type,
         string Description,
         string SinceVersion = ""
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

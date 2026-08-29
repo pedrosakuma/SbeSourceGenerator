@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using SbeSourceGenerator.Diagnostics;
+using SbeSourceGenerator.Helpers;
 using SbeSourceGenerator.Schema;
 using System.Collections.Generic;
 using System.Linq;
@@ -49,11 +50,11 @@ namespace SbeSourceGenerator.Generators
                 bool valid = true;
                 if (!string.IsNullOrEmpty(field.MinValue) && !double.TryParse(field.MinValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
                 {
-                    if (sourceContext.CancellationToken != default)
+                    if (sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.InvalidNumericConstraint,
-                            Location.None,
+                            field.Source.GetAttributeOrElement("minValue"),
                             "minValue",
                             field.MinValue,
                             field.Name));
@@ -62,11 +63,11 @@ namespace SbeSourceGenerator.Generators
                 }
                 if (!string.IsNullOrEmpty(field.MaxValue) && !double.TryParse(field.MaxValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _))
                 {
-                    if (sourceContext.CancellationToken != default)
+                    if (sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.InvalidNumericConstraint,
-                            Location.None,
+                            field.Source.GetAttributeOrElement("maxValue"),
                             "maxValue",
                             field.MaxValue,
                             field.Name));

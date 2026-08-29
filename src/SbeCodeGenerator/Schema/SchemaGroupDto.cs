@@ -14,5 +14,8 @@ namespace SbeSourceGenerator.Schema
         List<SchemaFieldDto> Constants,
         List<SchemaDataDto>? Data = null,
         List<SchemaGroupDto>? Groups = null
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

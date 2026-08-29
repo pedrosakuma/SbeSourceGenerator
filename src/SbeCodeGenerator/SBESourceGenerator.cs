@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 using SbeSourceGenerator.Diagnostics;
 using SbeSourceGenerator.Generators;
 using SbeSourceGenerator.Schema;
@@ -13,6 +14,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Xml;
 
 namespace SbeSourceGenerator
 {
@@ -101,13 +103,15 @@ namespace SbeSourceGenerator
 
                 var emittedHintNames = new HashSet<string>(StringComparer.Ordinal);
 
+                SourceText? sourceText = null;
                 try
                 {
-                    var xmlContent = additionalText.GetText(sourceContext.CancellationToken)?.ToString();
+                    sourceText = additionalText.GetText(sourceContext.CancellationToken);
+                    var xmlContent = sourceText?.ToString();
                     if (string.IsNullOrEmpty(xmlContent))
                         return;
 
-                    var schema = SchemaReader.Parse(xmlContent!, sourceContext);
+                    var schema = SchemaReader.Parse(xmlContent!, sourceContext, path, sourceText);
 
                     string ns = GetNamespaceFromSchema(schema, path);
                     string schemaKey = CreateSchemaKey(path);
@@ -122,7 +126,7 @@ namespace SbeSourceGenerator
                     }
 
                     context.EndianConversion = ComputeEndianConversion(
-                        context.ByteOrder, hostHint, sourceContext, path);
+                        context.ByteOrder, hostHint, sourceContext, schema, path);
 
                     if (!string.IsNullOrEmpty(schema.HeaderType))
                         context.HeaderType = schema.HeaderType;
@@ -191,9 +195,12 @@ namespace SbeSourceGenerator
                 {
                     if (!sourceContext.CancellationToken.IsCancellationRequested)
                     {
+                        var location = ex is XmlException xmlException
+                            ? XmlDiagnosticLocation.CreateFromException(sourceText, additionalText.Path, xmlException)
+                            : Location.None;
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.MalformedSchema,
-                            Location.None,
+                            location,
                             additionalText.Path,
                             ex.Message));
                     }
@@ -285,7 +292,6 @@ namespace SbeSourceGenerator
 
             return string.Concat(sanitized.ToString(), "_", hash);
         }
-
 
         private static string GetNamespaceFromSchema(ParsedSchema schema, string path)
         {
@@ -406,8 +412,12 @@ namespace SbeSourceGenerator
         /// <summary>
         /// Computes the endian conversion strategy from schema byteOrder and optional host hint.
         /// </summary>
-        private static EndianConversion ComputeEndianConversion(string schemaByteOrder, string? hostHint,
-            SourceProductionContext sourceContext, string schemaPath)
+        private static EndianConversion ComputeEndianConversion(
+            string schemaByteOrder,
+            string? hostHint,
+            SourceProductionContext sourceContext,
+            ParsedSchema schema,
+            string schemaPath)
         {
             bool isBigEndianSchema = schemaByteOrder.Equals("bigEndian", StringComparison.OrdinalIgnoreCase);
 
@@ -421,7 +431,7 @@ namespace SbeSourceGenerator
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.NonNativeByteOrder,
-                            Location.None,
+                            schema.Source.GetAttributeOrElement("byteOrder"),
                             schemaPath,
                             schemaByteOrder));
                     }

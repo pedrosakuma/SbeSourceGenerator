@@ -1,7 +1,10 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using SbeSourceGenerator.Diagnostics;
+using SbeSourceGenerator.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Xml;
 
@@ -14,7 +17,7 @@ namespace SbeSourceGenerator.Schema
     /// </summary>
     internal static class SchemaReader
     {
-        public static ParsedSchema Parse(string xmlContent, SourceProductionContext sourceContext)
+        public static ParsedSchema Parse(string xmlContent, SourceProductionContext sourceContext, string filePath = "", SourceText? sourceText = null)
         {
             var types = new List<SchemaTypeDto>(16);
             var composites = new List<SchemaCompositeDto>(8);
@@ -29,6 +32,7 @@ namespace SbeSourceGenerator.Schema
             string description = "";
             string semanticVersion = "";
             string headerType = "messageHeader";
+            var schemaSource = SchemaSourceInfo.Empty;
 
             var settings = new XmlReaderSettings
             {
@@ -48,6 +52,7 @@ namespace SbeSourceGenerator.Schema
                     switch (reader.LocalName)
                     {
                         case "messageSchema":
+                            schemaSource = CreateSourceInfo(reader, filePath, sourceText);
                             byteOrder = reader.GetAttribute("byteOrder") ?? "";
                             package = reader.GetAttribute("package") ?? "";
                             version = reader.GetAttribute("version") ?? "";
@@ -58,18 +63,21 @@ namespace SbeSourceGenerator.Schema
                             break;
 
                         case "types":
-                            ReadTypes(reader, types, composites, enums, sets, sourceContext);
+                            ReadTypes(reader, types, composites, enums, sets, sourceContext, filePath, sourceText);
                             break;
 
                         case "message":
-                            messages.Add(ReadMessage(reader, sourceContext));
+                            messages.Add(ReadMessage(reader, sourceContext, filePath, sourceText));
                             break;
                     }
                 }
             }
 
             return new ParsedSchema(byteOrder, package, version, id, description, semanticVersion,
-                types, composites, enums, sets, messages, headerType);
+                types, composites, enums, sets, messages, headerType)
+            {
+                Source = schemaSource
+            };
         }
 
         public static ParsedSchema Parse(string xmlContent)
@@ -82,7 +90,9 @@ namespace SbeSourceGenerator.Schema
             List<SchemaCompositeDto> composites,
             List<SchemaEnumDto> enums,
             List<SchemaEnumDto> sets,
-            SourceProductionContext sourceContext)
+            SourceProductionContext sourceContext,
+            string filePath,
+            SourceText? sourceText)
         {
             if (reader.IsEmptyElement)
                 return;
@@ -99,26 +109,27 @@ namespace SbeSourceGenerator.Schema
                 switch (reader.LocalName)
                 {
                     case "type":
-                        types.Add(ReadType(reader, sourceContext));
+                        types.Add(ReadType(reader, sourceContext, filePath, sourceText));
                         break;
                     case "composite":
-                        composites.Add(ReadComposite(reader, sourceContext));
+                        composites.Add(ReadComposite(reader, sourceContext, filePath, sourceText));
                         break;
                     case "enum":
-                        enums.Add(ReadEnum(reader, sourceContext));
+                        enums.Add(ReadEnum(reader, sourceContext, filePath, sourceText));
                         break;
                     case "set":
-                        sets.Add(ReadSet(reader, sourceContext));
+                        sets.Add(ReadSet(reader, sourceContext, filePath, sourceText));
                         break;
                 }
             }
         }
 
-        private static SchemaTypeDto ReadType(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaTypeDto ReadType(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "type", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "type", sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
-            string primitiveType = GetRequiredAttribute(reader, "primitiveType", "type", sourceContext);
+            string primitiveType = GetRequiredAttribute(reader, "primitiveType", "type", sourceContext, source);
             string semanticType = reader.GetAttribute("semanticType") ?? "";
             string presence = reader.GetAttribute("presence") ?? "";
             string nullValue = reader.GetAttribute("nullValue") ?? "";
@@ -140,12 +151,16 @@ namespace SbeSourceGenerator.Schema
                 }
             }
 
-            return new SchemaTypeDto(name, desc, primitiveType, semanticType, presence, nullValue, length, innerText, minValue, maxValue, characterEncoding);
+            return new SchemaTypeDto(name, desc, primitiveType, semanticType, presence, nullValue, length, innerText, minValue, maxValue, characterEncoding)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaCompositeDto ReadComposite(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaCompositeDto ReadComposite(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "composite", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "composite", sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
             string semanticType = reader.GetAttribute("semanticType") ?? "";
 
@@ -165,14 +180,17 @@ namespace SbeSourceGenerator.Schema
                         switch (reader.LocalName)
                         {
                             case "composite":
-                                var nested = ReadComposite(reader, sourceContext);
+                                var nested = ReadComposite(reader, sourceContext, filePath, sourceText);
                                 nestedComposites.Add(nested);
                                 // Add a ref-like field placeholder to preserve ordering
                                 fields.Add(new SchemaFieldDto(nested.Name, nested.Description,
-                                    "", "", "", "", "", "", "", "", nested.Name, "", "", "", ""));
+                                    "", "", "", "", "", "", "", "", nested.Name, "", "", "", "")
+                                {
+                                    Source = nested.Source
+                                });
                                 break;
                             case "enum":
-                                var nestedEnum = ReadEnum(reader, sourceContext);
+                                var nestedEnum = ReadEnum(reader, sourceContext, filePath, sourceText);
                                 nestedEnums.Add(nestedEnum);
                                 break;
                             case "set":
@@ -189,21 +207,25 @@ namespace SbeSourceGenerator.Schema
                                 }
                                 break;
                             default:
-                                fields.Add(ReadField(reader, sourceContext));
+                                fields.Add(ReadField(reader, sourceContext, filePath, sourceText));
                                 break;
                         }
                     }
                 }
             }
 
-            return new SchemaCompositeDto(name, desc, semanticType, fields, nestedComposites, nestedEnums);
+            return new SchemaCompositeDto(name, desc, semanticType, fields, nestedComposites, nestedEnums)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaEnumDto ReadEnum(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaEnumDto ReadEnum(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "enum", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "enum", sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
-            string encodingType = GetRequiredAttribute(reader, "encodingType", "enum", sourceContext);
+            string encodingType = GetRequiredAttribute(reader, "encodingType", "enum", sourceContext, source);
             string semanticType = reader.GetAttribute("semanticType") ?? "";
 
             var choices = new List<SchemaFieldDto>(16);
@@ -215,23 +237,27 @@ namespace SbeSourceGenerator.Schema
                     if (reader.NodeType == XmlNodeType.EndElement && reader.Depth == depth)
                         break;
                     if (reader.NodeType == XmlNodeType.Element)
-                        choices.Add(ReadField(reader, sourceContext));
+                        choices.Add(ReadField(reader, sourceContext, filePath, sourceText));
                 }
             }
 
-            return new SchemaEnumDto(name, desc, encodingType, semanticType, choices);
+            return new SchemaEnumDto(name, desc, encodingType, semanticType, choices)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaEnumDto ReadSet(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaEnumDto ReadSet(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
             // Sets use the same DTO as enums
-            return ReadEnum(reader, sourceContext);
+            return ReadEnum(reader, sourceContext, filePath, sourceText);
         }
 
-        private static SchemaMessageDto ReadMessage(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaMessageDto ReadMessage(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "message", sourceContext);
-            string msgId = GetRequiredAttribute(reader, "id", "message", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "message", sourceContext, source);
+            string msgId = GetRequiredAttribute(reader, "id", "message", sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
             string semanticType = reader.GetAttribute("semanticType") ?? "";
             string deprecated = reader.GetAttribute("deprecated") ?? "";
@@ -255,29 +281,33 @@ namespace SbeSourceGenerator.Schema
                     switch (reader.LocalName)
                     {
                         case "field":
-                            var field = ReadField(reader, sourceContext);
+                            var field = ReadField(reader, sourceContext, filePath, sourceText);
                             if (field.Presence == "constant")
                                 constants.Add(field);
                             else
                                 fields.Add(field);
                             break;
                         case "group":
-                            groups.Add(ReadGroup(reader, sourceContext));
+                            groups.Add(ReadGroup(reader, sourceContext, filePath, sourceText));
                             break;
                         case "data":
-                            data.Add(ReadData(reader, sourceContext));
+                            data.Add(ReadData(reader, sourceContext, filePath, sourceText));
                             break;
                     }
                 }
             }
 
-            return new SchemaMessageDto(name, msgId, desc, semanticType, deprecated, fields, constants, groups, data, blockLengthAttr);
+            return new SchemaMessageDto(name, msgId, desc, semanticType, deprecated, fields, constants, groups, data, blockLengthAttr)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaGroupDto ReadGroup(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaGroupDto ReadGroup(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "group", sourceContext);
-            string groupId = GetRequiredAttribute(reader, "id", "group", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "group", sourceContext, source);
+            string groupId = GetRequiredAttribute(reader, "id", "group", sourceContext, source);
             string dimensionType = reader.GetAttribute("dimensionType") ?? "";
             if (string.IsNullOrEmpty(dimensionType))
                 dimensionType = "GroupSizeEncoding";
@@ -300,7 +330,7 @@ namespace SbeSourceGenerator.Schema
 
                     if (reader.LocalName == "field")
                     {
-                        var field = ReadField(reader, sourceContext);
+                        var field = ReadField(reader, sourceContext, filePath, sourceText);
                         if (field.Presence == "constant")
                             constants.Add(field);
                         else
@@ -308,37 +338,45 @@ namespace SbeSourceGenerator.Schema
                     }
                     else if (reader.LocalName == "data")
                     {
-                        dataList.Add(ReadData(reader, sourceContext));
+                        dataList.Add(ReadData(reader, sourceContext, filePath, sourceText));
                     }
                     else if (reader.LocalName == "group")
                     {
-                        nestedGroups.Add(ReadGroup(reader, sourceContext));
+                        nestedGroups.Add(ReadGroup(reader, sourceContext, filePath, sourceText));
                     }
                 }
             }
 
             return new SchemaGroupDto(name, groupId, dimensionType, desc, fields, constants,
                 dataList.Count > 0 ? dataList : null,
-                nestedGroups.Count > 0 ? nestedGroups : null);
+                nestedGroups.Count > 0 ? nestedGroups : null)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaDataDto ReadData(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaDataDto ReadData(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", "data", sourceContext);
-            string dataId = GetRequiredAttribute(reader, "id", "data", sourceContext);
-            string type = GetRequiredAttribute(reader, "type", "data", sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", "data", sourceContext, source);
+            string dataId = GetRequiredAttribute(reader, "id", "data", sourceContext, source);
+            string type = GetRequiredAttribute(reader, "type", "data", sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
             string sinceVersion = reader.GetAttribute("sinceVersion") ?? "";
 
             if (!reader.IsEmptyElement)
                 reader.Skip();
 
-            return new SchemaDataDto(name, dataId, type, desc, sinceVersion);
+            return new SchemaDataDto(name, dataId, type, desc, sinceVersion)
+            {
+                Source = source
+            };
         }
 
-        private static SchemaFieldDto ReadField(XmlReader reader, SourceProductionContext sourceContext)
+        private static SchemaFieldDto ReadField(XmlReader reader, SourceProductionContext sourceContext, string filePath, SourceText? sourceText)
         {
-            string name = GetRequiredAttribute(reader, "name", reader.LocalName, sourceContext);
+            var source = CreateSourceInfo(reader, filePath, sourceText);
+            string name = GetRequiredAttribute(reader, "name", reader.LocalName, sourceContext, source);
             string desc = reader.GetAttribute("description") ?? "";
             string primitiveType = reader.GetAttribute("primitiveType") ?? "";
             string presence = reader.GetAttribute("presence") ?? "";
@@ -371,24 +409,57 @@ namespace SbeSourceGenerator.Schema
             }
 
             return new SchemaFieldDto(name, desc, primitiveType, presence, length, nullValue, valueRef,
-                innerText, fieldId, offset, type, sinceVersion, minValue, maxValue, deprecated, characterEncoding, semanticType);
+                innerText, fieldId, offset, type, sinceVersion, minValue, maxValue, deprecated, characterEncoding, semanticType)
+            {
+                Source = source
+            };
         }
 
-        private static string GetRequiredAttribute(XmlReader reader, string attributeName, string elementName, SourceProductionContext sourceContext)
+        private static string GetRequiredAttribute(XmlReader reader, string attributeName, string elementName, SourceProductionContext sourceContext, SchemaSourceInfo source)
         {
             string value = reader.GetAttribute(attributeName) ?? "";
             if (string.IsNullOrEmpty(value))
             {
-                if (sourceContext.CancellationToken != default)
+                if (sourceContext.CanReportDiagnostics())
                 {
                     sourceContext.ReportDiagnostic(Diagnostic.Create(
                         SbeDiagnostics.MissingRequiredAttribute,
-                        Location.None,
+                        source.GetAttributeOrElement(attributeName),
                         attributeName,
                         elementName));
                 }
             }
             return value;
+        }
+
+        private static SchemaSourceInfo CreateSourceInfo(XmlReader reader, string filePath, SourceText? sourceText)
+        {
+            if (sourceText == null || string.IsNullOrWhiteSpace(filePath))
+                return SchemaSourceInfo.Empty;
+
+            var elementLocation = XmlDiagnosticLocation.CreateFromLineInfo(
+                sourceText,
+                filePath,
+                (IXmlLineInfo)reader,
+                reader.Name.Length + 1);
+
+            var attributeLocations = ImmutableDictionary.CreateBuilder<string, Location>(StringComparer.Ordinal);
+            if (reader.HasAttributes && reader.MoveToFirstAttribute())
+            {
+                do
+                {
+                    attributeLocations[reader.LocalName] = XmlDiagnosticLocation.CreateFromLineInfo(
+                        sourceText,
+                        filePath,
+                        (IXmlLineInfo)reader,
+                        reader.Name.Length);
+                }
+                while (reader.MoveToNextAttribute());
+
+                reader.MoveToElement();
+            }
+
+            return new SchemaSourceInfo(elementLocation, attributeLocations.ToImmutable());
         }
     }
 }

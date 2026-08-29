@@ -22,5 +22,8 @@ namespace SbeSourceGenerator.Schema
         string Deprecated,
         string CharacterEncoding = "",
         string SemanticType = ""
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

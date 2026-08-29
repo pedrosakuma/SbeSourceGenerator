@@ -15,5 +15,8 @@ namespace SbeSourceGenerator.Schema
         string MinValue,
         string MaxValue,
         string CharacterEncoding = ""
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }

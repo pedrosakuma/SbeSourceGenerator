@@ -41,7 +41,11 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateSet(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(
+                context,
+                enumDto.Name,
+                sourceContext,
+                enumDto.Source.GetAttributeOrElement("name"));
             var resolvedEncoding = TypeResolverHelper.ResolveEncodingType(enumDto.EncodingType, context);
             var encodingTranslated = TypeTranslator.Translate(resolvedEncoding);
             int maxBitPosition = TypesCatalog.GetPrimitiveLength(encodingTranslated.PrimitiveType) * 8 - 1;
@@ -49,18 +53,22 @@ namespace SbeSourceGenerator.Generators
             var validChoices = enumDto.Choices
                 .Select(choice =>
                 {
-                    var parsedValue = XmlParsingHelpers.ParseEnumFlagValue(choice.InnerText, choice.Name, sourceContext);
+                    var parsedValue = XmlParsingHelpers.ParseEnumFlagValue(
+                        choice.InnerText,
+                        choice.Name,
+                        sourceContext,
+                        choice.Source.ElementLocation);
                     return new { choice, parsedValue };
                 })
                 .Where(x =>
                 {
                     if (x.parsedValue.HasValue && x.parsedValue.Value > maxBitPosition)
                     {
-                        if (sourceContext.CancellationToken != default)
+                        if (sourceContext.CanReportDiagnostics())
                         {
                             sourceContext.ReportDiagnostic(Diagnostic.Create(
                                 SbeDiagnostics.SetChoiceExceedsBitWidth,
-                                Location.None,
+                                x.choice.Source.ElementLocation,
                                 x.choice.Name,
                                 enumDto.Name,
                                 x.parsedValue.Value,
@@ -122,17 +130,21 @@ namespace SbeSourceGenerator.Generators
 
             if (!TypeTranslator.IsPrimitive(typeDto.Name))
             {
-                var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, typeDto.Name, sourceContext);
+                var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(
+                    context,
+                    typeDto.Name,
+                    sourceContext,
+                    typeDto.Source.GetAttributeOrElement("name"));
                 int lengthValue = 0;
                 if (!string.IsNullOrEmpty(typeDto.Length))
                 {
                     if (!int.TryParse(typeDto.Length, out lengthValue))
                     {
-                        if (sourceContext.CancellationToken != default)
+                        if (sourceContext.CanReportDiagnostics())
                         {
                             sourceContext.ReportDiagnostic(Diagnostic.Create(
                                 SbeDiagnostics.InvalidIntegerAttribute,
-                                Location.None,
+                                typeDto.Source.GetAttributeOrElement("length"),
                                 "length",
                                 typeDto.Length,
                                 "type"));
@@ -166,7 +178,12 @@ namespace SbeSourceGenerator.Generators
                         TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
                         typeDto.NullValue,
-                        TypeResolverHelper.GetTypeLength(nativeType, context)
+                        TypeResolverHelper.GetTypeLength(
+                            nativeType,
+                            context,
+                            sourceContext,
+                            typeDto.Name,
+                            typeDto.Source.GetAttributeOrElement("primitiveType"))
                     ),
                     _ => new TypeDefinition(
                         ns,
@@ -174,7 +191,12 @@ namespace SbeSourceGenerator.Generators
                         typeDto.Description,
                         TypeResolverHelper.ResolveTypeName(nativeType, context),
                         typeDto.SemanticType,
-                        TypeResolverHelper.GetTypeLength(nativeType, context),
+                        TypeResolverHelper.GetTypeLength(
+                            nativeType,
+                            context,
+                            sourceContext,
+                            typeDto.Name,
+                            typeDto.Source.GetAttributeOrElement("primitiveType")),
                         typeDto.MinValue,
                         typeDto.MaxValue
                     )
@@ -189,11 +211,11 @@ namespace SbeSourceGenerator.Generators
                     context.OptionalTypes[typeDto.Name] = (nativeType, typeDto.NullValue);
                     var resolvedType = TypeResolverHelper.ResolveTypeName(nativeType, context);
                     if (string.IsNullOrEmpty(typeDto.NullValue) && !TypesCatalog.HasNullValue(resolvedType)
-                        && sourceContext.CancellationToken != default)
+                        && sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.UnknownPrimitiveTypeFallback,
-                            Location.None,
+                            typeDto.Source.GetAttributeOrElement("primitiveType"),
                             resolvedType, "null sentinel", typeDto.Name));
                     }
                 }
@@ -223,15 +245,19 @@ namespace SbeSourceGenerator.Generators
 
         private static IEnumerable<(string name, string content)> GenerateEnum(string ns, SchemaEnumDto enumDto, SchemaContext context, SourceProductionContext sourceContext)
         {
-            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, enumDto.Name, sourceContext);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(
+                context,
+                enumDto.Name,
+                sourceContext,
+                enumDto.Source.GetAttributeOrElement("name"));
             var resolvedEncoding = TypeResolverHelper.ResolveEncodingType(enumDto.EncodingType, context);
             var encodingTranslated = TypeTranslator.Translate(resolvedEncoding);
 
-            if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CancellationToken != default)
+            if (!TypesCatalog.HasPrimitiveLength(encodingTranslated.PrimitiveType) && sourceContext.CanReportDiagnostics())
             {
                 sourceContext.ReportDiagnostic(Diagnostic.Create(
                     SbeDiagnostics.UnknownPrimitiveTypeFallback,
-                    Location.None,
+                    enumDto.Source.GetAttributeOrElement("encodingType"),
                     encodingTranslated.PrimitiveType, "length", enumDto.Name));
             }
 
@@ -303,7 +329,11 @@ namespace SbeSourceGenerator.Generators
                 }
             }
 
-            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(context, compositeDto.Name, sourceContext);
+            var generatedName = TypeResolverHelper.RegisterGeneratedTypeName(
+                context,
+                compositeDto.Name,
+                sourceContext,
+                compositeDto.Source.GetAttributeOrElement("name"));
 
             // Separate ref fields from primitive fields
             var refFields = compositeDto.Fields
@@ -325,11 +355,11 @@ namespace SbeSourceGenerator.Generators
                 if (ft.Field.Presence == "optional" && string.IsNullOrEmpty(ft.Field.NullValue))
                 {
                     var resolvedType = TypeResolverHelper.ResolveTypeName(ft.Translation.PrimitiveType, context);
-                    if (!TypesCatalog.HasNullValue(resolvedType) && sourceContext.CancellationToken != default)
+                    if (!TypesCatalog.HasNullValue(resolvedType) && sourceContext.CanReportDiagnostics())
                     {
                         sourceContext.ReportDiagnostic(Diagnostic.Create(
                             SbeDiagnostics.UnknownPrimitiveTypeFallback,
-                            Location.None,
+                            ft.Field.Source.GetAttributeOrElement("primitiveType"),
                             resolvedType, "null sentinel", $"{compositeDto.Name}.{ft.Field.Name}"));
                     }
                 }
@@ -349,7 +379,11 @@ namespace SbeSourceGenerator.Generators
                 if (ft.Translation.PrimitiveType == "char" && ft.Field.Presence != "constant"
                     && int.TryParse(ft.Field.Length, out var charLen) && charLen > 1)
                 {
-                    var charTypeName = TypeResolverHelper.RegisterGeneratedTypeName(context, ft.Field.Name, sourceContext);
+                    var charTypeName = TypeResolverHelper.RegisterGeneratedTypeName(
+                        context,
+                        ft.Field.Name,
+                        sourceContext,
+                        ft.Field.Source.GetAttributeOrElement("name"));
                     var charTypeDef = new FixedSizeCharTypeDefinition(ns, charTypeName, ft.Field.Description, charLen, ft.Field.CharacterEncoding);
                     context.CustomTypeLengths[ft.Field.Name] = charLen;
                     context.StructTypeNames.Add(ft.Field.Name);

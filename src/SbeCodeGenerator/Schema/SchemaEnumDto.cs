@@ -11,5 +11,8 @@ namespace SbeSourceGenerator.Schema
         string EncodingType,
         string SemanticType,
         List<SchemaFieldDto> Choices
-    );
+    )
+    {
+        public SchemaSourceInfo Source { get; init; } = SchemaSourceInfo.Empty;
+    }
 }
