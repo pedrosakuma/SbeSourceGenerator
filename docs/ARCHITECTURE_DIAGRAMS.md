@@ -1,70 +1,46 @@
 # Generator Architecture Diagram
 
-## Before Decomposition
+> Diagram counts reflect the codebase at the time of writing (see file line counts in
+> `src/SbeCodeGenerator/`). They will drift as the generator evolves — treat them as
+> illustrative, not authoritative. For a prose description of the pipeline, see
+> [sbe-generator.md](./sbe-generator.md#generator-pipeline).
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SBESourceGenerator                       │
-│                     (~332 lines)                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  • Initialize(IncrementalGeneratorInitializationContext)    │
-│  • CollectXmlSchemaFiles()                                  │
-│  • BuildTransformationPipeline()                            │
-│  • RegisterSourceGeneration()                               │
-│  • GetNameAndContent()                                      │
-│                                                             │
-│  Type Generation:                                           │
-│  • GenerateTypes()                                          │
-│  • GenerateType()                                           │
-│  • GenerateEnum()                                           │
-│  • GenerateSet()                                            │
-│  • GenerateComposite()                                      │
-│                                                             │
-│  Message Generation:                                        │
-│  • GenerateMessages()                                       │
-│  • GenerateParser()                                         │
-│                                                             │
-│  Helper Methods:                                            │
-│  • ToNativeType()                                           │
-│  • IsPrimitiveType()                                        │
-│  • IsNullable()                                             │
-│  • GetTypeLength()                                          │
-│  • GetUnderlyingType()                                      │
-│  • InsertQuotationsIfNeeded()                               │
-│  • GetNamespaceFromPath()                                   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+## Historical Context: Before Decomposition (v0.1)
 
-## After Decomposition
+The generator originally lived in a single ~535-line `SBESourceGenerator` class that mixed
+schema parsing, type generation, message generation, and helper logic together — hard to
+test and maintain. It was decomposed into the orchestrator + specialized generators shown
+below.
+
+## Current Architecture
 
 ```
                     ┌─────────────────────────┐
                     │  SBESourceGenerator     │
                     │  (Orchestrator)         │
-                    │  (~332 lines)           │
+                    │  (~397 lines)           │
                     └───────────┬─────────────┘
                                 │
-                  ┌─────────────┼─────────────┐
-                  │             │             │
-                  ▼             ▼             ▼
-        ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-        │   Types      │ │  Messages    │ │  Utilities   │
-        │  Generator   │ │  Generator   │ │  Generator   │
-        └──────┬───────┘ └──────┬───────┘ └──────┬──────┘
-               │                │               │
-               │                │               │
-               ▼                ▼               ▼
-        ┌───────────┐    ┌──────────────┐  ┌──────────────┐
-        │ Types &   │    │ Messages &   │  │ Shared       │
-        │ Composites│    │ Parsing APIs │  │ Utilities     │
-        └───────────┘    └──────────────┘  └──────────────┘
+            ┌───────────┬───────┼───────┬───────────┬───────────┐
+            │           │       │       │           │           │
+            ▼           ▼       ▼       ▼           ▼           ▼
+      ┌──────────┐┌──────────┐┌──────────┐┌──────────────┐┌──────────┐
+      │  Types   ││ Messages ││Dispatcher││  Utilities   ││Validation│
+      │Generator ││Generator ││Generator ││  Generator   ││Generator │
+      └────┬─────┘└────┬─────┘└────┬─────┘└──────┬───────┘└────┬─────┘
+           │           │           │             │             │
+           ▼           ▼           ▼             ▼             ▼
+     ┌───────────┐┌──────────────┐┌───────────┐┌──────────────┐┌───────────┐
+     │ Types &   ││ Messages &   ││Dispatcher ││ SpanReader,  ││ Validation│
+     │ Composites││ Parsing APIs ││& Handler  ││SpanWriter,   ││ extension │
+     │           ││              ││ interface ││EndianHelpers ││ methods   │
+     └───────────┘└──────────────┘└───────────┘└──────────────┘└───────────┘
 ```
 
 ## Component Details
 
 ### ICodeGenerator Interface
+
 ```
 ┌─────────────────────────────────────────┐
 │          ICodeGenerator                 │
@@ -74,14 +50,18 @@
 └─────────────────────────────────────────┘
                     △
                     │ implements
-         ┌──────────┼──────────┬──────────┐
-         │          │          │          │
-         │          │          │          │
-       ┌────▼────┐┌───▼────┐┌───▼────┐
-       │ Types   ││Messages││Utilities│
-       │Generator││Generator││Generator│
-       └─────────┘└────────┘└─────────┘
+     ┌──────────┬───┼──────────┬──────────────┬──────────┐
+     │          │   │          │              │          │
+   ┌─▼────┐ ┌───▼───┐ ┌──▼───────┐ ┌────▼─────┐ ┌─▼──────────┐
+   │Types │ │Messages│ │Dispatcher│ │Utilities │ │Validation  │
+   │Gen.  │ │Gen.    │ │Gen.      │ │Gen.      │ │Generator   │
+   └──────┘ └────────┘ └──────────┘ └──────────┘ └────────────┘
 ```
+
+`DispatcherGenerator` and `ValidationGenerator` are invoked independently of `ICodeGenerator`
+callers where per-schema conditions apply (dispatcher only when messages exist; validation only
+when `minValue`/`maxValue` constraints are present), but both implement the same generation
+contract as the others.
 
 ### Data Flow
 
@@ -89,37 +69,31 @@
 XML Schema File
       │
       ▼
-┌─────────────────────────────────────┐
-│  SBESourceGenerator.GetNameAndContent│
-└──────────────┬──────────────────────┘
+┌───────────────────────────────────────┐
+│  SBESourceGenerator (entry point)     │
+│  namespace derivation + SchemaContext │
+└──────────────┬─────────────────────────┘
                │
-               │ Creates SchemaContext
+               │ passes shared SchemaContext to each generator
                │
-               ├──────────────────────────────────┐
-               │                                  │
-               ▼                                  ▼
-    ┌──────────────────┐              ┌──────────────────┐
-    │ TypesCodeGenerator│              │MessagesCodeGenerator│
-    │                  │              │                  │
-    │ Generates:       │              │ Generates:       │
-    │ • Types          │              │ • Messages       │
-    │ • Enums          │              │ • Fields         │
-    │ • Sets           │              │ • Groups         │
-    │ • Composites     │              │ • Parsing helpers│
-    └──────┬───────────┘              └─────┬────────────┘
-           │                                │
-           │                                │
-           ▼                                ▼
-    ┌──────────────┐              ┌──────────────┐
-    │ Type Files   │              │Message Files │
-    │ .cs          │              │ .cs          │
-    └──────────────┘              └──────┬───────┘
-                                         │
-                                         ▼
-                                 ┌──────────────┐
-                                 │ Utility Files│
-                                 │ .cs          │
-                                 └──────────────┘
+   ┌───────────┼───────────┬───────────────┬───────────────┐
+   │           │           │               │               │
+   ▼           ▼           ▼               ▼               ▼
+┌─────────┐┌──────────┐┌──────────┐┌───────────────┐┌──────────────┐
+│Types    ││Messages  ││Dispatcher││Utilities       ││Validation    │
+│CodeGen  ││CodeGen   ││Generator ││CodeGen         ││Generator     │
+│         ││          ││          ││                ││(optional)    │
+│enums,   ││messages, ││ISbeMessa-││SpanReader,     ││Validate()/   │
+│sets,    ││fields,   ││geHandler,││SpanWriter,     ││TryValidate()/│
+│composi- ││groups,   ││SbeDispat-││EndianHelpers   ││CreateValida- │
+│tes,     ││varData,  ││cher      ││                ││ted()         │
+│types    ││VersionMap││          ││                ││              │
+└────┬────┘└────┬─────┘└────┬─────┘└───────┬────────┘└──────┬───────┘
+     │          │           │              │                │
+     └──────────┴───────────┴──────────────┴────────────────┘
+                              │
+                              ▼
+                  sourceContext.AddSource() per file
 ```
 
 ### Generator Responsibilities
@@ -130,54 +104,74 @@ XML Schema File
 ├─────────────────────────────────────────────────────────────┤
 │ Handles:                                                    │
 │ • Simple types (primitives with custom names)              │
-│ • Enums (with nullable variants)                           │
-│ • Sets (bitflag types)                                     │
-│ • Composites (structured types)                            │
-│ • Semantic type extensions                                 │
-│                                                             │
-│ Helper Methods:                                             │
-│ • ToNativeType()                                            │
-│ • IsPrimitiveType()                                         │
-│ • IsNullable()                                              │
-│ • GetTypeLength()                                           │
-│ • InsertQuotationsIfNeeded()                                │
+│ • Enums (with nullable variants) and sets (flag enums)      │
+│ • Composites (structured/nested types, <ref> elements)      │
+│ • Derived numeric constants on decimal composites           │
+│ • Semantic type extensions                                  │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                 MessagesCodeGenerator                       │
+│                 MessagesCodeGenerator                        │
 ├─────────────────────────────────────────────────────────────┤
 │ Handles:                                                    │
-│ • Message structures                                        │
-│ • Message fields (regular and optional)                    │
-│ • Message constants                                         │
-│ • Message groups                                            │
-│ • Message data fields                                       │
-│ • Emits per-message parsing helpers                        │
-│                                                             │
-│ Helper Methods:                                             │
-│ • ToNativeType()                                            │
-│ • GetUnderlyingType()                                       │
-│ • GetTypeLength()                                           │
+│ • Message structures, fields (regular/optional/constant)     │
+│ • Repeating groups (nested, foreach enumerators when simple) │
+│ • Variable-length data (varData)                             │
+│ • Per-message parsing/encoding helpers and {Msg}VersionMap    │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│               UtilitiesCodeGenerator                        │
+│                 DispatcherGenerator                          │
 ├─────────────────────────────────────────────────────────────┤
 │ Handles:                                                    │
-│ • Future utility code                                       │
+│ • Per-schema ISbeMessageHandler interface                   │
+│ • Zero-cost, devirtualized SbeDispatcher.Dispatch<T>         │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                   SBESourceGenerator                        │
-│                     (Orchestrator)                          │
+│               UtilitiesCodeGenerator                         │
 ├─────────────────────────────────────────────────────────────┤
-│ Responsibilities:                                           │
-│ • Collect XML schema files                                 │
-│ • Create SchemaContext                                     │
-│ • Instantiate specialized generators                       │
-│ • Coordinate generation process                            │
-│ • Register generated sources                               │
+│ Handles:                                                    │
+│ • SpanReader (sequential zero-copy binary reading)           │
+│ • SpanWriter, EndianHelpers                                  │
 └─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                 ValidationGenerator (optional)                │
+├─────────────────────────────────────────────────────────────┤
+│ Handles:                                                    │
+│ • Validate()/TryValidate()/CreateValidated() extension       │
+│   methods for types/messages with minValue/maxValue          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                   SBESourceGenerator                          │
+│                     (Orchestrator)                            │
+├─────────────────────────────────────────────────────────────┤
+│ Responsibilities:                                            │
+│ • Collect XML schema files (AdditionalFiles)                 │
+│ • Derive namespace, create SchemaContext                      │
+│ • Instantiate and run specialized generators                  │
+│ • Register generated sources                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Code Size Reference
+
+Approximate line counts in `src/SbeCodeGenerator/` (excluding schema DTOs, field/type
+definition builders, and diagnostics — see [sbe-generator.md](./sbe-generator.md) for the
+full module breakdown):
+
+```
+┌──────────────────────────────────────────┐
+│  SBESourceGenerator.cs:            397   │ ← orchestrator
+│  Generators/TypesCodeGenerator.cs: 585   │
+│  Generators/MessagesCodeGenerator.cs:645 │
+│  Generators/DispatcherGenerator.cs: 110  │
+│  Generators/UtilitiesCodeGenerator.cs: 32│
+│  Generators/ValidationGenerator.cs: 259  │
+│  Generators/ICodeGenerator.cs:      23   │
+└──────────────────────────────────────────┘
 ```
 
 ### Testing Structure
@@ -186,88 +180,25 @@ XML Schema File
 ┌──────────────────────────────────────────────────────────┐
 │              SbeCodeGenerator.Tests                      │
 ├──────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │    TypesCodeGeneratorTests (37 tests)          │    │
-│  │  • Enums, sets, composites, types              │    │
-│  │  • Optional fields, deprecated, char arrays    │    │
-│  └────────────────────────────────────────────────┘    │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │  MessagesCodeGeneratorTests (19 tests)         │    │
-│  │  • Messages, fields, groups, varData           │    │
-│  │  • Nested groups, constants, deprecated        │    │
-│  └────────────────────────────────────────────────┘    │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │  UtilitiesCodeGeneratorTests (4 tests)          │    │
-│  │  • SpanReader, SpanWriter, EndianHelpers       │    │
-│  └────────────────────────────────────────────────┘    │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │  + SnapshotTests, ValidationTests, etc.        │    │
-│  └────────────────────────────────────────────────┘    │
-│                                                          │
-│                Total: 172 unit tests ✅                  │
+│  Enums, sets, composites, types, messages, fields,       │
+│  groups, varData, dispatcher, utilities, validation,      │
+│  snapshot tests, and diagnostics coverage.                │
+│                                                            │
+│                193 unit tests ✅                           │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│           SbeCodeGenerator.IntegrationTests               │
+├──────────────────────────────────────────────────────────┤
+│  End-to-end: schema → generated code → compiles → runs.   │
+│  Covers schema versioning, byte order, groups/varData,     │
+│  dispatcher, and semantic type conversion scenarios.       │
+│                                                            │
+│                168 integration tests ✅                    │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Code Size Comparison
+## See Also
 
-```
-Before:
-┌────────────────────────────────────────┐
-│  SBESourceGenerator: 535 lines (v0.1)  │
-└────────────────────────────────────────┘
-
-After (current):
-┌────────────────────────────────────────┐
-│  SBESourceGenerator:  332 lines        │ ← orchestrator
-│  TypesCodeGenerator:  411 lines        │
-│  MessagesCodeGen:     426 lines        │
-│  UtilitiesCodeGen:     32 lines        │
-│  ValidationGenerator: 259 lines        │
-│  ICodeGenerator:       23 lines        │
-├────────────────────────────────────────┤
-│  Total:             1,483 lines        │ (modular, testable)
-└────────────────────────────────────────┘
-```
-
-## Benefits Visualization
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   BEFORE                                │
-│                                                         │
-│  ┌───────────────────────────────────────────────┐    │
-│  │         Monolithic SBESourceGenerator         │    │
-│  │                                               │    │
-│  │  ❌ Hard to maintain                          │    │
-│  │  ❌ Difficult to test                         │    │
-│  │  ❌ Mixed responsibilities                    │    │
-│  │  ❌ 535 lines of code                         │    │
-│  │  ❌ Low cohesion                              │    │
-│  └───────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-
-                         ↓ Refactoring
-
-┌─────────────────────────────────────────────────────────┐
-│                   AFTER                                 │
-│                                                         │
-│  ┌──────────────────────────────────────────┐          │
-│  │    Orchestrator (97 lines)               │          │
-│  └───┬──────────┬──────────┬────────────────┘          │
-│      │          │          │                            │
-│      ▼          ▼          ▼                            │
-│  ┌──────┐  ┌────────┐  ┌─────────┐                    │
-│  │Types │  │Messages│  │Utilities│                    │
-│  └──────┘  └────────┘  └─────────┘                    │
-│                                                         │
-│  ✅ Easy to maintain                                   │
-│  ✅ Fully tested (291 tests)                          │
-│  ✅ Clear responsibilities                            │
-│  ✅ Modular design                                    │
-│  ✅ High cohesion                                     │
-└─────────────────────────────────────────────────────────┘
-```
+- [sbe-generator.md](./sbe-generator.md) - Full developer guide: pipeline, data structures, extension points
+- [TESTING_GUIDE.md](./TESTING_GUIDE.md) - Testing infrastructure and how to run tests

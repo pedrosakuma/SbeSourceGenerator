@@ -14,13 +14,10 @@ This folder contains documentation for the SBE Code Generator project.
 - **[BYTE_ORDER.md](./BYTE_ORDER.md)** — Endianness support
 
 ### Parsing (SpanReader)
-- **[SPAN_READER_README.md](./SPAN_READER_README.md)** — SpanReader API reference and usage
-- **[SPAN_READER_EXTENSIBILITY.md](./SPAN_READER_EXTENSIBILITY.md)** — Advanced features and custom parsing patterns
-- **[SPAN_READER_INTEGRATION.md](./SPAN_READER_INTEGRATION.md)** — How SpanReader integrates into parsing flows
+- **[SPAN_READER_README.md](./SPAN_READER_README.md)** — SpanReader API reference, usage patterns, and extensibility (custom parsers, schema evolution)
 
 ### Validation
-- **[VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)** — Validation API reference and patterns
-- **[VALIDATION_EXAMPLE.md](./VALIDATION_EXAMPLE.md)** — Quick start example
+- **[VALIDATION_CONSTRAINTS.md](./VALIDATION_CONSTRAINTS.md)** — Validation API reference, patterns, and quick-start example
 
 ### Performance
 - **[PERFORMANCE_TUNING_GUIDE.md](./PERFORMANCE_TUNING_GUIDE.md)** — Optimization best practices
@@ -29,6 +26,11 @@ This folder contains documentation for the SBE Code Generator project.
 
 - **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** — How to test the generator
 - **[CICD_PIPELINE.md](./CICD_PIPELINE.md)** — CI/CD pipeline and NuGet publishing
+
+## Source Code Reference
+
+- **[Diagnostics README](../src/SbeCodeGenerator/Diagnostics/README.md)** — Diagnostic descriptor reference (SBE001–SBE018)
+- **[Helpers README](../src/SbeCodeGenerator/Helpers/README.md)** — XML parsing helper utilities
 
 ## Quick Links
 
