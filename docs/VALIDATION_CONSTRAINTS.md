@@ -351,6 +351,42 @@ For existing codebases:
 3. **Schema Updates**: Add min/max attributes to schemas as needed
 4. **Error Handling**: Add try-catch blocks where validation is performed
 
+## Quick Example: Putting It Together
+
+Using the `Order` message from the schema above in application code:
+
+```csharp
+// Throwing validation — fail fast at a boundary (e.g., after parsing external input)
+public class OrderProcessor
+{
+    public void ProcessOrder(Order order)
+    {
+        order.Validate(); // Throws ArgumentOutOfRangeException if invalid
+        Console.WriteLine($"Processing order {order.OrderId}");
+    }
+}
+
+// Non-throwing validation — graceful handling with user-facing error messages
+public class OrderValidator
+{
+    public bool TryProcessOrder(Order order, out string? error)
+    {
+        if (!order.TryValidate(out error))
+            return false;
+
+        Console.WriteLine($"Processing order {order.OrderId}");
+        return true;
+    }
+}
+
+// Factory pattern — ensure the object is always valid after construction
+public class OrderBuilder
+{
+    public Order BuildValidatedOrder(long orderId, long price, long quantity) =>
+        new Order { OrderId = orderId, Price = price, Quantity = quantity }.CreateValidated();
+}
+```
+
 ## See Also
 
 

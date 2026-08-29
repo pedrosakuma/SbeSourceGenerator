@@ -776,4 +776,4 @@ reader.TryRead<T>(out var data);
 
 ## See Also
 
-- [Extensibility](./SPAN_READER_EXTENSIBILITY.md) - Advanced features and custom parsing patterns
+- [Schema Versioning Guide](./SCHEMA_VERSIONING.md) - `TryReadBlock<T>` and forward/backward compatibility in practice

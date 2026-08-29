@@ -400,6 +400,7 @@ dotnet test
 
 ## Documentation
 
+- **[Full Documentation Index](./docs/README.md)** - All feature guides, architecture docs, and operational guides in one place
 - **[Changelog](./CHANGELOG.md)** - Version history and release notes
 - **[Contributing](./CONTRIBUTING.md)** - Development setup and guidelines
 - **[Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md)** - System architecture
